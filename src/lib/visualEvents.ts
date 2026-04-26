@@ -30,9 +30,12 @@ type Listener = (e: VisualEvent) => void;
 
 /** Shared store of values the render loop reads each frame. */
 export type VisualState = {
-  pointer: [number, number]; // normalized -1..1
+  pointer: [number, number]; // normalized -1..1, smoothed target
+  pointerImpulse: number; // 0..1, decays — bumped by pointer velocity
+  clickPos: [number, number]; // last click in normalized -1..1
+  clickImpulse: number; // 0..1, decays — bumped on click
   scroll: number; // 0..1 page progress
-  noteImpulse: number; // decays each frame, bumped on note_on
+  noteImpulse: number; // 0..1, decays — bumped on note_on
   envelope: number; // 0..1 rough envelope follower
   frequency: number; // Hz of most recent note
   velocity: number; // 0..1 of most recent note
@@ -42,6 +45,9 @@ export type VisualState = {
 
 export const visualState: VisualState = {
   pointer: [0, 0],
+  pointerImpulse: 0,
+  clickPos: [0, 0],
+  clickImpulse: 0,
   scroll: 0,
   noteImpulse: 0,
   envelope: 0,
@@ -77,4 +83,23 @@ export function tickVisualState(dt: number) {
   // dt in seconds
   visualState.noteImpulse = Math.max(0, visualState.noteImpulse - dt * 2.5);
   visualState.envelope = Math.max(0, visualState.envelope - dt * 1.2);
+  visualState.pointerImpulse = Math.max(
+    0,
+    visualState.pointerImpulse - dt * 2.0,
+  );
+  visualState.clickImpulse = Math.max(0, visualState.clickImpulse - dt * 1.6);
+}
+
+/** Bump from outside (e.g. pointer velocity, click) without going through the event bus. */
+export function bumpPointerImpulse(amount: number) {
+  visualState.pointerImpulse = Math.min(
+    1,
+    visualState.pointerImpulse + amount,
+  );
+}
+
+export function triggerClick(x: number, y: number) {
+  visualState.clickPos[0] = x;
+  visualState.clickPos[1] = y;
+  visualState.clickImpulse = 1;
 }

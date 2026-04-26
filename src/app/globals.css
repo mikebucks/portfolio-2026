@@ -11,9 +11,14 @@
   --ink: #08080a;
 }
 
-html,
-body {
+/* Only the root element gets the background.
+   If body also has a background it paints OVER position:fixed z-index:-10
+   children — hiding the WebGL canvas and CSS gradient entirely. */
+html {
   background: var(--ink);
+}
+
+body {
   color: #f4f4f4;
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
