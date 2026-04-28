@@ -1,5 +1,10 @@
 import type * as ToneNS from "tone";
-import type { SynthSettings } from "@/lib/store";
+import type {
+  FilterType,
+  LfoShape,
+  OscEngine,
+  SynthSettings,
+} from "@/lib/store";
 import { visualBus } from "@/lib/visualEvents";
 
 export type SynthEngine = {
@@ -9,45 +14,177 @@ export type SynthEngine = {
   dispose: () => void;
 };
 
+type Tone = typeof ToneNS;
+
+type VoiceHandle = {
+  triggerAttack: (note: string, time: number, velocity: number) => void;
+  triggerRelease: (note: string, time: number) => void;
+  releaseAll: () => void;
+  apply: (s: SynthSettings) => void;
+  output: ToneNS.ToneAudioNode;
+  dispose: () => void;
+  kind: OscEngine;
+};
+
+const FILTER_ENV_DEPTH_HZ = 5500;
+const LFO_DEPTH_HZ = 2400;
+const CYC_RES_DEPTH = 6;
+
 /**
- * Build the synth graph. Tone.js is passed in rather than imported at module
- * top so callers can lazy-load it after a user gesture.
+ * MicroFreak-inspired hybrid engine: digital oscillator section feeding an
+ * analog-style filter, ADSR (VCA), filter envelope, LFO, and cycling
+ * envelope. Modulation is computed manually each frame and written into the
+ * shared filter — Tone's automatic LFO→Param routing has unit-coercion
+ * quirks with frequency params and is brittle.
+ *
+ * Browser-only additions: stereo delay + reverb tail.
  */
 export function createSynthEngine(
-  Tone: typeof ToneNS,
+  Tone: Tone,
   initial: SynthSettings,
 ): SynthEngine {
   const limiter = new Tone.Limiter(-1).toDestination();
   const volume = new Tone.Volume(initial.masterVolume).connect(limiter);
-  const reverb = new Tone.Reverb({ decay: 2.4, wet: initial.reverbWet }).connect(
+  const reverb = new Tone.Reverb({ decay: 3.4, wet: initial.reverbWet }).connect(
     volume,
   );
+  void reverb.generate();
+
   const delay = new Tone.FeedbackDelay({
     delayTime: initial.delayTime,
     feedback: initial.delayFeedback,
     wet: initial.delayWet,
   }).connect(reverb);
+
   const filter = new Tone.Filter({
     frequency: initial.filterCutoff,
     Q: initial.filterResonance,
-    type: "lowpass",
+    type: initial.filterType,
+    rolloff: -24,
   }).connect(delay);
 
-  const poly = new Tone.PolySynth(Tone.Synth, {
-    oscillator: { type: initial.oscillatorType },
-    envelope: {
-      attack: initial.attack,
-      decay: initial.decay,
-      sustain: initial.sustain,
-      release: initial.release,
-    },
-  }).connect(filter);
+  let voice: VoiceHandle = buildVoice(Tone, initial);
+  voice.output.connect(filter);
 
-  poly.maxPolyphony = 8;
+  // ---- Modulation state (RAF-driven) -----------------------------------
+
+  let current: SynthSettings = initial;
+
+  // Filter envelope ADSR state machine
+  type EnvStage = "idle" | "attack" | "decay" | "sustain" | "release";
+  const fenv = { stage: "idle" as EnvStage, value: 0, releaseFrom: 0 };
+  let activeNotes = 0;
+
+  let lfoPhase = 0;
+  let cycPhase = 0;
+  let lastT = performance.now();
+  let raf = 0;
+
+  function tickFilterEnv(dt: number) {
+    const { attack, decay, sustain } = current;
+    const release = current.release;
+    switch (fenv.stage) {
+      case "attack": {
+        const rate = 1 / Math.max(0.001, attack);
+        fenv.value = Math.min(1, fenv.value + dt * rate);
+        if (fenv.value >= 1) fenv.stage = "decay";
+        break;
+      }
+      case "decay": {
+        const rate = (1 - sustain) / Math.max(0.001, decay);
+        fenv.value = Math.max(sustain, fenv.value - dt * rate);
+        if (fenv.value <= sustain + 1e-4) {
+          fenv.value = sustain;
+          fenv.stage = "sustain";
+        }
+        break;
+      }
+      case "sustain": {
+        // Track sustain in case it changes live.
+        const target = sustain;
+        fenv.value += (target - fenv.value) * Math.min(1, dt * 8);
+        break;
+      }
+      case "release": {
+        const rate = fenv.releaseFrom / Math.max(0.001, release);
+        fenv.value = Math.max(0, fenv.value - dt * rate);
+        if (fenv.value <= 1e-4) {
+          fenv.value = 0;
+          fenv.stage = "idle";
+        }
+        break;
+      }
+      case "idle":
+      default:
+        break;
+    }
+  }
+
+  function lfoSample(phase: number, shape: LfoShape): number {
+    const p = phase - Math.floor(phase); // 0..1
+    switch (shape) {
+      case "sine":
+        return Math.sin(p * Math.PI * 2);
+      case "triangle":
+        return p < 0.5 ? p * 4 - 1 : 3 - p * 4;
+      case "square":
+        return p < 0.5 ? 1 : -1;
+      case "sawtooth":
+        return p * 2 - 1;
+    }
+  }
+
+  function tick() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+
+    tickFilterEnv(dt);
+
+    lfoPhase += dt * current.lfoRate;
+    cycPhase += dt * current.cycEnvRate;
+
+    const lfoVal = lfoSample(lfoPhase, current.lfoShape) * current.lfoAmount;
+    const cycVal = Math.sin(cycPhase * Math.PI * 2) * current.cycEnvAmount;
+
+    const cutoff =
+      current.filterCutoff +
+      fenv.value * current.filterEnvAmount * FILTER_ENV_DEPTH_HZ +
+      lfoVal * LFO_DEPTH_HZ;
+    const q = Math.max(0, current.filterResonance + cycVal * CYC_RES_DEPTH);
+
+    // setTargetAtTime gives a smooth one-pole interpolation that hides the
+    // RAF cadence and prevents zipper noise.
+    const audioNow = Tone.now();
+    filter.frequency.setTargetAtTime(
+      Math.max(40, Math.min(18000, cutoff)),
+      audioNow,
+      0.008,
+    );
+    filter.Q.setTargetAtTime(q, audioNow, 0.008);
+
+    raf = requestAnimationFrame(tick);
+  }
+  raf = requestAnimationFrame(tick);
+
+  function rebuildIfEngineChanged(s: SynthSettings) {
+    if (s.oscEngine === voice.kind) return;
+    const old = voice;
+    const next = buildVoice(Tone, s);
+    next.output.connect(filter);
+    voice = next;
+    old.releaseAll();
+    setTimeout(() => old.dispose(), Math.max(80, s.release * 1000 + 80));
+  }
 
   return {
     noteOn(note, velocity = 0.8) {
-      poly.triggerAttack(note, Tone.now(), velocity);
+      const t = Tone.now();
+      voice.triggerAttack(note, t, velocity);
+
+      activeNotes++;
+      fenv.stage = "attack";
+
       const freq = Tone.Frequency(note).toFrequency();
       visualBus.emit({
         type: "note_on",
@@ -58,7 +195,15 @@ export function createSynthEngine(
       });
     },
     noteOff(note) {
-      poly.triggerRelease(note, Tone.now());
+      const t = Tone.now();
+      voice.triggerRelease(note, t);
+
+      activeNotes = Math.max(0, activeNotes - 1);
+      if (activeNotes === 0) {
+        fenv.releaseFrom = fenv.value;
+        fenv.stage = "release";
+      }
+
       visualBus.emit({
         type: "note_off",
         note,
@@ -66,22 +211,19 @@ export function createSynthEngine(
       });
     },
     applySettings(s) {
-      poly.set({
-        oscillator: { type: s.oscillatorType },
-        envelope: {
-          attack: s.attack,
-          decay: s.decay,
-          sustain: s.sustain,
-          release: s.release,
-        },
-      });
-      filter.frequency.rampTo(s.filterCutoff, 0.05);
-      filter.Q.rampTo(s.filterResonance, 0.05);
+      rebuildIfEngineChanged(s);
+      voice.apply(s);
+
+      filter.type = s.filterType as FilterType;
+
       delay.wet.rampTo(s.delayWet, 0.05);
       delay.delayTime.rampTo(s.delayTime, 0.05);
       delay.feedback.rampTo(s.delayFeedback, 0.05);
       reverb.wet.rampTo(s.reverbWet, 0.1);
       volume.volume.rampTo(s.masterVolume, 0.05);
+
+      current = s;
+
       visualBus.emit({
         type: "setting",
         key: "filterCutoff",
@@ -94,7 +236,8 @@ export function createSynthEngine(
       });
     },
     dispose() {
-      poly.dispose();
+      cancelAnimationFrame(raf);
+      voice.dispose();
       filter.dispose();
       delay.dispose();
       reverb.dispose();
@@ -102,4 +245,275 @@ export function createSynthEngine(
       limiter.dispose();
     },
   };
+}
+
+// ---------- Voice builders ---------------------------------------------------
+
+function buildVoice(Tone: Tone, s: SynthSettings): VoiceHandle {
+  switch (s.oscEngine) {
+    case "analog":
+      return buildAnalog(Tone, s);
+    case "super":
+      return buildSuper(Tone, s);
+    case "fm":
+      return buildFM(Tone, s);
+    case "harmonic":
+      return buildHarmonic(Tone, s);
+    case "karplus":
+      return buildKarplus(Tone, s);
+    case "noise":
+      return buildNoise(Tone, s);
+  }
+}
+
+function envOf(s: SynthSettings) {
+  return {
+    attack: s.attack,
+    decay: s.decay,
+    sustain: s.sustain,
+    release: s.release,
+  };
+}
+
+/** Pulse oscillator with adjustable width and detune — classic VA character. */
+function buildAnalog(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+      type: "pulse",
+      width: 0.5 - s.oscWave * 0.45,
+    } as ToneNS.OmniOscillatorOptions,
+    envelope: envOf(s),
+    portamento: s.glide,
+    detune: s.oscTimbre * 30,
+  });
+  synth.maxPolyphony = 8;
+  return {
+    kind: "analog",
+    output: synth,
+    triggerAttack: (n, t, v) => synth.triggerAttack(n, t, v),
+    triggerRelease: (n, t) => synth.triggerRelease(n, t),
+    releaseAll: () => synth.releaseAll(),
+    apply(next) {
+      synth.set({
+        oscillator: {
+          type: "pulse",
+          width: 0.5 - next.oscWave * 0.45,
+        } as ToneNS.OmniOscillatorOptions,
+        envelope: envOf(next),
+        portamento: next.glide,
+        detune: next.oscTimbre * 30,
+      });
+    },
+    dispose: () => synth.dispose(),
+  };
+}
+
+/** Stacked detuned saws — supersaw / "Super" wave. */
+function buildSuper(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const count = Math.max(3, Math.round(3 + s.oscTimbre * 4));
+  const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+      type: "fatsawtooth",
+      count,
+      spread: s.oscWave * 80,
+    } as ToneNS.OmniOscillatorOptions,
+    envelope: envOf(s),
+    portamento: s.glide,
+  });
+  synth.maxPolyphony = 6;
+  return {
+    kind: "super",
+    output: synth,
+    triggerAttack: (n, t, v) => synth.triggerAttack(n, t, v),
+    triggerRelease: (n, t) => synth.triggerRelease(n, t),
+    releaseAll: () => synth.releaseAll(),
+    apply(next) {
+      const c = Math.max(3, Math.round(3 + next.oscTimbre * 4));
+      synth.set({
+        oscillator: {
+          type: "fatsawtooth",
+          count: c,
+          spread: next.oscWave * 80,
+        } as ToneNS.OmniOscillatorOptions,
+        envelope: envOf(next),
+        portamento: next.glide,
+      });
+    },
+    dispose: () => synth.dispose(),
+  };
+}
+
+/** Two-operator FM — Wave morphs index, Timbre morphs harmonicity. */
+function buildFM(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const synth = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 0.5 + s.oscTimbre * 4,
+    modulationIndex: 0.5 + s.oscWave * 18,
+    envelope: envOf(s),
+    modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.5 },
+    portamento: s.glide,
+  });
+  synth.maxPolyphony = 6;
+  return {
+    kind: "fm",
+    output: synth,
+    triggerAttack: (n, t, v) => synth.triggerAttack(n, t, v),
+    triggerRelease: (n, t) => synth.triggerRelease(n, t),
+    releaseAll: () => synth.releaseAll(),
+    apply(next) {
+      synth.set({
+        harmonicity: 0.5 + next.oscTimbre * 4,
+        modulationIndex: 0.5 + next.oscWave * 18,
+        envelope: envOf(next),
+        portamento: next.glide,
+      });
+    },
+    dispose: () => synth.dispose(),
+  };
+}
+
+/** Additive-feel via custom partials — Wave = brightness, Timbre = odd/even. */
+function buildHarmonic(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: {
+      type: "custom",
+      partials: harmonicPartials(s.oscWave, s.oscTimbre),
+    } as ToneNS.OmniOscillatorOptions,
+    envelope: envOf(s),
+    portamento: s.glide,
+  });
+  synth.maxPolyphony = 6;
+  return {
+    kind: "harmonic",
+    output: synth,
+    triggerAttack: (n, t, v) => synth.triggerAttack(n, t, v),
+    triggerRelease: (n, t) => synth.triggerRelease(n, t),
+    releaseAll: () => synth.releaseAll(),
+    apply(next) {
+      synth.set({
+        oscillator: {
+          type: "custom",
+          partials: harmonicPartials(next.oscWave, next.oscTimbre),
+        } as ToneNS.OmniOscillatorOptions,
+        envelope: envOf(next),
+        portamento: next.glide,
+      });
+    },
+    dispose: () => synth.dispose(),
+  };
+}
+
+function harmonicPartials(wave: number, timbre: number): number[] {
+  const brightness = 0.4 + wave * 1.6;
+  const oddBias = timbre;
+  const out: number[] = [];
+  for (let h = 1; h <= 10; h++) {
+    const isOdd = h % 2 === 1;
+    const oddWeight = isOdd ? 1 : 1 - oddBias;
+    out.push((1 / Math.pow(h, brightness)) * oddWeight);
+  }
+  return out;
+}
+
+/**
+ * Karplus-Strong pluck — Wave = resonance, Timbre = attack noise.
+ *
+ * PluckSynth isn't Monophonic, so it can't be wrapped by PolySynth. Round-
+ * robin a small voice pool ourselves.
+ */
+function buildKarplus(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const VOICES = 6;
+  const out = new Tone.Gain(0.7);
+  const pool: ToneNS.PluckSynth[] = [];
+  for (let i = 0; i < VOICES; i++) {
+    const p = new Tone.PluckSynth({
+      attackNoise: 0.2 + s.oscTimbre * 1.8,
+      dampening: 1500 + (1 - s.oscWave) * 4500,
+      resonance: 0.7 + s.oscWave * 0.28,
+    });
+    p.connect(out);
+    pool.push(p);
+  }
+  let cursor = 0;
+  const active = new Map<string, ToneNS.PluckSynth>();
+
+  return {
+    kind: "karplus",
+    output: out,
+    triggerAttack: (n, t) => {
+      const v = pool[cursor];
+      cursor = (cursor + 1) % VOICES;
+      v.triggerAttack(n, t);
+      active.set(n, v);
+    },
+    triggerRelease: (n, t) => {
+      const v = active.get(n);
+      if (v) {
+        v.triggerRelease(t);
+        active.delete(n);
+      }
+    },
+    releaseAll: () => {
+      for (const v of pool) v.triggerRelease();
+      active.clear();
+    },
+    apply: (next) => {
+      for (const v of pool) {
+        v.attackNoise = 0.2 + next.oscTimbre * 1.8;
+        v.dampening = 1500 + (1 - next.oscWave) * 4500;
+        v.resonance = 0.7 + next.oscWave * 0.28;
+      }
+    },
+    dispose: () => {
+      for (const v of pool) v.dispose();
+      out.dispose();
+    },
+  };
+}
+
+/**
+ * Filtered noise. Mono — noise has no pitch, but the global filter shapes it
+ * and the keyboard still gives the player rhythmic control.
+ */
+function buildNoise(Tone: Tone, s: SynthSettings): VoiceHandle {
+  const noise = new Tone.NoiseSynth({
+    noise: { type: noiseType(s.oscWave) },
+    envelope: envOf(s),
+  });
+  const out = new Tone.Gain(1);
+  noise.connect(out);
+
+  const active = new Set<string>();
+  return {
+    kind: "noise",
+    output: out,
+    triggerAttack: (n, t, v) => {
+      active.add(n);
+      noise.triggerAttack(t, v);
+    },
+    triggerRelease: (n, t) => {
+      if (!active.has(n)) return;
+      active.delete(n);
+      if (active.size === 0) noise.triggerRelease(t);
+    },
+    releaseAll: () => {
+      active.clear();
+      noise.triggerRelease();
+    },
+    apply: (next) => {
+      noise.set({
+        noise: { type: noiseType(next.oscWave) },
+        envelope: envOf(next),
+      });
+    },
+    dispose: () => {
+      noise.dispose();
+      out.dispose();
+    },
+  };
+}
+
+function noiseType(wave: number): "white" | "pink" | "brown" {
+  if (wave < 0.34) return "brown";
+  if (wave < 0.67) return "pink";
+  return "white";
 }

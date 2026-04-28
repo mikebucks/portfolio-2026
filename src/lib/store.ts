@@ -1,34 +1,88 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export type OscEngine =
+  | "analog"
+  | "super"
+  | "fm"
+  | "harmonic"
+  | "karplus"
+  | "noise";
+
+export type FilterType = "lowpass" | "bandpass" | "highpass";
+
+export type LfoShape = "sine" | "triangle" | "square" | "sawtooth";
+
 export type SynthSettings = {
-  oscillatorType: "sine" | "triangle" | "sawtooth" | "square";
+  // Digital oscillator (MicroFreak-style: Type / Wave / Timbre)
+  oscEngine: OscEngine;
+  oscWave: number; // 0..1 primary morph
+  oscTimbre: number; // 0..1 secondary morph
+
+  // Analog-style filter
+  filterType: FilterType;
+  filterCutoff: number; // Hz
+  filterResonance: number;
+  filterEnvAmount: number; // -1..1 envelope → cutoff
+
+  // ADSR (VCA)
   attack: number;
   decay: number;
   sustain: number;
   release: number;
-  filterCutoff: number; // Hz
-  filterResonance: number;
-  delayWet: number;
+
+  // LFO
+  lfoShape: LfoShape;
+  lfoRate: number; // Hz
+  lfoAmount: number; // 0..1 amount routed to cutoff
+
+  // Cycling envelope (looping LFO routed to oscillator timbre)
+  cycEnvRate: number; // Hz
+  cycEnvAmount: number; // 0..1
+
+  // Performance
+  glide: number; // seconds portamento
+
+  // Effects (browser additions, not on the hardware)
   delayTime: number;
   delayFeedback: number;
+  delayWet: number;
   reverbWet: number;
+
+  // Master
   masterVolume: number; // dB
   visualReactivity: number; // 0..1
 };
 
 export const DEFAULT_SYNTH: SynthSettings = {
-  oscillatorType: "triangle",
-  attack: 0.01,
-  decay: 0.2,
-  sustain: 0.6,
+  oscEngine: "super",
+  oscWave: 0.45,
+  oscTimbre: 0.35,
+
+  filterType: "lowpass",
+  filterCutoff: 2200,
+  filterResonance: 1.4,
+  filterEnvAmount: 0.45,
+
+  attack: 0.02,
+  decay: 0.22,
+  sustain: 0.55,
   release: 0.9,
-  filterCutoff: 2400,
-  filterResonance: 0.6,
-  delayWet: 0.2,
+
+  lfoShape: "triangle",
+  lfoRate: 4.2,
+  lfoAmount: 0.12,
+
+  cycEnvRate: 1.6,
+  cycEnvAmount: 0.0,
+
+  glide: 0.0,
+
   delayTime: 0.28,
-  delayFeedback: 0.3,
-  reverbWet: 0.18,
+  delayFeedback: 0.32,
+  delayWet: 0.18,
+  reverbWet: 0.22,
+
   masterVolume: -10,
   visualReactivity: 0.7,
 };
@@ -75,7 +129,8 @@ export const useSynthStore = create<SynthStore>()(
     {
       name: "portfolio:synth",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      migrate: () => ({ settings: DEFAULT_SYNTH }),
     },
   ),
 );
