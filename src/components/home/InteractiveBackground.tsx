@@ -149,7 +149,46 @@ function WebGLCanvas() {
         // ── Pointer / click / scroll ──────────────────────────────────────
         let lastX = 0, lastY = 0, lastT = 0, primed = false;
         let pointerHasMoved = false;
-        const { visualState, bumpPointerImpulse, triggerClick, tickVisualState } = events;
+        const { visualState, bumpPointerImpulse, triggerClick, tickVisualState, visualBus } = events;
+
+        // ── Voice pool (polyphonic color) ─────────────────────────────────
+        // Each note_on claims a slot; envelopes decay independently so
+        // multiple simultaneous notes each contribute their own color.
+        type Voice = { colorNorm: number; vel: number; env: number };
+        const voices: Voice[] = Array.from({ length: 4 }, () => ({
+          colorNorm: 0, vel: 0, env: 0,
+        }));
+
+        // Map a note string ("C4", "F#3", …) to 0..1 by semitone position.
+        // Spreads all 12 chromatic notes evenly across the full color palette
+        // so every key gets a distinct hue regardless of octave or frequency.
+        const NOTE_SEMITONES: Record<string, number> = {
+          C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3,
+          E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8,
+          Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
+        };
+        const noteToColorNorm = (noteStr: string) => {
+          const m = noteStr.match(/^([A-G][b#]?)/);
+          if (!m) return 0;
+          return (NOTE_SEMITONES[m[1]] ?? 0) / 11;
+        };
+
+        const offBus = visualBus.on((e) => {
+          if (e.type !== "note_on") return;
+          // Find a free (silent) slot, or steal the quietest active voice.
+          let target = 0;
+          let lowestEnv = Infinity;
+          for (let i = 0; i < voices.length; i++) {
+            if (voices[i].env < 0.02) { target = i; break; }
+            if (voices[i].env < lowestEnv) { lowestEnv = voices[i].env; target = i; }
+          }
+          // Store colorNorm at note-on time — stable for the life of the voice.
+          voices[target] = {
+            colorNorm: noteToColorNorm(e.note),
+            vel: e.velocity,
+            env: e.velocity,
+          };
+        });
 
         const onMove = (e: PointerEvent) => {
           const x = (e.clientX / window.innerWidth) * 2 - 1;
@@ -214,6 +253,11 @@ function WebGLCanvas() {
 
           tickVisualState(dt);
 
+          // Decay each voice envelope independently.
+          for (const voice of voices) {
+            voice.env = Math.max(0, voice.env - dt * 1.2);
+          }
+
           // Integrate shaderTime at a rate driven by click + note pulse only.
           // Pointer is spatial, not a rate driver — it shouldn't jolt time.
           const reactivityScale = 0.5 + 0.5 * visualState.reactivity;
@@ -243,6 +287,21 @@ function WebGLCanvas() {
           u.uVelocity.value = visualState.velocity;
           u.uReactivity.value = visualState.reactivity;
 
+          // Per-voice color uniforms.
+          const rScale = 0.5 + 0.5 * visualState.reactivity;
+          u.uNoteFreqNorms.value.set(
+            voices[0].colorNorm,
+            voices[1].colorNorm,
+            voices[2].colorNorm,
+            voices[3].colorNorm,
+          );
+          u.uNoteAmts.value.set(
+            voices[0].env * (0.55 + 0.45 * voices[0].vel) * rScale,
+            voices[1].env * (0.55 + 0.45 * voices[1].vel) * rScale,
+            voices[2].env * (0.55 + 0.45 * voices[2].vel) * rScale,
+            voices[3].env * (0.55 + 0.45 * voices[3].vel) * rScale,
+          );
+
           if (particleMesh && particleMat) {
             particleMesh.rotation.z += dt * 0.018;
             particleMat.opacity = 0.18 + visualState.envelope * 0.3;
@@ -257,6 +316,7 @@ function WebGLCanvas() {
         teardown = () => {
           cancelAnimationFrame(animId);
           offVisibility();
+          offBus();
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerdown", onDown);
           window.removeEventListener("scroll", onScroll);

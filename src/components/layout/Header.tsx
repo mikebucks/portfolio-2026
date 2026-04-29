@@ -3,12 +3,12 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Header() {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between px-6 py-5 mix-blend-difference">
+    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between px-8 py-4 mix-blend-difference">
       <Link
         href="/"
         className="font-mono text-sm tracking-tight text-white hover:text-accent"
       >
-        ◼ your-name
+        MikeBucks
       </Link>
       <div className="flex items-center gap-6">
         <ThemeSwitcher />

@@ -16,10 +16,13 @@ uniform vec2  uResolution;
 uniform vec2  uPointer;     // -1..1, off-screen until user moves
 uniform float uClickImpulse;
 uniform float uNoteOn;
-uniform float uFrequency;   // Hz of last note — maps to color hue
 uniform float uVelocity;
-uniform float uEnvelope;    // smooth 0..1 envelope follower
 uniform float uReactivity;
+// Per-voice polyphonic color (up to 4 simultaneous notes).
+// FreqNorms are pre-normalized to 0..1 on a log2 scale in JS.
+// Amts encode envelope × velocity × reactivity per voice.
+uniform vec4 uNoteFreqNorms;
+uniform vec4 uNoteAmts;
 
 float ha(float n) { return fract(sin(n) * 713.5354); }
 
@@ -243,22 +246,43 @@ void main() {
   float v = whacky(vec3(uv, z));
   v = clamp(v * mix(1.0, 1.55, pulse), 0.0, 1.0);
 
-  // ── Audio color ────────────────────────────────────────────────────────
-  // Map note frequency to a hue on a log scale (perceptually linear).
-  // log2(uFrequency / 80) / log2(2000 / 80) spans roughly low-C to high-C.
-  float freqNorm = clamp(
-    log2(max(uFrequency, 80.0) / 80.0) / 4.64,
-    0.0, 1.0
-  );
-  vec3 hue = noteHue(freqNorm);
+  // ── Multi-voice audio color ────────────────────────────────────────────
+  // Each of the 4 voices radiates from a different angular zone around the
+  // screen center (90° apart), slowly rotating over time. Where zones
+  // overlap, colors blend — multiple simultaneous notes produce swirling
+  // multi-color regions that fade independently as each note releases.
 
-  // Strength: envelope gives a natural note-length decay; velocity and
-  // reactivity let the user tune how vivid it gets. Cap keeps it subtle.
-  float colorAmt = uEnvelope * (0.55 + 0.45 * uVelocity) * (0.5 + 0.5 * uReactivity);
-  colorAmt = clamp(colorAmt * 0.28, 0.0, 0.28);
+  float aspect = uResolution.x / uResolution.y;
+  vec2 sceneCenter = vec2(aspect * 0.5, 0.5);
+  float angle = atan(uv.y - sceneCenter.y, uv.x - sceneCenter.x);
+  float rotation = uTime * 0.12; // gentle continuous swirl
 
-  // Additive blend over bright cells only — dark cell borders stay dark.
-  vec3 col = vec3(v) + hue * v * colorAmt;
+  vec3 colorAccum = vec3(0.0);
+  float weightAccum = 0.0;
+
+  for (int i = 0; i < 4; i++) {
+    float amt = uNoteAmts[i];
+    if (amt < 0.004) continue;
+
+    // Spread voices 90° apart; rotation animates the zones slowly.
+    float phase = angle + float(i) * 1.5708 + rotation;
+    float angWeight = 0.5 + 0.5 * cos(phase); // 0..1 spatial weight
+
+    float w = amt * angWeight;
+    colorAccum += noteHue(uNoteFreqNorms[i]) * w;
+    weightAccum += w;
+  }
+
+  vec3 col;
+  if (weightAccum > 0.001) {
+    vec3 blendedHue = colorAccum / weightAccum;
+    // weightAccum naturally reaches ~1 for a single note at full strength
+    // and ~2 for four simultaneous notes (clamped to 1 = fully tinted).
+    float totalAmt = clamp(weightAccum, 0.0, 1.0);
+    col = mix(vec3(v), blendedHue, totalAmt * v);
+  } else {
+    col = vec3(v);
+  }
   col = clamp(col, 0.0, 1.0);
 
   gl_FragColor = vec4(col, 1.0);
