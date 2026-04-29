@@ -10,39 +10,84 @@ export type Project = {
 
 export const projects: Project[] = [
   {
-    slug: "signal",
-    title: "Signal",
+    slug: "chisel",
+    title: "Chisel",
+    year: "2026",
+    role: "Design & Engineering",
+    tags: ["design-systems", "react", "vercel", "continuous-integraion" ],
+    summary:
+      "Much more than a design system.",
+    body: [
+      "Chisel, a product design assistant combining Figment’s component library, design system, analytics, customer interviews, and issue tracking. Chisel moves design from a step in the process available to a select few, to a layer of infrastructure anyone in the org can use.",
+      "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo.",
+    ],
+  },
+  {
+    slug: "beatvox",
+    title: "BeatVox",
+    year: "2026",
+    role: "Solo Founder",
+    tags: ["swiftui", "audio", "design"],
+    summary: "TODO",
+    body: [
+      "TODO",
+    ],
+  },
+  {
+    slug: "figment-dApp",
+    title: "Figment dApp",
     year: "2025",
-    role: "Design & engineering",
+    role: "Product Design & Growth",
+    tags: ["react", "web3", "design"],
     summary:
-      "A design system and component library for a financial product, rebuilt from first principles.",
-    tags: ["design-systems", "react", "tokens"],
+      "TODO",
     body: [
-      "Rebuilt the component library from the ground up around a token pipeline, with reduced surface area and clearer primitives.",
-      "Worked across engineering and design to ship a migration plan that didn't pause product work.",
+      "TODO",
     ],
   },
   {
-    slug: "atlas",
-    title: "Atlas",
+    slug: "figment-dashboard",
+    title: "Figment Dashboard",
     year: "2024",
-    role: "Product design",
+    role: "Product Design & Growth",
+    tags: ["react", "web3", "design"],
     summary:
-      "Visual language and marketing site for an infrastructure platform.",
-    tags: ["brand", "web", "motion"],
+      "TODO",
     body: [
-      "Developed a visual system rooted in topography and signal — one that could flex from dense docs to a hero page.",
+      "TODO",
     ],
   },
   {
-    slug: "harbor",
-    title: "Harbor",
-    year: "2024",
-    role: "Creative technology",
-    summary: "An interactive installation exploring crowd-driven audio.",
-    tags: ["webgl", "audio", "installation"],
+    slug: "book-of-idra",
+    title: "Book of Idra",
+    year: "2022",
+    role: "Design Engineering",
+    tags: ["web3", "p5js", "design"],
+    summary: "TODO",
     body: [
-      "A browser-based instrument projected onto a wall; audience members' phones became voices in a collective pad.",
+      "TODO",
+    ],
+  },
+  {
+    slug: "lyric-access",
+    title: "Lyric Access",
+    year: "2020",
+    role: "Design Engineering",
+    tags: ["obj-c", "rfid", "design"],
+    summary: "TODO",
+    body: [
+      "TODO",
+    ],
+  },
+  {
+    slug: "lyric-app",
+    title: "Lyric App",
+    year: "2019",
+    role: "Design Engineering",
+    tags: ["react-native", "design"],
+    summary: "TODO",
+    body: [
+      "TODO",
     ],
   },
 ];

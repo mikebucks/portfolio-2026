@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type * as THREE from "three";
+import { useUIStore } from "@/lib/store";
+import type { ThemeId } from "@/components/webgl/materials/shaders/themes";
 
 /**
  * Full-bleed background.
@@ -47,6 +50,16 @@ export function InteractiveBackground() {
 
 function WebGLCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const theme = useUIStore((s) => s.theme);
+  const themeRef = useRef<ThemeId>(theme);
+  // Populated by the async setup IIFE; called on theme change to swap the
+  // fragment shader on the live material.
+  const swapThemeRef = useRef<((next: ThemeId) => void) | null>(null);
+
+  useEffect(() => {
+    themeRef.current = theme;
+    swapThemeRef.current?.(theme);
+  }, [theme]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -57,14 +70,19 @@ function WebGLCanvas() {
 
     (async () => {
       try {
-        const [THREE, { createBackgroundMaterial }, events, device, perf] =
-          await Promise.all([
-            import("three"),
-            import("@/components/webgl/materials/backgroundMaterial"),
-            import("@/lib/visualEvents"),
-            import("@/lib/device"),
-            import("@/lib/performance"),
-          ]);
+        const [
+          THREE,
+          { createBackgroundMaterial, applyTheme },
+          events,
+          device,
+          perf,
+        ] = await Promise.all([
+          import("three"),
+          import("@/components/webgl/materials/backgroundMaterial"),
+          import("@/lib/visualEvents"),
+          import("@/lib/device"),
+          import("@/lib/performance"),
+        ]);
 
         // ── Renderer ─────────────────────────────────────────────────────
         const renderer = new THREE.WebGLRenderer({
@@ -82,12 +100,26 @@ function WebGLCanvas() {
         // near=-1 keeps our z=0 plane safely inside the frustum.
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
-        const material = createBackgroundMaterial();
+        const material = createBackgroundMaterial(themeRef.current);
+        // uResolution must be in physical (buffer) pixels — gl_FragCoord is also
+        // physical. Logical CSS pixels would be off by devicePixelRatio.
         material.uniforms.uResolution.value.set(
-          window.innerWidth,
-          window.innerHeight,
+          renderer.domElement.width,
+          renderer.domElement.height,
         );
         scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+        // Wire up live theme swapping. If the user changed theme during the
+        // async import, sync to the latest value now.
+        let activeTheme = themeRef.current;
+        swapThemeRef.current = (next: ThemeId) => {
+          if (next === activeTheme) return;
+          applyTheme(material, next);
+          activeTheme = next;
+        };
+        if (themeRef.current !== activeTheme) {
+          swapThemeRef.current(themeRef.current);
+        }
 
         // ── Particles ─────────────────────────────────────────────────────
         let particleMat: THREE.PointsMaterial | null = null;
@@ -116,6 +148,7 @@ function WebGLCanvas() {
 
         // ── Pointer / click / scroll ──────────────────────────────────────
         let lastX = 0, lastY = 0, lastT = 0, primed = false;
+        let pointerHasMoved = false;
         const { visualState, bumpPointerImpulse, triggerClick, tickVisualState } = events;
 
         const onMove = (e: PointerEvent) => {
@@ -130,6 +163,7 @@ function WebGLCanvas() {
           } else { lastT = performance.now(); primed = true; }
           visualState.pointer[0] = x;
           visualState.pointer[1] = y;
+          pointerHasMoved = true;
           lastX = x; lastY = y;
         };
 
@@ -147,9 +181,10 @@ function WebGLCanvas() {
 
         const onResize = () => {
           renderer.setSize(window.innerWidth, window.innerHeight);
+          // After resize, domElement.width/height reflect the new physical size.
           material.uniforms.uResolution.value.set(
-            window.innerWidth,
-            window.innerHeight,
+            renderer.domElement.width,
+            renderer.domElement.height,
           );
         };
 
@@ -165,6 +200,10 @@ function WebGLCanvas() {
         let animId = 0;
         let paused = false;
         let last = performance.now();
+        // Integrated phase. Advances at 5% of the source-shader pace at rest
+        // and ramps up to source-shader pace at peak click/note input.
+        // Always monotonic so the noise field never reverses on input decay.
+        let shaderTime = 0;
 
         const tick = () => {
           animId = requestAnimationFrame(tick);
@@ -175,9 +214,25 @@ function WebGLCanvas() {
 
           tickVisualState(dt);
 
+          // Integrate shaderTime at a rate driven by click + note pulse only.
+          // Pointer is spatial, not a rate driver — it shouldn't jolt time.
+          const reactivityScale = 0.5 + 0.5 * visualState.reactivity;
+          const rawPulse =
+            (0.55 * visualState.clickImpulse +
+              1.0 *
+                visualState.noteImpulse *
+                Math.max(visualState.velocity, 0.4)) *
+            reactivityScale;
+          const pulse = Math.min(1, Math.max(0, rawPulse));
+          const rate = 0.05 + 0.95 * pulse;
+          shaderTime += dt * rate;
+
           const u = material.uniforms;
           u.uTime.value += dt;
-          u.uPointer.value.set(visualState.pointer[0], visualState.pointer[1]);
+          u.uShaderTime.value = shaderTime;
+          if (pointerHasMoved) {
+            u.uPointer.value.set(visualState.pointer[0], visualState.pointer[1]);
+          }
           u.uPointerImpulse.value = visualState.pointerImpulse;
           u.uClickPos.value.set(visualState.clickPos[0], visualState.clickPos[1]);
           u.uClickImpulse.value = visualState.clickImpulse;
@@ -206,6 +261,7 @@ function WebGLCanvas() {
           window.removeEventListener("pointerdown", onDown);
           window.removeEventListener("scroll", onScroll);
           window.removeEventListener("resize", onResize);
+          swapThemeRef.current = null;
           material.dispose();
           renderer.dispose();
         };

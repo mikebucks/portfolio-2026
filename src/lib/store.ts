@@ -1,5 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import {
+  DEFAULT_THEME,
+  THEME_IDS,
+  type ThemeId,
+} from "@/components/webgl/materials/shaders/themes";
 
 export type SynthSettings = {
   oscillatorType: "sine" | "triangle" | "sawtooth" | "square";
@@ -38,11 +43,14 @@ type UIState = {
   audioUnlocked: boolean;
   reducedMotion: boolean;
   muted: boolean;
+  theme: ThemeId;
   toggleSynthPanel: () => void;
   setSynthPanel: (open: boolean) => void;
   setAudioUnlocked: (v: boolean) => void;
   setReducedMotion: (v: boolean) => void;
   setMuted: (v: boolean) => void;
+  setTheme: (theme: ThemeId) => void;
+  cycleTheme: () => void;
 };
 
 export const useUIStore = create<UIState>((set) => ({
@@ -50,12 +58,20 @@ export const useUIStore = create<UIState>((set) => ({
   audioUnlocked: false,
   reducedMotion: false,
   muted: false,
+  theme: DEFAULT_THEME,
   toggleSynthPanel: () =>
     set((s) => ({ synthPanelOpen: !s.synthPanelOpen })),
   setSynthPanel: (open) => set({ synthPanelOpen: open }),
   setAudioUnlocked: (v) => set({ audioUnlocked: v }),
   setReducedMotion: (v) => set({ reducedMotion: v }),
   setMuted: (v) => set({ muted: v }),
+  setTheme: (theme) => set({ theme }),
+  cycleTheme: () =>
+    set((s) => {
+      const idx = THEME_IDS.indexOf(s.theme);
+      const next = THEME_IDS[(idx + 1) % THEME_IDS.length];
+      return { theme: next };
+    }),
 }));
 
 type SynthStore = {
