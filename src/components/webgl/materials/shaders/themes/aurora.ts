@@ -1,13 +1,8 @@
-export const backgroundVertex = /* glsl */ `
-varying vec2 vUv;
-
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position.xy, 0.0, 1.0);
-}
-`;
-
-export const backgroundFragment = /* glsl */ `
+/**
+ * Aurora theme — colorful warped fbm gradient with palette cycling.
+ * Reactive to pointer / click / note-on; this was the original background.
+ */
+export const auroraFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;
