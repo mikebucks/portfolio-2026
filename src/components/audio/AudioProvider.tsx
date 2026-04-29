@@ -10,7 +10,11 @@ import {
   useState,
 } from "react";
 import type { SynthEngine } from "./createSynthEngine";
-import { useSynthStore, useUIStore } from "@/lib/store";
+import {
+  rehydrateThemeStore,
+  useResolvedSynthSettings,
+  useUIStore,
+} from "@/lib/store";
 
 type AudioContextValue = {
   unlocked: boolean;
@@ -36,7 +40,13 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const engineRef = useRef<SynthEngine | null>(null);
   const unlockingRef = useRef<Promise<void> | null>(null);
 
-  const settings = useSynthStore((s) => s.settings);
+  // Pull persisted theme/macro state out of localStorage once on mount.
+  // Skipping persist during SSR keeps useSyncExternalStore happy.
+  useEffect(() => {
+    rehydrateThemeStore();
+  }, []);
+
+  const settings = useResolvedSynthSettings();
   const setAudioUnlocked = useUIStore((s) => s.setAudioUnlocked);
 
   const unlock = useCallback(async () => {

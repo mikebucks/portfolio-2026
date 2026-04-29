@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
-import { useUIStore } from "@/lib/store";
+import { useThemeStore } from "@/lib/store";
 import type { ThemeId } from "@/components/webgl/materials/shaders/themes";
 
 /**
@@ -50,7 +50,7 @@ export function InteractiveBackground() {
 
 function WebGLCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const theme = useUIStore((s) => s.theme);
+  const theme = useThemeStore((s) => s.theme);
   const themeRef = useRef<ThemeId>(theme);
   // Populated by the async setup IIFE; called on theme change to swap the
   // fragment shader on the live material.
@@ -286,6 +286,13 @@ function WebGLCanvas() {
           u.uFrequency.value = visualState.frequency;
           u.uVelocity.value = visualState.velocity;
           u.uReactivity.value = visualState.reactivity;
+
+          // Pull active-theme macros from the store each frame. Reading
+          // outside React keeps the render loop from re-rendering on every
+          // slider tweak; the store update fires synchronously.
+          const ts = useThemeStore.getState();
+          const m = ts.macros[ts.theme];
+          u.uMacros.value.set(m[0], m[1], m[2], m[3]);
 
           // Per-voice color uniforms.
           const rScale = 0.5 + 0.5 * visualState.reactivity;

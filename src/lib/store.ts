@@ -1,110 +1,35 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
   DEFAULT_THEME,
   THEME_IDS,
+  defaultMacrosFor,
+  resolveSettings,
   type ThemeId,
 } from "@/components/webgl/materials/shaders/themes";
+import type { MacroValues, SynthSettings } from "@/lib/synthTypes";
 
-export type OscEngine =
-  | "analog"
-  | "super"
-  | "fm"
-  | "harmonic"
-  | "karplus"
-  | "noise";
-
-export type FilterType = "lowpass" | "bandpass" | "highpass";
-
-export type LfoShape = "sine" | "triangle" | "square" | "sawtooth";
-
-export type SynthSettings = {
-  // Digital oscillator (MicroFreak-style: Type / Wave / Timbre)
-  oscEngine: OscEngine;
-  oscWave: number; // 0..1 primary morph
-  oscTimbre: number; // 0..1 secondary morph
-
-  // Analog-style filter
-  filterType: FilterType;
-  filterCutoff: number; // Hz
-  filterResonance: number;
-  filterEnvAmount: number; // -1..1 envelope → cutoff
-
-  // ADSR (VCA)
-  attack: number;
-  decay: number;
-  sustain: number;
-  release: number;
-
-  // LFO
-  lfoShape: LfoShape;
-  lfoRate: number; // Hz
-  lfoAmount: number; // 0..1 amount routed to cutoff
-
-  // Cycling envelope (looping LFO routed to oscillator timbre)
-  cycEnvRate: number; // Hz
-  cycEnvAmount: number; // 0..1
-
-  // Performance
-  glide: number; // seconds portamento
-
-  // Effects (browser additions, not on the hardware)
-  delayTime: number;
-  delayFeedback: number;
-  delayWet: number;
-  reverbWet: number;
-
-  // Master
-  masterVolume: number; // dB
-  visualReactivity: number; // 0..1
-};
-
-export const DEFAULT_SYNTH: SynthSettings = {
-  oscEngine: "super",
-  oscWave: 0.45,
-  oscTimbre: 0.35,
-
-  filterType: "lowpass",
-  filterCutoff: 2200,
-  filterResonance: 1.4,
-  filterEnvAmount: 0.45,
-
-  attack: 0.02,
-  decay: 0.22,
-  sustain: 0.55,
-  release: 0.9,
-
-  lfoShape: "triangle",
-  lfoRate: 4.2,
-  lfoAmount: 0.12,
-
-  cycEnvRate: 1.6,
-  cycEnvAmount: 0.0,
-
-  glide: 0.0,
-
-  delayTime: 0.28,
-  delayFeedback: 0.32,
-  delayWet: 0.18,
-  reverbWet: 0.22,
-
-  masterVolume: -10,
-  visualReactivity: 0.7,
-};
+// Re-export the synth types so existing import sites (`@/lib/store`) keep
+// working without churn.
+export type {
+  FilterType,
+  LfoShape,
+  MacroValues,
+  OscEngine,
+  SynthSettings,
+} from "@/lib/synthTypes";
 
 type UIState = {
   synthPanelOpen: boolean;
   audioUnlocked: boolean;
   reducedMotion: boolean;
   muted: boolean;
-  theme: ThemeId;
   toggleSynthPanel: () => void;
   setSynthPanel: (open: boolean) => void;
   setAudioUnlocked: (v: boolean) => void;
   setReducedMotion: (v: boolean) => void;
   setMuted: (v: boolean) => void;
-  setTheme: (theme: ThemeId) => void;
-  cycleTheme: () => void;
 };
 
 export const useUIStore = create<UIState>((set) => ({
@@ -112,41 +37,119 @@ export const useUIStore = create<UIState>((set) => ({
   audioUnlocked: false,
   reducedMotion: false,
   muted: false,
-  theme: DEFAULT_THEME,
   toggleSynthPanel: () =>
     set((s) => ({ synthPanelOpen: !s.synthPanelOpen })),
   setSynthPanel: (open) => set({ synthPanelOpen: open }),
   setAudioUnlocked: (v) => set({ audioUnlocked: v }),
   setReducedMotion: (v) => set({ reducedMotion: v }),
   setMuted: (v) => set({ muted: v }),
-  setTheme: (theme) => set({ theme }),
-  cycleTheme: () =>
-    set((s) => {
-      const idx = THEME_IDS.indexOf(s.theme);
-      const next = THEME_IDS[(idx + 1) % THEME_IDS.length];
-      return { theme: next };
-    }),
 }));
 
-type SynthStore = {
-  settings: SynthSettings;
-  set: <K extends keyof SynthSettings>(key: K, value: SynthSettings[K]) => void;
-  reset: () => void;
+// ── Theme + macro store ────────────────────────────────────────────────────
+// The canonical state is `theme` + `macroValues[theme]`. The full
+// `SynthSettings` consumed by the audio engine is derived via
+// `resolveSettings`; keeping the source small means switching themes auto-
+// loads the matching synth preset, and the panel only needs four sliders.
+
+type MacrosByTheme = Record<ThemeId, MacroValues>;
+
+const buildDefaultMacros = (): MacrosByTheme =>
+  THEME_IDS.reduce<MacrosByTheme>((acc, id) => {
+    acc[id] = defaultMacrosFor(id);
+    return acc;
+  }, {} as MacrosByTheme);
+
+type ThemeStore = {
+  theme: ThemeId;
+  macros: MacrosByTheme;
+  setTheme: (theme: ThemeId) => void;
+  cycleTheme: () => void;
+  setMacro: (index: 0 | 1 | 2 | 3, value: number) => void;
+  resetMacros: () => void;
 };
 
-export const useSynthStore = create<SynthStore>()(
+export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
-      settings: DEFAULT_SYNTH,
-      set: (key, value) =>
-        set((s) => ({ settings: { ...s.settings, [key]: value } })),
-      reset: () => set({ settings: DEFAULT_SYNTH }),
+      theme: DEFAULT_THEME,
+      macros: buildDefaultMacros(),
+      setTheme: (theme) => set({ theme }),
+      cycleTheme: () =>
+        set((s) => {
+          const idx = THEME_IDS.indexOf(s.theme);
+          const next = THEME_IDS[(idx + 1) % THEME_IDS.length];
+          return { theme: next };
+        }),
+      setMacro: (index, value) =>
+        set((s) => {
+          const current = s.macros[s.theme];
+          const next: MacroValues = [
+            current[0],
+            current[1],
+            current[2],
+            current[3],
+          ];
+          next[index] = clamp01(value);
+          return { macros: { ...s.macros, [s.theme]: next } };
+        }),
+      resetMacros: () =>
+        set((s) => ({
+          macros: { ...s.macros, [s.theme]: defaultMacrosFor(s.theme) },
+        })),
     }),
     {
-      name: "portfolio:synth",
+      name: "portfolio:theme",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
-      migrate: () => ({ settings: DEFAULT_SYNTH }),
+      version: 1,
+      // Skip auto-hydration — `persist` running during SSR breaks the
+      // useSyncExternalStore "stable server snapshot" contract and floods
+      // the console with React warnings. We rehydrate explicitly after
+      // mount via `useThemeStorePersistence` below.
+      skipHydration: true,
+      migrate: () => ({
+        theme: DEFAULT_THEME,
+        macros: buildDefaultMacros(),
+      }),
+      // Newly added themes won't have entries in old localStorage — fill them
+      // in on rehydrate so we never read undefined.
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        const filled: MacrosByTheme = { ...buildDefaultMacros(), ...state.macros };
+        state.macros = filled;
+      },
     },
   ),
 );
+
+/**
+ * Hook: resolved SynthSettings for the active theme + its macro values.
+ *
+ * Selectors must return referentially stable values across calls; doing the
+ * resolveSettings() call directly in the selector returns a fresh object on
+ * every read and trips React's `getServerSnapshot should be cached` guard.
+ * Pull primitives, then memoize the resolution into a settings object.
+ */
+export function useResolvedSynthSettings(): SynthSettings {
+  const theme = useThemeStore((s) => s.theme);
+  const macros = useThemeStore((s) => s.macros[s.theme]);
+  return useMemo(() => resolveSettings(theme, macros), [theme, macros]);
+}
+
+/** Hook: macro values for the active theme (stable array reference). */
+export function useActiveMacros(): MacroValues {
+  return useThemeStore((s) => s.macros[s.theme]);
+}
+
+/**
+ * Mount once per app to read persisted localStorage state into the store.
+ * Called from a top-level client component after mount so `persist` never
+ * runs during SSR.
+ */
+export function rehydrateThemeStore() {
+  if (typeof window === "undefined") return;
+  void useThemeStore.persist?.rehydrate();
+}
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}

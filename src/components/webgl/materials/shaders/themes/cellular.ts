@@ -2,25 +2,26 @@
  * Cellular noise theme — based on Jesse Harlan's "cell noise with fast math".
  * Free license to use and modify.
  *
- * Adapted to the project's reactive uniforms: ambient motion is very slow,
- * pointer / click / note input ramps up time scale and contrast.
+ * Macros:
+ *   x  Glow    — global brightness lift + softens contrast
+ *   y  Bloom   — sharpens cell ridges (more crystalline)
+ *   z  Drift   — boosts ambient time scale (cells flow faster)
+ *   w  Echo    — adds outward ripple amplitude on cursor / clicks
  */
 export const cellularFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;
 
-uniform float uTime;        // raw seconds — used for the cursor's wobble
-uniform float uShaderTime;  // integrated phase — drives the cellular noise
+uniform float uTime;
+uniform float uShaderTime;
 uniform vec2  uResolution;
-uniform vec2  uPointer;     // -1..1, off-screen until user moves
+uniform vec2  uPointer;
 uniform float uClickImpulse;
 uniform float uNoteOn;
 uniform float uVelocity;
 uniform float uReactivity;
-// Per-voice polyphonic color (up to 4 simultaneous notes).
-// FreqNorms are pre-normalized to 0..1 on a log2 scale in JS.
-// Amts encode envelope × velocity × reactivity per voice.
+uniform vec4  uMacros;
 uniform vec4 uNoteFreqNorms;
 uniform vec4 uNoteAmts;
 
@@ -183,14 +184,12 @@ vec2 cellular(vec3 P) {
   return sqrt(d11.xy);
 }
 
-// Maps a 0..1 frequency normal to one of 5 muted, desaturated hues.
-// freqNorm 0 = low bass, 1 = high treble.
 vec3 noteHue(float freqNorm) {
-  vec3 c0 = vec3(0.38, 0.32, 0.72); // soft indigo   — bass
-  vec3 c1 = vec3(0.28, 0.50, 0.82); // periwinkle    — low-mid
-  vec3 c2 = vec3(0.22, 0.66, 0.62); // dusty teal    — mid
-  vec3 c3 = vec3(0.72, 0.56, 0.28); // warm amber    — upper-mid
-  vec3 c4 = vec3(0.70, 0.38, 0.52); // muted rose    — treble
+  vec3 c0 = vec3(0.38, 0.32, 0.72);
+  vec3 c1 = vec3(0.28, 0.50, 0.82);
+  vec3 c2 = vec3(0.22, 0.66, 0.62);
+  vec3 c3 = vec3(0.72, 0.56, 0.28);
+  vec3 c4 = vec3(0.70, 0.38, 0.52);
   float t = clamp(freqNorm, 0.0, 1.0) * 4.0;
   float i = floor(t);
   float f = smoothstep(0.0, 1.0, fract(t));
@@ -200,10 +199,12 @@ vec3 noteHue(float freqNorm) {
   else              return mix(c3, c4, f);
 }
 
-float whacky(vec3 p) {
+float whacky(vec3 p, float bloom) {
   float v = 0.1;
   float w = 0.0;
   float a = 1.0;
+  // Bloom widens the contrast curve so cells look sharper / more crystalline.
+  float edge = mix(2.6, 4.6, bloom);
   for (int i = 0; i < 4; i++) {
     float x = pow(cellular(p).x, 3.14);
     v += a * x;
@@ -212,50 +213,46 @@ float whacky(vec3 p) {
     p.z *= 1.2;
     a *= 0.8;
   }
-  return smoothstep(0.1, 1.0, pow(v / w * 3.9, 4.0));
+  return smoothstep(0.1, 1.0, pow(v / w * 3.9, edge));
 }
 
 void main() {
-  // Aspect-corrected UV — matches the source shader's coordinate space.
+  float mGlow  = uMacros.x;
+  float mBloom = uMacros.y;
+  float mDrift = uMacros.z;
+  float mEcho  = uMacros.w;
+
   vec2 uv = gl_FragCoord.xy / uResolution.xy;
   uv.x *= uResolution.x / uResolution.y;
 
-  // Cursor in the same aspect-corrected space.
   vec2 pointerUv = uPointer * 0.5 + 0.5;
   pointerUv.x *= uResolution.x / uResolution.y;
 
-  // Outward-traveling wave that emanates from the cursor and falls off with
-  // distance. Bounded oscillation, so cells leaving the cursor zone settle
-  // back smoothly rather than snapping z backwards.
   float dist = distance(uv, pointerUv);
   float falloff = exp(-dist * 3.5);
-  float cursorWave = sin(dist * 16.0 - uTime * 2.4) * falloff;
+  // Echo macro lifts the wave amplitude so cursor leaves a stronger trail.
+  float waveAmp = 0.25 + mEcho * 0.55;
+  float cursorWave = sin(dist * 16.0 - uTime * 2.4) * falloff * waveAmp / 0.25;
 
-  // Pulse from click + note. The pointer is intentionally NOT in here —
-  // it drives a continuous spatial effect above, not an impulse, so we
-  // avoid the stutter from per-event impulse spikes.
   float pulse = 0.55 * uClickImpulse + 1.0 * uNoteOn * max(uVelocity, 0.4);
   pulse *= (0.5 + 0.5 * uReactivity);
   pulse = clamp(pulse, 0.0, 1.0);
 
-  // uShaderTime is integrated in JS at rate 0.05 + 0.95 * pulse, so it
-  // advances at 5% of the source's pace at rest and matches the source's
-  // pace at peak input. Always monotonic — never lurches backward.
-  float z = uShaderTime + cursorWave * 0.25;
+  // Drift macro accelerates ambient motion (multiplied on top of the
+  // input-driven shaderTime). Stays monotonic.
+  float z = uShaderTime * (1.0 + mDrift * 1.6) + cursorWave * 0.25;
 
-  float v = whacky(vec3(uv, z));
+  float v = whacky(vec3(uv, z), mBloom);
   v = clamp(v * mix(1.0, 1.55, pulse), 0.0, 1.0);
 
-  // ── Multi-voice audio color ────────────────────────────────────────────
-  // Each of the 4 voices radiates from a different angular zone around the
-  // screen center (90° apart), slowly rotating over time. Where zones
-  // overlap, colors blend — multiple simultaneous notes produce swirling
-  // multi-color regions that fade independently as each note releases.
+  // Glow lifts overall luminance and softens the floor.
+  float glowLift = mGlow * 0.18;
+  v = clamp(v + glowLift, 0.0, 1.0);
 
   float aspect = uResolution.x / uResolution.y;
   vec2 sceneCenter = vec2(aspect * 0.5, 0.5);
   float angle = atan(uv.y - sceneCenter.y, uv.x - sceneCenter.x);
-  float rotation = uTime * 0.12; // gentle continuous swirl
+  float rotation = uTime * 0.12;
 
   vec3 colorAccum = vec3(0.0);
   float weightAccum = 0.0;
@@ -264,9 +261,8 @@ void main() {
     float amt = uNoteAmts[i];
     if (amt < 0.004) continue;
 
-    // Spread voices 90° apart; rotation animates the zones slowly.
     float phase = angle + float(i) * 1.5708 + rotation;
-    float angWeight = 0.5 + 0.5 * cos(phase); // 0..1 spatial weight
+    float angWeight = 0.5 + 0.5 * cos(phase);
 
     float w = amt * angWeight;
     colorAccum += noteHue(uNoteFreqNorms[i]) * w;
@@ -276,8 +272,6 @@ void main() {
   vec3 col;
   if (weightAccum > 0.001) {
     vec3 blendedHue = colorAccum / weightAccum;
-    // weightAccum naturally reaches ~1 for a single note at full strength
-    // and ~2 for four simultaneous notes (clamped to 1 = fully tinted).
     float totalAmt = clamp(weightAccum, 0.0, 1.0);
     col = mix(vec3(v), blendedHue, totalAmt * v);
   } else {

@@ -1,45 +1,56 @@
-import { auroraFragment } from "./aurora";
-import { cellularFragment } from "./cellular";
-
 /**
  * ──────────────────────────────────────────────────────────────────────────────
  * THEME ARCHITECTURE — read before adding a new theme
  * ──────────────────────────────────────────────────────────────────────────────
  *
- * Every theme is a GLSL fragment shader string. The shared uniforms are:
+ * Each theme is a `ThemePreset` (in ./presets.ts) that bundles three things:
+ *   1. A GLSL fragment shader.
+ *   2. A baseline `SynthSettings`.
+ *   3. Four `Macro`s — 0..1 sliders that morph the synth and feed into the
+ *      shader as `uMacros vec4`. Themes are 1:1 with synth presets, so
+ *      switching the theme also switches the sound.
  *
- *   uTime        float   raw elapsed seconds (use for bounded oscillations,
- *                        click/note ripples, grain — NOT as the noise drive)
- *   uShaderTime  float   integrated phase, advances at 5 % of full speed at
- *                        rest and ramps to 100 % on click/note input. Always
- *                        monotonic. Drive all noise / field inputs from this
- *                        so the shader never reverses when input decays.
- *   uResolution  vec2    canvas size in PHYSICAL pixels (gl_FragCoord units)
- *   uPointer     vec2    cursor in -1..1 NDC, initialized off-screen (-9,-9)
- *                        until the user moves. Use spatially — not as an
- *                        impulse — to avoid stutter (see cellular.ts).
- *   uPointerImpulse float  0..1 velocity-scaled impulse, decays on move
- *   uClickPos    vec2    last click position in -1..1 NDC
- *   uClickImpulse float  0..1, bumped on click, decays
- *   uNoteOn      float   0..1, bumped on note_on, decays
- *   uFrequency   float   Hz of last note
- *   uVelocity    float   0..1 velocity of last note
- *   uEnvelope    float   0..1 rough envelope follower
- *   uScroll      float   0..1 page-scroll progress
- *   uReactivity  float   0..1 user-controlled sensitivity knob
+ * Shared shader uniforms:
  *
- * Coordinate note: gl_FragCoord is in physical pixels. Pointer is in logical
- * NDC (-1..1). To match them in the same UV space:
- *   vec2 uv      = gl_FragCoord.xy / uResolution.xy;       // 0..1 logical UV
- *   vec2 ptrUV   = uPointer * 0.5 + 0.5;                   // 0..1
- * These are directly comparable. Apply aspect correction to both axes equally
- * if you want aspect-correct distance calculations.
+ *   uTime        float   raw elapsed seconds
+ *   uShaderTime  float   integrated phase, monotonic, advances faster on input
+ *   uResolution  vec2    canvas size in PHYSICAL pixels
+ *   uPointer     vec2    cursor in -1..1 NDC, off-screen until first move
+ *   uPointerImpulse float
+ *   uClickPos    vec2    last click in -1..1 NDC
+ *   uClickImpulse float
+ *   uNoteOn      float
+ *   uFrequency   float
+ *   uVelocity    float
+ *   uEnvelope    float
+ *   uScroll      float
+ *   uReactivity  float   0..1 user-controlled sensitivity
+ *   uMacros      vec4    per-theme macro values, 0..1 each — drive both the
+ *                        synth and the shader so the two stay in sync
+ *   uNoteFreqNorms vec4  per-voice color (optional, currently used by cellular)
+ *   uNoteAmts      vec4
+ *
+ * Coordinate note: gl_FragCoord is physical pixels, vUv and uPointer are
+ * logical 0..1 / -1..1. Multiply uv.x by uResolution.x/uResolution.y for an
+ * aspect-corrected space.
  * ──────────────────────────────────────────────────────────────────────────────
  */
 
+export {
+  THEME_PRESETS,
+  THEME_IDS,
+  DEFAULT_THEME,
+  resolveSettings,
+  defaultMacrosFor,
+  type ThemeId,
+  type ThemePreset,
+  type Macro,
+} from "./presets";
+
+import { THEME_PRESETS, type ThemeId, type ThemePreset } from "./presets";
+
 /**
  * Single fullscreen-plane vertex shader shared by every theme.
- * Themes only swap the fragment shader; uniforms are shared.
  */
 export const sharedVertex = /* glsl */ `
 varying vec2 vUv;
@@ -50,27 +61,18 @@ void main() {
 }
 `;
 
-export type ThemeId = "cellular" | "aurora";
-
+/**
+ * Backwards-compatible label/fragment view used by the renderer.
+ */
 export type ThemeDefinition = {
   id: ThemeId;
   label: string;
   fragment: string;
 };
 
-export const THEMES: Record<ThemeId, ThemeDefinition> = {
-  cellular: {
-    id: "cellular",
-    label: "Cellular",
-    fragment: cellularFragment,
-  },
-  aurora: {
-    id: "aurora",
-    label: "Aurora",
-    fragment: auroraFragment,
-  },
-};
-
-export const THEME_IDS: readonly ThemeId[] = ["cellular", "aurora"] as const;
-
-export const DEFAULT_THEME: ThemeId = "cellular";
+export const THEMES: Record<ThemeId, ThemeDefinition> = Object.fromEntries(
+  (Object.values(THEME_PRESETS) as ThemePreset[]).map((p) => [
+    p.id,
+    { id: p.id, label: p.label, fragment: p.fragment },
+  ]),
+) as Record<ThemeId, ThemeDefinition>;

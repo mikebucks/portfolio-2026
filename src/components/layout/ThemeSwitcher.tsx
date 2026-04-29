@@ -1,12 +1,12 @@
 "use client";
 
-import { useUIStore } from "@/lib/store";
-import { THEMES } from "@/components/webgl/materials/shaders/themes";
+import { useThemeStore } from "@/lib/store";
+import { THEME_PRESETS } from "@/components/webgl/materials/shaders/themes";
 
 export function ThemeSwitcher() {
-  const theme = useUIStore((s) => s.theme);
-  const cycleTheme = useUIStore((s) => s.cycleTheme);
-  const label = THEMES[theme].label;
+  const theme = useThemeStore((s) => s.theme);
+  const cycleTheme = useThemeStore((s) => s.cycleTheme);
+  const label = THEME_PRESETS[theme].label;
 
   return (
     <button

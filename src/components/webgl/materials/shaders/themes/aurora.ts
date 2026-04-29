@@ -1,6 +1,11 @@
 /**
- * Aurora theme — colorful warped fbm gradient with palette cycling.
- * Reactive to pointer / click / note-on; this was the original background.
+ * Aurora — colorful warped fbm gradient with palette cycling.
+ *
+ * Macros:
+ *   x  Air     — opens up brightness and softens contrast (sky-like)
+ *   y  Shimmer — boosts palette saturation, adds high-freq sparkle
+ *   z  Sway    — increases warp amount (more flowing)
+ *   w  Tail    — lifts ripple amplitudes from cursor / clicks / notes
  */
 export const auroraFragment = /* glsl */ `
 precision highp float;
@@ -9,16 +14,17 @@ varying vec2 vUv;
 
 uniform float uTime;
 uniform vec2  uResolution;
-uniform vec2  uPointer;         // -1..1
-uniform float uPointerImpulse;  // 0..1 decays on move
-uniform vec2  uClickPos;        // -1..1
-uniform float uClickImpulse;    // 0..1 decays on click
-uniform float uNoteOn;          // 0..1 decays on note
-uniform float uFrequency;       // Hz
-uniform float uVelocity;        // 0..1
-uniform float uEnvelope;        // 0..1
-uniform float uScroll;          // 0..1
-uniform float uReactivity;      // 0..1
+uniform vec2  uPointer;
+uniform float uPointerImpulse;
+uniform vec2  uClickPos;
+uniform float uClickImpulse;
+uniform float uNoteOn;
+uniform float uFrequency;
+uniform float uVelocity;
+uniform float uEnvelope;
+uniform float uScroll;
+uniform float uReactivity;
+uniform vec4  uMacros;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -48,7 +54,7 @@ float fbm(vec2 p) {
   return v;
 }
 
-vec3 palette(float t) {
+vec3 palette(float t, float satBoost) {
   t = clamp(t, 0.0, 1.0);
   vec3 c0 = vec3(0.02, 0.02, 0.04);
   vec3 c1 = vec3(0.10, 0.18, 0.95);
@@ -68,10 +74,18 @@ vec3 palette(float t) {
   else if (i < 3.5)  { a = c3; b = c4; }
   else if (i < 4.5)  { a = c4; b = c5; }
   else               { a = c5; b = c6; }
-  return mix(a, b, f);
+  vec3 col = mix(a, b, f);
+  // Push saturation by stretching distance from the local mean.
+  float mean = (col.r + col.g + col.b) / 3.0;
+  return mean + (col - mean) * (1.0 + satBoost);
 }
 
 void main() {
+  float mAir     = uMacros.x;
+  float mShimmer = uMacros.y;
+  float mSway    = uMacros.z;
+  float mTail    = uMacros.w;
+
   vec2 uv = vUv;
 
   float pulse =
@@ -93,20 +107,22 @@ void main() {
 
   vec2 pointerOffset = uPointer * (0.03 + 0.06 * uPointerImpulse);
 
+  float tailScale = 1.0 + mTail * 1.4;
   vec2 clickUv = uClickPos * 0.5 + 0.5;
   float clickDist = distance(uv, clickUv);
   float clickRipple =
       sin(clickDist * 22.0 - uTime * 5.0) *
       exp(-clickDist * 4.0) *
-      uClickImpulse;
+      uClickImpulse * tailScale;
 
   float centerDist = distance(uv, vec2(0.5));
   float noteRipple =
       sin(centerDist * 14.0 - uTime * 3.5) *
       exp(-centerDist * 2.2) *
-      uNoteOn * uVelocity;
+      uNoteOn * uVelocity * tailScale;
 
-  float warpAmt = 0.30 + 0.25 * pulse;
+  // Sway scales the global domain warp amount.
+  float warpAmt = (0.30 + 0.25 * pulse) * (0.55 + mSway * 1.2);
   vec2 warped = uv + (r - 0.5) * warpAmt + pointerOffset;
   warped.x += clickRipple * 0.09 + noteRipple * 0.14;
   warped.y += noteRipple * 0.06;
@@ -121,12 +137,20 @@ void main() {
     hueShift = (f - 0.5) * 0.08 * uNoteOn;
   }
 
-  vec3 col = palette(fract(band + hueShift));
+  vec3 col = palette(fract(band + hueShift), mShimmer * 0.5);
 
+  // Air macro lifts brightness and softens the dark side.
   float bright = mix(0.55, 1.15, smoothstep(-0.1, 1.1, uv.x));
+  bright += mAir * 0.25;
   col *= bright;
 
   col += pulse * 0.10 * vec3(1.0);
+
+  // Shimmer adds high-frequency sparkle.
+  if (mShimmer > 0.001) {
+    float s = pow(noise(uv * 60.0 + uTime * 0.6), 6.0);
+    col += s * mShimmer * 0.8 * vec3(1.0, 0.95, 0.8);
+  }
 
   float v = smoothstep(0.0, 0.85, distance(uv, vec2(0.25, 0.3)));
   col *= mix(0.78, 1.0, v);

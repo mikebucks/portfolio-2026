@@ -30,6 +30,10 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       uEnvelope: { value: 0 },
       uScroll: { value: 0 },
       uReactivity: { value: 0.7 },
+      // Per-theme macro values (0..1 each). Each shader interprets x/y/z/w
+      // in its own way so the same playable controls drive both audio and
+      // visuals. Updated each frame from the theme/macro store.
+      uMacros: { value: new THREE.Vector4(0.5, 0.5, 0.5, 0.5) },
       // Per-voice color data for polyphonic audio reactivity (up to 4 notes).
       // FreqNorms: 0..1 log-scale normalized frequency, computed in JS.
       // Amts: envelope × velocity × reactivity strength per voice.

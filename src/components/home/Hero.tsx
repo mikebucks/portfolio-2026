@@ -23,7 +23,7 @@ export function Hero() {
 
         <h1
           data-intro="headline"
-          className="mt-2 text-4xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight text-balance"
+          className="mt-2 -ml-[4px] text-4xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight text-balance"
         >
           Digital Product Builder for the Agentic Era
         </h1>
