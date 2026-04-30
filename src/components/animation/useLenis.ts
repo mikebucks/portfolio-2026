@@ -3,11 +3,8 @@
 import { useEffect } from "react";
 import Lenis from "lenis";
 import { prefersReducedMotion } from "@/lib/device";
+import { setLenisInstance } from "./lenisInstance";
 
-/**
- * Install a single Lenis instance on <html>. Disabled if the user prefers
- * reduced motion. Ticks via requestAnimationFrame and cleans up on unmount.
- */
 export function useLenis() {
   useEffect(() => {
     if (prefersReducedMotion()) return;
@@ -16,18 +13,13 @@ export function useLenis() {
       duration: 1.1,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
+      autoRaf: true,
     });
-
-    let rafId = 0;
-    const raf = (time: number) => {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    };
-    rafId = requestAnimationFrame(raf);
+    setLenisInstance(lenis);
 
     return () => {
-      cancelAnimationFrame(rafId);
       lenis.destroy();
+      setLenisInstance(null);
     };
   }, []);
 }

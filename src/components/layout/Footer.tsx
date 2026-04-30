@@ -1,8 +1,8 @@
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative z-10 border-t border-white/10 px-6 py-10">
-      <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-4 font-mono text-xs text-white/60 md:flex-row md:items-center">
+    <footer className="relative z-10 border-t border-white/10 px-8 py-10 bg-[#f4f4f4]">
+      <div className="flex max-w-7xl flex-col items-start justify-between gap-4 font-mono text-xs text-black/60 md:flex-row md:items-center">
         <span>© {year} · built with restraint</span>
         <span>
           Press{" "}

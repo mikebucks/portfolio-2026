@@ -3,7 +3,7 @@ import { ThemeSwitcher } from "./ThemeSwitcher";
 
 export function Header() {
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between px-8 py-4 mix-blend-difference">
+    <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between p-8 mix-blend-difference">
       <section className="flex justify-between w-full max-w-7xl">
         <Link
           href="/"

@@ -19,8 +19,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-dvh antialiased">
+      <body className="min-h-dvh antialiased relative">
         <SmoothScroll />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-[#f4f1ea]"
+        />
         <AudioProvider>
           <a
             href="#main"

@@ -15,14 +15,12 @@ const SynthPanel = dynamic(
 
 export function HomeClient() {
   return (
-    <>
+    <div className="">
       <InteractiveBackground />
-      <div className="max-w-7xl">
-        <Hero />
-        <FeaturedWork />
-        <SynthPanel />
-        <SynthToggleButton />
-      </div>
-    </>
+      <Hero />
+      <FeaturedWork />
+      <SynthPanel />
+      <SynthToggleButton />
+    </div>
   );
 }
