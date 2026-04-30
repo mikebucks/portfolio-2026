@@ -41,7 +41,7 @@ export function FeaturedWork() {
           type="button"
           onClick={handleToggle}
           aria-label={scrolled ? "Scroll to top" : "Scroll to recent work"}
-          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-8 hover:h-[52px] text-black bg-white/70 backdrop-blur-md rounded-sm rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out hover:text-accent"
+          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-8 hover:h-10 text-black bg-white/70 backdrop-blur-md rounded-sm rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out hover:text-accent"
         >
           <div className="relative h-5 w-5">
             {/* Up arrow — slides in from below when scrolled */}
@@ -73,7 +73,7 @@ export function FeaturedWork() {
             <div
               className="absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out"
               style={{
-                transform: scrolled ? "translateY(-7px)" : "translateY(0)",
+                transform: scrolled ? "translateY(-5px)" : "translateY(0)",
                 opacity: scrolled ? 0 : 1,
               }}
             >
@@ -81,7 +81,7 @@ export function FeaturedWork() {
                 style={{
                   animation: scrolled
                     ? "none"
-                    : "boat-float 4.5s ease-in-out infinite",
+                    : "boat-float 2.5s ease-in-out infinite",
                 }}
               >
                 <svg
