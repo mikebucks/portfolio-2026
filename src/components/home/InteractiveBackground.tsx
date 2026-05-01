@@ -28,6 +28,11 @@ export function InteractiveBackground() {
   return (
     <div
       aria-hidden="true"
+      // translateZ(0) locks this as a stable GPU compositing layer from the
+      // first paint. Without it, iOS Safari decides on the fly whether the
+      // fixed background gets its own layer, which makes mix-blend-difference
+      // on the hero text inconsistent on first load.
+      style={{ transform: "translateZ(0)" }}
       className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#08080a]"
     >
       {/* CSS gradient — always present, also serves as loading fallback */}
