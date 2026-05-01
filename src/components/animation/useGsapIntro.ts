@@ -29,6 +29,11 @@ export function useGsapIntro<T extends HTMLElement>() {
         ease: "expo.out",
         stagger: 0.08,
         delay: 0.1,
+        // Drop inline transform/will-change once the intro finishes — leaving
+        // them promotes the element to a compositing layer on iOS Safari,
+        // which prevents mix-blend-difference from blending against the
+        // shader behind it.
+        clearProps: "transform,willChange,opacity",
       });
     }, ref);
 
