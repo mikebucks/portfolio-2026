@@ -29,7 +29,9 @@ export function Hero() {
           style={{ WebkitFontSmoothing: "auto" }}
           className="mt-2 -ml-[4px] text-4xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight"
         >
-          Digital Product Builder for the Agentic Era
+          Digital Product Builder
+          <br />
+          for the Agentic Era
         </h1>
       </div>
       {/* <div
