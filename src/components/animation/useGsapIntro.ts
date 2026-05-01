@@ -34,6 +34,16 @@ export function useGsapIntro<T extends HTMLElement>() {
         // which prevents mix-blend-difference from blending against the
         // shader behind it.
         clearProps: "transform,willChange,opacity",
+        onComplete: () => {
+          // iOS Safari is sticky about demoting compositing layers even
+          // after the inline transform is cleared. Force a synchronous
+          // reflow on each target to nudge the compositor into recomputing
+          // layers — without this, mix-blend-difference doesn't paint
+          // until the user scrolls.
+          targets.forEach((el) => {
+            void el.offsetHeight;
+          });
+        },
       });
     }, ref);
 

@@ -22,6 +22,11 @@ body {
   color: #f4f4f4;
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
+  /* Pin every descendant into a single stacking/blend context. Without this,
+     iOS Safari sometimes parks the hero H1 on its own compositing layer
+     after the GSAP intro and mix-blend-difference doesn't paint against the
+     fixed shader behind it until a scroll forces a recomposite. */
+  isolation: isolate;
 }
 
 html.lenis,
