@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
 
 export const metadata: Metadata = {
@@ -33,8 +34,8 @@ export default function WorkIndexPage() {
                   {p.summary}
                 </div>
               </div>
-              <div className="font-mono text-xs text-white/60 group-hover:text-accent">
-                {p.year} →
+              <div className="font-mono text-xs text-white/60 group-hover:text-accent inline-flex items-center gap-1">
+                {p.year} <ArrowRight size={12} strokeWidth={1.5} />
               </div>
             </Link>
           </li>

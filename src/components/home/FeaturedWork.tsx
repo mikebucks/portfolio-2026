@@ -2,18 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
-
-const KEYFRAMES = `
-@keyframes boat-float {
-  0%   { transform: translateY(0px) translateX(0px) rotate(0deg); }
-  20%  { transform: translateY(-1.5px) translateX(0.7px) rotate(0.4deg); }
-  50%  { transform: translateY(-2.5px) translateX(0px) rotate(-0.2deg); }
-  75%  { transform: translateY(-1px) translateX(-0.7px) rotate(0.3deg); }
-  100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
-}
-`;
+import { cn } from "@/lib/utils";
 
 export function FeaturedWork() {
   const featured = projects.slice(0, 3);
@@ -33,8 +25,6 @@ export function FeaturedWork() {
 
   return (
     <div className="-mt-10">
-      <style>{KEYFRAMES}</style>
-
       {/* Wrapper holds layout height; button is absolutely anchored to bottom and grows upward on hover */}
       <div className="relative z-20 h-8 mx-auto w-10">
         <button
@@ -46,11 +36,10 @@ export function FeaturedWork() {
           <div className="relative h-5 w-5">
             {/* Up arrow — slides in from below when scrolled */}
             <div
-              className="absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out"
-              style={{
-                transform: scrolled ? "translateY(0)" : "translateY(7px)",
-                opacity: scrolled ? 1 : 0,
-              }}
+              className={cn(
+                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out",
+                scrolled ? "translate-y-0 opacity-100" : "translate-y-[7px] opacity-0"
+              )}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -71,19 +60,12 @@ export function FeaturedWork() {
 
             {/* Boat — slides out upward when scrolled; floats when visible */}
             <div
-              className="absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out"
-              style={{
-                transform: scrolled ? "translateY(-5px)" : "translateY(0)",
-                opacity: scrolled ? 0 : 1,
-              }}
+              className={cn(
+                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out",
+                scrolled ? "-translate-y-[5px] opacity-0" : "translate-y-0 opacity-100"
+              )}
             >
-              <div
-                style={{
-                  animation: scrolled
-                    ? "none"
-                    : "boat-float 2.5s ease-in-out infinite",
-                }}
-              >
+              <div className={cn(!scrolled && "animate-boat-float")}>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="20"
@@ -107,7 +89,7 @@ export function FeaturedWork() {
         </button>
       </div>
 
-      <section className="relative z-10 p-8 bg-white/70 backdrop-blur-md">
+      <section className="relative z-10 p-8 py-16 bg-white/70 backdrop-blur-md">
         <div className="flex items-baseline justify-between max-w-7xl">
           <h2 className="text-2xl md:text-3xl font-semibold text-black tracking-tight">
             Recently shipped
@@ -116,7 +98,7 @@ export function FeaturedWork() {
             href="/work"
             className="font-mono text-xs uppercase tracking-widest text-black/60 hover:text-accent"
           >
-            All work →
+            <span className="inline-flex items-center gap-1">All work <ArrowRight size={12} strokeWidth={1.5} /></span>
           </Link>
         </div>
 
@@ -131,7 +113,7 @@ export function FeaturedWork() {
                 <div className="mt-4 text-xl font-medium">{p.title}</div>
                 <div className="mt-2 text-sm text-black/60">{p.summary}</div>
                 <div className="mt-6 font-mono text-xs text-black/60 group-hover:text-accent">
-                  Read →
+                  <span className="inline-flex items-center gap-1">Read <ArrowRight size={12} strokeWidth={1.5} /></span>
                 </div>
               </Link>
             </li>

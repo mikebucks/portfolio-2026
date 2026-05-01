@@ -17,12 +17,12 @@ export function SynthToggleButton() {
       aria-pressed={open}
       aria-label={open ? "Close synth panel" : "Open synth panel"}
       title={open ? "Close synth" : "Open synth"}
-      className={`fixed bottom-4 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md transition ${
-        open
-          ? "border-accent/60 bg-accent/15 text-accent shadow-[0_0_18px_rgba(212,255,58,0.35)]"
-          : "border-white/15 bg-black/60 text-white/80 hover:border-white/30 hover:text-white"
-      }`}
+      className={`flex items-center justify-center transition ${open
+          ? "cursor-zoom-out"
+          : "text-white/80 hover:bg-black/80 cursor-zoom-in"
+        }`}
     >
+      
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="20"
@@ -35,8 +35,24 @@ export function SynthToggleButton() {
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        <circle cx="8" cy="18" r="4" />
-        <path d="M12 18V2l7 4" />
+        {/* Synth Icon */}
+        {/* <rect width="20" height="16" x="2" y="4" rx="2" />
+        <path d="M6 8h4" />
+        <path d="M14 8h.01" />
+        <path d="M18 8h.01" />
+        <path d="M2 12h20" />
+        <path d="M6 12v4" />
+        <path d="M10 12v4" />
+        <path d="M14 12v4" />
+        <path d="M18 12v4" /> */}
+
+
+
+        {/* Faders Icon */}
+        <path d="M14 17H5"/>
+        <path d="M19 7h-9"/>
+        <circle cx="17" cy="17" r="3"/>
+        <circle cx="7" cy="7" r="3"/>
       </svg>
     </button>
   );

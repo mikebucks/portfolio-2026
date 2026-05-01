@@ -1,7 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { SynthToggleButton } from "../audio/SynthToggleButton";
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -13,15 +16,28 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // SynthPanel still deferred — it pulls in Zustand and panel state.
+  const SynthPanel = dynamic(
+    () => import("../audio/SynthPanel").then((m) => m.SynthPanel),
+    { ssr: false },
+  );
+
+
   return (
     <>
+      <SynthPanel />
       {/* Rendered at z-29 so the header's mix-blend-difference blends against it */}
       <div
-        className="fixed inset-x-0 top-0 z-[29] h-19 bg-black/75 backdrop-blur-md transition-opacity duration-600 pointer-events-none"
-        style={{ opacity: scrolled ? 1 : 0 }}
+        className={cn(
+          "fixed inset-x-0 top-0 z-[29] bg-black/60 backdrop-blur-md transition-[opacity, h] duration-200 pointer-events-none",
+          scrolled ? "h-15 opacity-100" : "h-19 opacity-0"
+        )}
         aria-hidden="true"
       />
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between p-8 pb-6 mix-blend-difference">
+      <header className={cn(
+        "fixed inset-x-0 top-0 z-30 flex items-center justify-between px-8 mix-blend-difference transition-[p, pb] duration-400",
+        scrolled ? "pt-6 pb-4" : "pt-8 pb-6"
+      )}>
         <section className="flex justify-between w-full max-w-7xl">
           <Link
             href="/"
@@ -46,6 +62,9 @@ export function Header() {
                   <a href="mailto:hello@example.com" className="hover:text-accent">
                     Contact
                   </a>
+                </li>
+                <li> 
+                  <SynthToggleButton />
                 </li>
               </ul>
             </nav>
