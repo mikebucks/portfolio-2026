@@ -49,7 +49,7 @@ export default async function ProjectPage(
         </div>
       </header>
 
-      <section className="prose prose-invert mt-12 max-w-none">
+      <section className="prose prose-invert mt-12 max-w-5xl">
         <p className="text-lg leading-relaxed">{project.summary}</p>
         {project.body?.map((para, i) => (
           <p key={i} className="mt-6 leading-relaxed text-white/90">
@@ -59,7 +59,7 @@ export default async function ProjectPage(
       </section>
 
       {project.media && project.media.length > 0 && (
-        <section className="mt-16 space-y-12">
+        <section className="mt-16 space-y-12 max-w-5xl">
           {project.media.map((m, i) => (
             <figure key={i}>
               {m.type === "image" ? (
@@ -71,7 +71,7 @@ export default async function ProjectPage(
                   height={m.height}
                   className="w-full h-auto rounded"
                 />
-              ) : (
+              ) : m.type === "video" ? (
                 <video
                   src={m.src}
                   poster={m.poster}
@@ -81,6 +81,24 @@ export default async function ProjectPage(
                   playsInline
                   className="w-full h-auto rounded"
                 />
+              ) : (
+                <div
+                  className={`grid gap-4 ${
+                    m.columns === 3 ? "grid-cols-3" : "grid-cols-2"
+                  }`}
+                >
+                  {m.items.map((item, j) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={j}
+                      src={item.src}
+                      alt={item.alt ?? ""}
+                      width={item.width}
+                      height={item.height}
+                      className="aspect-square w-full h-auto object-cover rounded"
+                    />
+                  ))}
+                </div>
               )}
               {m.caption && (
                 <figcaption className="mt-3 font-mono text-xs text-white/50">

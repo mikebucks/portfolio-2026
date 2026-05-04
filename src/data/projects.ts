@@ -15,6 +15,12 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
+    }
+  | {
+      type: "grid";
+      items: { src: string; alt?: string; width?: number; height?: number }[];
+      columns?: 2 | 3;
+      caption?: string;
     };
 
 export type Project = {
@@ -35,7 +41,7 @@ export const projects: Project[] = [
     slug: "chisel",
     title: "Chisel",
     role: "Design & Engineering",
-    thumbnail: "https://picsum.photos/seed/chisel/800/600",
+    thumbnail: "work/chisel/thumbnail.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
     summary: "Much more than a design system.",
     body: [
@@ -58,7 +64,7 @@ export const projects: Project[] = [
     slug: "figment",
     title: "Figment",
     role: "Product Design & Growth",
-    thumbnail: "work/figment/thumbnail2.png",
+    thumbnail: "work/figment/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions.",
     body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
@@ -74,7 +80,22 @@ export const projects: Project[] = [
     body: [
       "Book of Idra is a web3 experiment in collaborative storytelling. Token holders work together to craft a fictional story through consensus. Characters, locations, and entire worlds await their discovery.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/book-of-idra/homepage.jpg", alt: "Book of Idra homepage" },
+      { type: "image", src: "/work/book-of-idra/angel-descriptions.jpg", alt: "The four celestial orders" },
+      {
+        type: "grid",
+        items: [
+          { src: "/work/book-of-idra/angel1.jpg", alt: "Angel 1" },
+          { src: "/work/book-of-idra/angel2.jpg", alt: "Angel 2" },
+          { src: "/work/book-of-idra/angel3.png", alt: "Angel 3" },
+          { src: "/work/book-of-idra/angel4.jpg", alt: "Angel 4" },
+        ],
+      },
+      { type: "image", src: "/work/book-of-idra/logos.png", alt: "Logo explorations" },
+      { type: "image", src: "/work/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
+      { type: "image", src: "/work/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
+    ],
   },
   {
     slug: "lyric",
@@ -85,7 +106,21 @@ export const projects: Project[] = [
     body: [
       "As Creative Technology Principal at Lyric, a premium short term rental operator, I designed and experimented with UIs for interfacing with the Lyric brand. From booking a stay to keyless access via our native iOS app, my team and I planned, designed & built the happy paths for modern travelers. My main duties at Lyric included UI/UX design and React/RN development.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/lyric/iosapp.png", alt: "Lyric React Native app" },
+      { type: "image", src: "/work/lyric/intro-amination.gif", alt: "App intro animation" },
+      {
+        type: "grid",
+        columns: 3,
+        items: [
+          { src: "/work/lyric/access-disconnected.png", alt: "Access — disconnected state" },
+          { src: "/work/lyric/access-locked.png", alt: "Access — locked state" },
+          { src: "/work/lyric/access-open.png", alt: "Access — open state" },
+        ],
+      },
+      { type: "image", src: "/work/lyric/unlock-variations.png", alt: "Unlock interaction variations" },
+      { type: "image", src: "/work/lyric/dsl.png", alt: "Lyric design system" },
+    ],
   },
   {
     slug: "vori",
@@ -96,7 +131,15 @@ export const projects: Project[] = [
     body: [
       "As Director of Product Design at Vori Health I oversaw the research, design, and implementation of Vori's suite of digital products. My team and I crafted a universal design system and implemented a seamless tokenization flow where values from Figma automatically update our React component styles. Vori's design system has been universally applied to internal clinical apps as well as consumer web and native mobile apps. It's had a big impact on engineering velocity since there is very little translation needed between Figma and React.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/vori/dashboard.jpg", alt: "Clinical dashboard" },
+      { type: "image", src: "/work/vori/onboarding.jpg", alt: "Patient onboarding" },
+      { type: "image", src: "/work/vori/onboarding2.jpg", alt: "Patient onboarding — continued" },
+      { type: "image", src: "/work/vori/pt-cam.jpg", alt: "Physical therapy camera view" },
+      { type: "image", src: "/work/vori/conponents.png", alt: "Component library" },
+      { type: "image", src: "/work/vori/dsl.png", alt: "Vori design system" },
+      { type: "image", src: "/work/vori/token-automation.png", alt: "Figma-to-React token automation" },
+    ],
   },
   {
     slug: "verse",
@@ -107,7 +150,12 @@ export const projects: Project[] = [
     body: [
       "Verse is a highly interactive video storytelling platform. As Director of Product Development, I conceptualized, designed, and implemented many features in the Verse ecosystem including; custom embeddable interactive video players, immersive 360 video, clickable hotspots, and mobile-friendly UI. Check out some of the award-winning stories built on Verse.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/verse/editor1.jpg", alt: "Verse story editor" },
+      { type: "image", src: "/work/verse/editor2.jpg", alt: "Verse story editor — interaction" },
+      { type: "image", src: "/work/verse/pricing.jpg", alt: "Pricing page" },
+      { type: "image", src: "/work/verse/settings.jpg", alt: "Settings" },
+    ],
   },
   {
     slug: "google-pride",
@@ -118,7 +166,12 @@ export const projects: Project[] = [
     body: [
       "Partnering with Stink Studios NY to build Google's #ShowUp platform, I lead the frontend development as well as created a CSS motion design language with an extremely talented team of designers and developers. We built an interactive map taking visitors on a documentary-style journey through the LGBTQ communities in several American cities. The campaign has ended but you can read about its success and see the work here, here and here.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/google-pride/home.jpg", alt: "#ShowUp landing" },
+      { type: "image", src: "/work/google-pride/ny.jpg", alt: "New York chapter" },
+      { type: "image", src: "/work/google-pride/la.jpg", alt: "Los Angeles chapter" },
+      { type: "image", src: "/work/google-pride/vid.jpg", alt: "Documentary video chapter" },
+    ],
   },
   {
     slug: "google-open-source",
@@ -129,7 +182,11 @@ export const projects: Project[] = [
     body: [
       "I had the privilege of being the sole developer on the .com offering from Google's Open Source team. It uses Angular, Canvas, and loads of CSS motion design to strike a balance between the simplicity of web standards and the modern web.",
     ],
-    media: [],
+    media: [
+      { type: "image", src: "/work/google-open-source/home.jpg", alt: "Google Open Source home" },
+      { type: "image", src: "/work/google-open-source/projects.jpg", alt: "Projects directory" },
+      { type: "image", src: "/work/google-open-source/cloud.jpg", alt: "Cloud chapter" },
+    ],
   },
 ];
 
