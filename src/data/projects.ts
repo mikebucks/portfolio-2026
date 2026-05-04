@@ -58,7 +58,7 @@ export const projects: Project[] = [
     slug: "figment",
     title: "Figment",
     role: "Product Design & Growth",
-    thumbnail: "work/figment/thumbnail.png",
+    thumbnail: "work/figment/thumbnail2.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions.",
     body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
