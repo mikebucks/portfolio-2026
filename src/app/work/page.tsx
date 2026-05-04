@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
-import { SkillsViz } from "@/components/skills/SkillsViz";
 
 export const metadata: Metadata = {
   title: "Work — Portfolio",
@@ -11,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function WorkIndexPage() {
   return (
-    <section className="w-full max-w-7xl px-8 pt-32 pb-24">
-      <h1 className="text-4xl md:text-7xl font-semibold tracking-tight">
+    <section className="w-full max-w-[1600px] px-8 pt-32 pb-24">
+      <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
         Work
       </h1>
       <p className="mt-4 max-w-xl text-white/60">
@@ -25,8 +24,18 @@ export default function WorkIndexPage() {
           <li key={p.slug}>
             <Link
               href={`/work/${p.slug}`}
-              className="group grid grid-cols-[1fr_auto] items-baseline gap-6 py-6 transition-colors hover:bg-white/[0.02]"
+              className="group grid grid-cols-[auto_1fr_auto] items-center gap-6 py-6 transition-colors hover:bg-white/[0.02]"
             >
+              <div
+                className="h-16 w-24 shrink-0 overflow-hidden rounded bg-white/5"
+                style={
+                  p.thumbnail
+                    ? {
+                        background: `url(${p.thumbnail}) center / cover no-repeat`,
+                      }
+                    : undefined
+                }
+              />
               <div>
                 <div className="text-xl md:text-2xl font-medium">
                   {p.title}
@@ -35,11 +44,8 @@ export default function WorkIndexPage() {
                   {p.summary}
                 </div>
               </div>
-              <div className="flex flex-col gap-2 items-end">
-                <div className="font-mono text-xs text-white/60 group-hover:text-accent inline-flex items-center gap-1">
-                  {p.year} <ArrowRight size={12} strokeWidth={1.5} />
-                </div>
-                <SkillsViz variant="compact" skills={p.skills} />
+              <div className="font-mono text-xs text-white/60 group-hover:text-accent inline-flex items-center gap-1">
+                Read <ArrowRight size={12} strokeWidth={1.5} />
               </div>
             </Link>
           </li>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <section className="max-w-7xl px-8 pt-32 pb-24">
+    <section className="max-w-[1600px] px-8 pt-32 pb-24">
       <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
         About
       </h1>

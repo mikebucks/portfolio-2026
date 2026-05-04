@@ -7,21 +7,9 @@ import { projects } from "@/data/projects";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
 import { cn } from "@/lib/utils";
 
-// Gradient fallbacks — replace project.cover with a real image path to override
-const CARD_GRADIENTS: Record<string, string> = {
-  chisel:             "linear-gradient(145deg, #0a0f1e 0%, #0e1d3a 40%, #112240 100%)",
-  beatvox:            "linear-gradient(145deg, #140820 0%, #2a1040 40%, #1a0830 100%)",
-  "figment-dapp":     "linear-gradient(145deg, #00120c 0%, #012a1a 40%, #001f14 100%)",
-  "figment-dashboard":"linear-gradient(145deg, #0a0a1e 0%, #12123a 40%, #0a0a2a 100%)",
-  "book-of-idra":     "linear-gradient(145deg, #1a0a00 0%, #3a1800 40%, #2a1000 100%)",
-  lyric:              "linear-gradient(145deg, #0a1218 0%, #0f2030 40%, #0a1820 100%)",
-};
-
-
 export function FeaturedWork() {
   const featured = projects.slice(0, 3);
   const [scrolled, setScrolled] = useState(false);
-  const [hovered, setHovered] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 100);
@@ -34,7 +22,6 @@ export function FeaturedWork() {
     const target = scrolled ? 0 : window.innerHeight;
     smoothScrollTo(target);
   };
-
 
   return (
     <div className="-mt-10">
@@ -77,7 +64,7 @@ export function FeaturedWork() {
       </div>
 
       <section className="relative z-10 bg-white/70 backdrop-blur-md">
-        <div className="flex items-baseline justify-between max-w-7xl px-8 pt-16">
+        <div className="flex items-baseline justify-between max-w-[1600px] px-8 pt-16">
           <h2 className="text-2xl md:text-3xl font-semibold text-black tracking-tight">
             Recently shipped
           </h2>
@@ -86,58 +73,43 @@ export function FeaturedWork() {
           </Link>
         </div>
 
-        <ul className="grid gap-6 md:grid-cols-3 max-w-7xl p-8">
-          {featured.map((p) => {
-            const isHovered = hovered === p.slug;
-            const bg = p.cover
-              ? `url(${p.cover}) center / cover no-repeat`
-              : (CARD_GRADIENTS[p.slug] ?? "linear-gradient(145deg, #0a0a0a 0%, #1a1a1a 100%)");
-
-            return (
-              <li
-                key={p.slug}
-                onMouseEnter={() => setHovered(p.slug)}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  borderRadius: isHovered ? "12px" : "4px",
-                  boxShadow: isHovered
-                    ? "0 0 0 10px rgba(255,255,255,0.7)"
-                    : "0 0 0 0px rgba(255,255,255,0)",
-                  transition: "border-radius 0.3s cubic-bezier(0.05,0,0,1), box-shadow 0.3s cubic-bezier(0.05,0,0,1)",
-                  overflow: "hidden",
-                }}
+        <ul className="grid gap-8 md:grid-cols-3 max-w-[1600px] p-8 pb-16">
+          {featured.map((p) => (
+            <li
+              key={p.slug}
+              className="overflow-hidden rounded-2xl ring-0 ring-white/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-xl hover:ring-[10px] hover:ring-white/70"
+            >
+              <Link
+                href={`/work/${p.slug}`}
+                className="group relative block aspect-[16/10] bg-white/5"
               >
-                <Link href={`/work/${p.slug}`} className="group relative block aspect-[4/3]">
-                  {/* Background image / gradient */}
-                  <div
-                    className="absolute inset-0 transition-transform duration-700 ease-[cubic-bezier(0.05,0,0,1)] group-hover:scale-[1.04]"
-                    style={{ background: bg }}
+                {p.thumbnail && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.thumbnail}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.05,0,0,1)] group-hover:scale-[1.1]"
                   />
+                )}
 
-                  {/* Scrim — heavier at bottom for text legibility */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
+                {/* Scrim — heavier at bottom for text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
 
-                  {/* Content */}
-                  <div className="relative h-full p-5 flex flex-col justify-between">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/35">
-                      {p.year}
-                    </span>
-                    <div>
-                      <div className="text-xl font-semibold text-white leading-tight tracking-tight">
-                        {p.title}
-                      </div>
-                      <div className="mt-1.5 text-sm text-white/60 leading-snug">
-                        {p.summary}
-                      </div>
-                      <div className="mt-5 font-mono text-xs text-white/40 group-hover:text-accent transition-colors duration-150 inline-flex items-center gap-1">
-                        Read <ArrowRight size={11} strokeWidth={1.5} />
-                      </div>
-                    </div>
+                {/* Content */}
+                <div className="relative h-full p-5 flex flex-col justify-end">
+                  <div className="text-xl font-semibold text-white leading-tight tracking-tight">
+                    {p.title}
                   </div>
-                </Link>
-              </li>
-            );
-          })}
+                  <div className="mt-1.5 text-sm text-white/60 leading-snug">
+                    {p.summary}
+                  </div>
+                  <div className="mt-5 font-mono text-xs text-white/40 group-hover:text-accent transition-colors duration-150 inline-flex items-center gap-1">
+                    Read <ArrowRight size={11} strokeWidth={1.5} />
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
         </ul>
       </section>
     </div>

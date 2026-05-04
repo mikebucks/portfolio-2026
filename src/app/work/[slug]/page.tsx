@@ -29,7 +29,7 @@ export default async function ProjectPage(
   if (!project) notFound();
 
   return (
-    <article className="mx-auto max-w-3xl px-6 pt-32 pb-24">
+    <article className="max-w-[1600px] px-8 pt-32 pb-24">
       <Link
         href="/work"
         className="font-mono text-xs text-white/60 hover:text-accent"
@@ -42,7 +42,6 @@ export default async function ProjectPage(
           {project.title}
         </h1>
         <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-white/60">
-          <span>{project.year}</span>
           <span>{project.role}</span>
           {project.tags.map((t) => (
             <span key={t}>#{t}</span>
@@ -58,6 +57,40 @@ export default async function ProjectPage(
           </p>
         ))}
       </section>
+
+      {project.media && project.media.length > 0 && (
+        <section className="mt-16 space-y-12">
+          {project.media.map((m, i) => (
+            <figure key={i}>
+              {m.type === "image" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={m.src}
+                  alt={m.alt ?? ""}
+                  width={m.width}
+                  height={m.height}
+                  className="w-full h-auto rounded"
+                />
+              ) : (
+                <video
+                  src={m.src}
+                  poster={m.poster}
+                  width={m.width}
+                  height={m.height}
+                  controls
+                  playsInline
+                  className="w-full h-auto rounded"
+                />
+              )}
+              {m.caption && (
+                <figcaption className="mt-3 font-mono text-xs text-white/50">
+                  {m.caption}
+                </figcaption>
+              )}
+            </figure>
+          ))}
+        </section>
+      )}
     </article>
   );
 }
