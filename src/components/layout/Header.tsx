@@ -35,10 +35,10 @@ export function Header() {
         aria-hidden="true"
       />
       <header className={cn(
-        "fixed inset-x-0 top-0 z-30 flex items-center justify-between px-8 mix-blend-difference transition-[p, pb] duration-400",
+        "fixed inset-x-0 top-0 z-30 flex items-center justify-between w-full max-w-7xl px-8 mix-blend-difference transition-[p, pb] duration-400",
         scrolled ? "pt-6 pb-4" : "pt-8 pb-6"
       )}>
-        <section className="flex justify-between w-full max-w-7xl">
+        <section className="flex justify-between w-full">
           <Link
             href="/"
             className="font-mono text-sm tracking-tight text-white hover:text-accent"

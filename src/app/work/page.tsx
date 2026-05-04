@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
+import { SkillsViz } from "@/components/skills/SkillsViz";
 
 export const metadata: Metadata = {
   title: "Work — Portfolio",
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function WorkIndexPage() {
   return (
-    <section className="mx-auto max-w-7xl px-6 pt-32 pb-24">
-      <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
+    <section className="w-full max-w-7xl px-8 pt-32 pb-24 border">
+      <h1 className="text-4xl md:text-7xl font-semibold tracking-tight">
         Work
       </h1>
       <p className="mt-4 max-w-xl text-white/60">
@@ -34,8 +35,11 @@ export default function WorkIndexPage() {
                   {p.summary}
                 </div>
               </div>
-              <div className="font-mono text-xs text-white/60 group-hover:text-accent inline-flex items-center gap-1">
-                {p.year} <ArrowRight size={12} strokeWidth={1.5} />
+              <div className="flex flex-col gap-2 items-end">
+                <div className="font-mono text-xs text-white/60 group-hover:text-accent inline-flex items-center gap-1">
+                  {p.year} <ArrowRight size={12} strokeWidth={1.5} />
+                </div>
+                <SkillsViz variant="compact" skills={p.skills} />
               </div>
             </Link>
           </li>
