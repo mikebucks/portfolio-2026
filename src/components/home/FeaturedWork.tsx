@@ -44,13 +44,13 @@ export function FeaturedWork() {
           type="button"
           onClick={handleToggle}
           aria-label={scrolled ? "Scroll to top" : "Scroll to recent work"}
-          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-9 hover:h-12 text-black bg-accent backdrop-blur-md rounded-full rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out"
+          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-9 hover:h-12 text-black/80 bg-accent/70 backdrop-blur-md rounded-full rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out hover:bg-accent"
         >
           <div className="relative h-5 w-5">
             <div
               className={cn(
-                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out",
-                scrolled ? "translate-y-0 opacity-100" : "translate-y-[7px] opacity-0"
+                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] delay-[250ms] ease-out",
+                scrolled ? "translate-y-0 opacity-100" : "translate-y-[8px] opacity-0"
               )}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -59,8 +59,8 @@ export function FeaturedWork() {
             </div>
             <div
               className={cn(
-                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] ease-out",
-                scrolled ? "-translate-y-[5px] opacity-0" : "translate-y-0 opacity-100"
+                "absolute inset-0 flex items-center justify-center transition-[transform,opacity] duration-[120ms] delay-[250ms] ease-out",
+                scrolled ? "-translate-y-[8px] opacity-0" : "translate-y-[5px] opacity-100"
               )}
             >
               <div className={cn(!scrolled && "animate-boat-float")}>
