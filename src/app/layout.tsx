@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -10,6 +10,13 @@ export const metadata: Metadata = {
   description:
     "Design-engineering portfolio. Interfaces, systems, and the occasional audiovisual instrument.",
   metadataBase: new URL("https://example.com"),
+};
+
+// Match Safari's translucent UI chrome to the fixed 10px border in <body>
+// so the address bar / status bar read as part of the frame instead of
+// revealing the dark page content behind them.
+export const viewport: Viewport = {
+  themeColor: "#f4f1ea",
 };
 
 export default function RootLayout({
