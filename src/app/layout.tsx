@@ -12,11 +12,12 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://example.com"),
 };
 
-// Match Safari's translucent UI chrome to the fixed 10px border in <body>
-// so the address bar / status bar read as part of the frame instead of
-// revealing the dark page content behind them.
+// theme-color only tints Safari's chrome — its backdrop blur still reads from
+// whatever pixels sit beneath it. The cream sliver rendered below paints those
+// pixels so the frame reads as the visual edge of the page.
 export const viewport: Viewport = {
   themeColor: "#f4f1ea",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -31,6 +32,17 @@ export default function RootLayout({
         <div
           aria-hidden
           className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-[#f4f1ea]"
+        />
+        {/* Cream strip behind Safari's translucent bottom address bar so its
+            backdrop blur reads as the frame, not the dark page. Collapses to
+            zero height when the chrome is collapsed. */}
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 z-[99] bg-[#f4f1ea]"
+          style={{
+            top: "100dvh",
+            height: "calc(100lvh - 100dvh)",
+          }}
         />
         <AudioProvider>
           <a
