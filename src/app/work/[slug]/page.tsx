@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { projects, getProject } from "@/data/projects";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 type Params = { slug: string };
 
@@ -29,27 +30,28 @@ export default async function ProjectPage(
   if (!project) notFound();
 
   return (
-    <article className="max-w-[1600px] px-8 pt-32 pb-24">
-      <Link
-        href="/work"
-        className="font-mono text-xs text-white/60 hover:text-accent"
+    <>
+      <PageHeader
+        eyebrow={
+          <Link
+            href="/work"
+            className="font-mono text-xs text-white hover:text-accent"
+          >
+            ← Work
+          </Link>
+        }
+        title={project.title}
       >
-        ← Work
-      </Link>
-
-      <header className="mt-8">
-        <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
-          {project.title}
-        </h1>
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-white/60">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-white/80">
           <span>{project.role}</span>
           {project.tags.map((t) => (
             <span key={t}>#{t}</span>
           ))}
         </div>
-      </header>
+      </PageHeader>
 
-      <section className="prose prose-invert mt-12 max-w-5xl">
+      <article className="max-w-[1600px] px-8 pt-16 pb-24">
+      <section className="prose prose-invert max-w-5xl">
         <p className="text-lg leading-relaxed">{project.summary}</p>
         {project.body?.map((para, i) => (
           <p key={i} className="mt-6 leading-relaxed text-white/90">
@@ -109,6 +111,7 @@ export default async function ProjectPage(
           ))}
         </section>
       )}
-    </article>
+      </article>
+    </>
   );
 }

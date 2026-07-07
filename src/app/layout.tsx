@@ -3,6 +3,7 @@ import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AudioProvider } from "@/components/audio/AudioProvider";
+import { SynthKeyboard } from "@/components/audio/SynthKeyboard";
 import { SmoothScroll } from "@/components/animation/SmoothScroll";
 
 export const metadata: Metadata = {
@@ -33,6 +34,7 @@ export default function RootLayout({
           className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-[#f4f1ea]"
         />
         <AudioProvider>
+          <SynthKeyboard />
           <a
             href="#main"
             className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:text-black"

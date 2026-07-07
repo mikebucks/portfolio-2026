@@ -1,12 +1,10 @@
 "use client";
 
 import { useGsapIntro } from "@/components/animation/useGsapIntro";
-import { useSynthControls } from "@/components/audio/useSynthControls";
 import { InlineHighlight } from "@/components/ui/InlineHighlight";
 
 export function Hero() {
   const rootRef = useGsapIntro<HTMLElement>();
-  useSynthControls();
 
   return (
     <section
