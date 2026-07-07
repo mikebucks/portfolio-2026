@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export const metadata: Metadata = {
   title: "Work — Portfolio",
@@ -10,16 +11,16 @@ export const metadata: Metadata = {
 
 export default function WorkIndexPage() {
   return (
-    <section className="w-full max-w-[1600px] px-8 pt-32 pb-24">
-      <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
-        Work
-      </h1>
-      <p className="mt-4 max-w-xl text-white/60">
-        Selected projects across product design, interactive systems, and
-        creative technology.
-      </p>
+    <>
+      <PageHeader title="Work">
+        <p className="max-w-xl text-white/80">
+          Selected projects across product design, interactive systems, and
+          creative technology.
+        </p>
+      </PageHeader>
 
-      <ul className="mt-16 divide-y divide-white/10 border-y border-white/10">
+      <section className="w-full max-w-[1600px] px-8 pt-16 pb-24">
+      <ul className="divide-y divide-white/10 border-y border-white/10">
         {projects.map((p) => (
           <li key={p.slug}>
             <Link
@@ -51,6 +52,7 @@ export default function WorkIndexPage() {
           </li>
         ))}
       </ul>
-    </section>
+      </section>
+    </>
   );
 }

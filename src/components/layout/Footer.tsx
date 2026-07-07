@@ -15,7 +15,7 @@ export function Footer() {
           <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5">
             D
           </kbd>{" "}
-          on the home page — something hums.
+          anywhere — something hums.
         </span>
       </div>
     </footer>

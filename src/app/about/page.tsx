@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SkillsViz } from "@/components/skills/SkillsViz";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export const metadata: Metadata = {
   title: "About — Portfolio",
@@ -8,11 +9,10 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <section className="max-w-[1600px] px-8 pt-32 pb-24">
-      <h1 className="text-4xl md:text-6xl font-semibold tracking-tight">
-        About
-      </h1>
-      <div className="mt-10 space-y-6 text-lg leading-relaxed text-white/90 max-w-4xl">
+    <>
+      <PageHeader title="About" />
+      <section className="max-w-[1600px] px-8 pt-16 pb-24">
+      <div className="space-y-6 text-lg leading-relaxed text-white/90 max-w-4xl">
         <p>
           I've been hopping between strategy, design, and code for
           over twenty years. I'm able to own research, craft, and frontend engineering end
@@ -79,6 +79,7 @@ export default function AboutPage() {
           </ul>
         </div>
       </div>
-    </section>
+      </section>
+    </>
   );
 }

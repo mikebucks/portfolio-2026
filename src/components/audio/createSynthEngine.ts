@@ -10,6 +10,8 @@ import { visualBus } from "@/lib/visualEvents";
 export type SynthEngine = {
   noteOn: (note: string, velocity?: number) => void;
   noteOff: (note: string) => void;
+  /** Release every sounding note and reset the filter envelope. Panic button. */
+  releaseAll: () => void;
   applySettings: (s: SynthSettings) => void;
   dispose: () => void;
 };
@@ -43,6 +45,19 @@ export function createSynthEngine(
   Tone: Tone,
   initial: SynthSettings,
 ): SynthEngine {
+  // Play live, not sequenced: Tone's default 0.1s lookAhead schedules every
+  // triggerAttack 100ms into the future, which reads as a laggy delay when the
+  // keyboard is the instrument. Pull it down to a hair above zero so notes fire
+  // almost immediately (well under the ~20ms perceptual threshold, on top of
+  // the unavoidable hardware output latency).
+  //
+  // NOT exactly 0: on a just-resumed AudioContext (first keypress, or after a
+  // suspend/resume on tab switch) a note scheduled at currentTime lands before
+  // the context renders its first block and gets dropped — the swallowed
+  // "first note". A few ms of headroom guarantees the note is always in the
+  // future without any audible lag.
+  Tone.getContext().lookAhead = 0.015;
+
   const limiter = new Tone.Limiter(-1).toDestination();
   const volume = new Tone.Volume(initial.masterVolume).connect(limiter);
   const reverb = new Tone.Reverb({ decay: 3.4, wet: initial.reverbWet }).connect(
@@ -73,7 +88,18 @@ export function createSynthEngine(
   // Filter envelope ADSR state machine
   type EnvStage = "idle" | "attack" | "decay" | "sustain" | "release";
   const fenv = { stage: "idle" as EnvStage, value: 0, releaseFrom: 0 };
-  let activeNotes = 0;
+
+  // Authoritative set of currently-sounding notes → their velocity. Drives the
+  // filter-envelope release off real voice state (a lost noteOff can no longer
+  // strand the filter open) and makes noteOn/noteOff idempotent. The stored
+  // velocity lets a preset switch re-trigger held notes on the new voice.
+  //
+  // Contract: one active voice per pitch — a second noteOn for a pitch already
+  // sounding is ignored. That matches the one-key-one-note keyboard. It is NOT
+  // reference-counted, so it wouldn't correctly support multiple controllers
+  // (on-screen keyboard / MIDI) playing the same pitch; that would need
+  // per-pitch refcounts or source IDs.
+  const active = new Map<string, number>();
 
   let lfoPhase = 0;
   let cycPhase = 0;
@@ -174,15 +200,24 @@ export function createSynthEngine(
     next.output.connect(filter);
     voice = next;
     old.releaseAll();
+    // The new voice never attacked the held notes; drop them and settle the
+    // filter so the switch can't leave a phantom drone or stuck-open filter.
+    active.clear();
+    fenv.releaseFrom = fenv.value;
+    fenv.stage = "release";
     setTimeout(() => old.dispose(), Math.max(80, s.release * 1000 + 80));
   }
 
   return {
     noteOn(note, velocity = 0.8) {
+      if (active.has(note)) return;
+      active.set(note, velocity);
+
       const t = Tone.now();
       voice.triggerAttack(note, t, velocity);
 
-      activeNotes++;
+      // Retrigger the filter envelope on every note (including chord additions),
+      // matching the prior articulation.
       fenv.stage = "attack";
 
       const freq = Tone.Frequency(note).toFrequency();
@@ -195,11 +230,13 @@ export function createSynthEngine(
       });
     },
     noteOff(note) {
+      if (!active.has(note)) return;
+      active.delete(note);
+
       const t = Tone.now();
       voice.triggerRelease(note, t);
 
-      activeNotes = Math.max(0, activeNotes - 1);
-      if (activeNotes === 0) {
+      if (active.size === 0) {
         fenv.releaseFrom = fenv.value;
         fenv.stage = "release";
       }
@@ -209,6 +246,12 @@ export function createSynthEngine(
         note,
         timestamp: performance.now(),
       });
+    },
+    releaseAll() {
+      voice.releaseAll();
+      active.clear();
+      fenv.releaseFrom = fenv.value;
+      fenv.stage = "release";
     },
     applySettings(s) {
       rebuildIfEngineChanged(s);

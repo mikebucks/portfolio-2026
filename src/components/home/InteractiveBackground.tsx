@@ -6,13 +6,24 @@ import { useThemeStore } from "@/lib/store";
 import type { ThemeId } from "@/components/webgl/materials/shaders/themes";
 
 /**
- * Full-bleed background.
+ * Interactive shader surface. Two variants:
+ *
+ *   "full"   — full-bleed fixed background (home page). Sits behind everything
+ *              at -z-10 and fills the viewport.
+ *   "header" — fills its nearest positioned ancestor (a page-header banner) so
+ *              subsequent pages get the shader as a header treatment.
  *
  * The CSS gradient is always in the DOM — visible immediately, stays as
  * a fallback if WebGL is unavailable. The canvas mounts on top once we
- * confirm WebGL works, painting over the gradient.
+ * confirm WebGL works, painting over the gradient. `WebGLCanvas` measures its
+ * own element, so it renders correctly at either size with no variant-specific
+ * code beyond the wrapper positioning below.
  */
-export function InteractiveBackground() {
+export function InteractiveBackground({
+  variant = "full",
+}: {
+  variant?: "full" | "header";
+}) {
   const [webglReady, setWebglReady] = useState(false);
 
   useEffect(() => {
@@ -33,7 +44,14 @@ export function InteractiveBackground() {
       // fixed background gets its own layer, which makes mix-blend-difference
       // on the hero text inconsistent on first load.
       style={{ transform: "translateZ(0)" }}
-      className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#08080a]"
+      className={
+        variant === "full"
+          ? "pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#08080a]"
+          : // Render at full viewport height anchored to the banner's top, so
+            // the shader is the SAME scale as the home page and the banner's
+            // own overflow-hidden simply crops the bottom — no squashing.
+            "pointer-events-none absolute top-0 left-0 h-screen w-full z-0 overflow-hidden bg-[#08080a]"
+      }
     >
       {/* CSS gradient — always present, also serves as loading fallback */}
       <div
@@ -98,7 +116,19 @@ function WebGLCanvas() {
         });
         renderer.setClearColor(0x08080a);
         renderer.setPixelRatio(device.getClampedDpr());
-        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Measure our own element rather than the window, so the same code path
+        // serves both the full-bleed background and a bounded header banner.
+        // The canvas is styled `w-full h-full` by CSS, so setSize(..., false)
+        // must not overwrite that with pixel styles.
+        const measure = () => ({
+          w: canvas.clientWidth || window.innerWidth,
+          h: canvas.clientHeight || window.innerHeight,
+        });
+        {
+          const { w, h } = measure();
+          renderer.setSize(w, h, false);
+        }
 
         // ── Scene ─────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
@@ -196,8 +226,9 @@ function WebGLCanvas() {
         });
 
         const onMove = (e: PointerEvent) => {
-          const x = (e.clientX / window.innerWidth) * 2 - 1;
-          const y = -((e.clientY / window.innerHeight) * 2 - 1);
+          const rect = canvas.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
           if (primed) {
             const now = performance.now();
             const elapsed = Math.max(1, now - lastT);
@@ -212,9 +243,10 @@ function WebGLCanvas() {
         };
 
         const onDown = (e: PointerEvent) => {
+          const rect = canvas.getBoundingClientRect();
           triggerClick(
-            (e.clientX / window.innerWidth) * 2 - 1,
-            -((e.clientY / window.innerHeight) * 2 - 1),
+            ((e.clientX - rect.left) / rect.width) * 2 - 1,
+            -(((e.clientY - rect.top) / rect.height) * 2 - 1),
           );
         };
 
@@ -224,7 +256,8 @@ function WebGLCanvas() {
         };
 
         const onResize = () => {
-          renderer.setSize(window.innerWidth, window.innerHeight);
+          const { w, h } = measure();
+          renderer.setSize(w, h, false);
           // After resize, domElement.width/height reflect the new physical size.
           material.uniforms.uResolution.value.set(
             renderer.domElement.width,
@@ -236,6 +269,10 @@ function WebGLCanvas() {
         window.addEventListener("pointerdown", onDown, { passive: true });
         window.addEventListener("scroll", onScroll, { passive: true });
         window.addEventListener("resize", onResize, { passive: true });
+        // Observe the element too — banner layout can change without a window
+        // resize (e.g. content reflow), and this keeps the buffer in sync.
+        const resizeObserver = new ResizeObserver(onResize);
+        resizeObserver.observe(canvas);
         onScroll();
 
         const offVisibility = perf.onVisibilityChange((v) => { paused = !v; });
@@ -329,6 +366,7 @@ function WebGLCanvas() {
           cancelAnimationFrame(animId);
           offVisibility();
           offBus();
+          resizeObserver.disconnect();
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerdown", onDown);
           window.removeEventListener("scroll", onScroll);
