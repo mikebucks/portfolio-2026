@@ -7,25 +7,23 @@ function FullViz() {
   return (
     <div className="space-y-8">
       {GROUPS.map(({ key, label }) => {
-        const skills = SKILLS.filter((s) => s.group === key).sort(
-          (a, b) => b.score - a.score
-        );
+        const skills = SKILLS.filter((s) => s.group === key);
         return (
           <div key={key}>
-            <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-white/30 mb-3 pb-2 border-b border-white/[0.06]">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-white/60 mb-3 pb-2 border-b border-white/[0.06]">
               {label}
             </p>
             <div className="space-y-[9px]">
               {skills.map((skill) => (
-                <div key={skill.name} className="flex items-center gap-3">
-                  <span className="w-32 text-xs text-white/50 shrink-0 truncate">
+                <div key={skill.name} className="flex items-center gap-3 border">
+                  <span className="min-w-50 text-lg text-white/90 shrink-0 truncate">
                     {skill.name}
                   </span>
-                  <div className="flex gap-[5px]">
+                  <div className="flex gap-1.5 w-full">
                     {Array.from({ length: 10 }, (_, i) => (
                       <div
                         key={i}
-                        className="w-[7px] h-[7px] rounded-full"
+                        className="w-4 h-4 rounded-full"
                         style={{
                           backgroundColor:
                             i < skill.score
