@@ -49,8 +49,8 @@ export function Header() {
             <nav aria-label="Primary">
               <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-white/80">
                 <li>
-                  <Link href="/work" className="hover:text-accent">
-                    Work
+                  <Link href="/projects" className="hover:text-accent">
+                    Projects
                   </Link>
                 </li>
                 <li>

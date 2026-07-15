@@ -15,8 +15,8 @@ function FullViz() {
             </p>
             <div className="space-y-[9px]">
               {skills.map((skill) => (
-                <div key={skill.name} className="flex items-center gap-3 border">
-                  <span className="min-w-50 text-lg text-white/90 shrink-0 truncate">
+                <div key={skill.name} className="flex items-center gap-3">
+                  <span className="min-w-45 text-lg text-white/90 shrink-0 truncate">
                     {skill.name}
                   </span>
                   <div className="flex gap-1.5 w-full">

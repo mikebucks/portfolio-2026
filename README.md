@@ -27,7 +27,7 @@ lazy-loaded after unlock so the static shell stays small.
 
 ```
 src/
-  app/                 routes (home, /work, /work/[slug], /about)
+  app/                 routes (home, /projects, /projects/[slug], /about)
   components/
     layout/            header, footer
     home/              hero, background, featured, synth panel

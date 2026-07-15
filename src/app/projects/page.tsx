@@ -5,14 +5,14 @@ import { projects } from "@/data/projects";
 import { PageHeader } from "@/components/layout/PageHeader";
 
 export const metadata: Metadata = {
-  title: "Work — Portfolio",
+  title: "Projects — Portfolio",
   description: "Selected projects.",
 };
 
-export default function WorkIndexPage() {
+export default function ProjectsIndexPage() {
   return (
     <>
-      <PageHeader title="Work">
+      <PageHeader title="Projects">
         <p className="max-w-xl text-white/80">
           Selected projects across product design, interactive systems, and
           creative technology.
@@ -24,7 +24,7 @@ export default function WorkIndexPage() {
         {projects.map((p) => (
           <li key={p.slug}>
             <Link
-              href={`/work/${p.slug}`}
+              href={`/projects/${p.slug}`}
               className="group grid grid-cols-[auto_1fr_auto] items-center gap-6 py-6 transition-colors hover:bg-white/[0.02]"
             >
               <div

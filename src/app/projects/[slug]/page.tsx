@@ -17,7 +17,7 @@ export async function generateMetadata(
   const project = getProject(slug);
   if (!project) return {};
   return {
-    title: `${project.title} — Work`,
+    title: `${project.title} — Projects`,
     description: project.summary,
   };
 }
@@ -34,10 +34,10 @@ export default async function ProjectPage(
       <PageHeader
         eyebrow={
           <Link
-            href="/work"
+            href="/projects"
             className="font-mono text-xs text-white hover:text-accent"
           >
-            ← Work
+            ← Projects
           </Link>
         }
         title={project.title}
