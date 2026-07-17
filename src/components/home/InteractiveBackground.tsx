@@ -13,26 +13,36 @@ import type { ThemeId } from "@/components/webgl/materials/shaders/themes";
  *   "header" — fills its nearest positioned ancestor (a page-header banner) so
  *              subsequent pages get the shader as a header treatment.
  *
- * The CSS gradient is always in the DOM — visible immediately, stays as
- * a fallback if WebGL is unavailable. The canvas mounts on top once we
- * confirm WebGL works, painting over the gradient. `WebGLCanvas` measures its
- * own element, so it renders correctly at either size with no variant-specific
- * code beyond the wrapper positioning below.
+ * Page-draw sequence, to avoid a flash of the loading gradient:
+ *
+ *   "probing"     — initial. Show black only (the wrapper's own bg). No
+ *                   gradient, no canvas. Removes the one-frame gradient flash
+ *                   that would otherwise show before the probe effect runs.
+ *   "loading"     — WebGL confirmed. Mount the canvas at opacity 0 over black;
+ *                   gradient stays hidden while `three` and the material load.
+ *   "ready"       — the shader painted its first real frame. Fade the canvas in.
+ *   "unsupported" — WebGL unavailable OR setup failed. Show the CSS gradient as
+ *                   the fallback. This is the only path that ever shows purple.
+ *
+ * `WebGLCanvas` measures its own element, so it renders correctly at either size
+ * with no variant-specific code beyond the wrapper positioning below.
  */
+type Status = "probing" | "loading" | "ready" | "unsupported";
+
 export function InteractiveBackground({
   variant = "full",
 }: {
   variant?: "full" | "header";
 }) {
-  const [webglReady, setWebglReady] = useState(false);
+  const [status, setStatus] = useState<Status>("probing");
 
   useEffect(() => {
     try {
       const probe = document.createElement("canvas");
       const gl = probe.getContext("webgl2") ?? probe.getContext("webgl");
-      setWebglReady(!!gl);
+      setStatus(gl ? "loading" : "unsupported");
     } catch {
-      // stay on CSS fallback
+      setStatus("unsupported");
     }
   }, []);
 
@@ -53,31 +63,57 @@ export function InteractiveBackground({
             "pointer-events-none absolute top-0 left-0 h-screen w-full z-0 overflow-hidden bg-[#08080a]"
       }
     >
-      {/* CSS gradient — always present, also serves as loading fallback */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background: [
-            "radial-gradient(ellipse 90% 70% at 65% 45%, rgba(30,50,200,0.55), transparent 65%)",
-            "radial-gradient(ellipse 70% 90% at 25% 75%, rgba(160,60,240,0.35), transparent 60%)",
-            "radial-gradient(ellipse 55% 55% at 60% 15%, rgba(0,200,230,0.30), transparent 55%)",
-          ].join(", "),
-        }}
-      />
+      {/* CSS gradient — fallback only. Shown when WebGL is unavailable or setup
+          failed, never on the normal load path (which draws black then fades in
+          the shader). */}
+      {status === "unsupported" && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(ellipse 90% 70% at 65% 45%, rgba(30,50,200,0.55), transparent 65%)",
+              "radial-gradient(ellipse 70% 90% at 25% 75%, rgba(160,60,240,0.35), transparent 60%)",
+              "radial-gradient(ellipse 55% 55% at 60% 15%, rgba(0,200,230,0.30), transparent 55%)",
+            ].join(", "),
+          }}
+        />
+      )}
 
-      {/* Canvas overlays gradient once WebGL is confirmed */}
-      {webglReady && <WebGLCanvas />}
+      {/* Canvas mounts over black once WebGL is confirmed, and fades in on its
+          first painted frame. On setup failure it flips us to the gradient. */}
+      {(status === "loading" || status === "ready") && (
+        <WebGLCanvas
+          visible={status === "ready"}
+          onFirstFrame={() => setStatus("ready")}
+          onUnavailable={() => setStatus("unsupported")}
+        />
+      )}
     </div>
   );
 }
 
-function WebGLCanvas() {
+function WebGLCanvas({
+  visible,
+  onFirstFrame,
+  onUnavailable,
+}: {
+  visible: boolean;
+  onFirstFrame: () => void;
+  onUnavailable: () => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useThemeStore((s) => s.theme);
   const themeRef = useRef<ThemeId>(theme);
   // Populated by the async setup IIFE; called on theme change to swap the
   // fragment shader on the live material.
   const swapThemeRef = useRef<((next: ThemeId) => void) | null>(null);
+
+  // Setup effect has [] deps, so keep these callbacks in refs updated each
+  // render to avoid firing stale closures from the async IIFE below.
+  const onFirstFrameRef = useRef(onFirstFrame);
+  const onUnavailableRef = useRef(onUnavailable);
+  onFirstFrameRef.current = onFirstFrame;
+  onUnavailableRef.current = onUnavailable;
 
   useEffect(() => {
     themeRef.current = theme;
@@ -88,6 +124,9 @@ function WebGLCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Guards against StrictMode double-invoke and navigation races: an
+    // abandoned mount must not flip parent status or leak a render loop.
+    let cancelled = false;
     // Teardown registered asynchronously once setup completes.
     let teardown = () => {};
 
@@ -106,6 +145,9 @@ function WebGLCanvas() {
           import("@/lib/device"),
           import("@/lib/performance"),
         ]);
+
+        // Mount was abandoned while chunks downloaded — don't build anything.
+        if (cancelled) return;
 
         // ── Renderer ─────────────────────────────────────────────────────
         const renderer = new THREE.WebGLRenderer({
@@ -285,6 +327,8 @@ function WebGLCanvas() {
         // and ramps up to source-shader pace at peak click/note input.
         // Always monotonic so the noise field never reverses on input decay.
         let shaderTime = 0;
+        // Latches on the first painted frame so we reveal the canvas once.
+        let firstFramePainted = false;
 
         const tick = () => {
           animId = requestAnimationFrame(tick);
@@ -357,11 +401,17 @@ function WebGLCanvas() {
           }
 
           renderer.render(scene, camera);
+
+          // Reveal the canvas the moment the first real frame is on screen.
+          if (!firstFramePainted) {
+            firstFramePainted = true;
+            if (!cancelled) onFirstFrameRef.current();
+          }
         };
 
-        tick();
-
-        // Register teardown for when the effect cleans up.
+        // Register teardown now that every resource exists, so the abandon
+        // guard below can dispose them. animId is 0 until tick runs, and
+        // cancelAnimationFrame(0) is a harmless no-op.
         teardown = () => {
           cancelAnimationFrame(animId);
           offVisibility();
@@ -375,18 +425,34 @@ function WebGLCanvas() {
           material.dispose();
           renderer.dispose();
         };
+
+        // A last-moment abandon (unmounted between the await and here) must not
+        // start a render loop or fire the reveal — and must dispose what we
+        // already built (renderer, listeners, observers).
+        if (cancelled) {
+          teardown();
+          return;
+        }
+
+        tick();
       } catch (err) {
         console.error("[WebGLCanvas] setup failed:", err);
+        // Fall back to the CSS gradient rather than leaving the page on black.
+        if (!cancelled) onUnavailableRef.current();
       }
     })();
 
-    return () => teardown();
+    return () => {
+      cancelled = true;
+      teardown();
+    };
   }, []);
 
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full"
+      className="absolute inset-0 w-full h-full transition-opacity duration-500 ease-out"
+      style={{ opacity: visible ? 1 : 0 }}
     />
   );
 }

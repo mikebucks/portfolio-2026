@@ -1,6 +1,7 @@
 "use client";
 
 import { useGsapIntro } from "@/components/animation/useGsapIntro";
+import { CyclingWord } from "@/components/home/CyclingWord";
 import { InlineHighlight } from "@/components/ui/InlineHighlight";
 
 export function Hero() {
@@ -27,7 +28,7 @@ export function Hero() {
           style={{ WebkitFontSmoothing: "auto" }}
           className="mt-2 -ml-[4px] text-4xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight"
         >
-          Digital Product Builder
+          Digital Product <CyclingWord />
           <br />
           for the Agentic Era
         </h1>
