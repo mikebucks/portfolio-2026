@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { projects } from "@/data/projects";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
 import { cn } from "@/lib/utils";
+import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
   const featured = projects.slice(0, 3);
@@ -31,7 +31,7 @@ export function FeaturedProjects() {
           type="button"
           onClick={handleToggle}
           aria-label={scrolled ? "Scroll to top" : "Scroll to recent projects"}
-          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-9 hover:h-12 text-black/80 bg-accent/70 backdrop-blur-md rounded-full rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out hover:bg-accent"
+          className="absolute bottom-0 left-0 right-0 flex justify-center items-center w-10 h-9 hover:h-10 text-black/80 bg-white/70 backdrop-blur-md rounded-full rounded-br-none rounded-bl-none cursor-pointer transition-[height] duration-[180ms] ease-out hover:bg-accent"
         >
           <div className="relative h-5 w-5">
             <div
@@ -63,14 +63,14 @@ export function FeaturedProjects() {
         </button>
       </div>
 
-      <section className="relative z-10 bg-white/70 backdrop-blur-md">
+      <section
+        id="projects"
+        className="relative z-10 scroll-mt-24 bg-white/70 backdrop-blur-md"
+      >
         <div className="flex items-baseline justify-between max-w-[1600px] px-8 pt-16">
           <h2 className="text-2xl md:text-3xl font-semibold text-black tracking-tight">
             Recently shipped
           </h2>
-          <Link href="/projects" className="font-mono text-xs uppercase tracking-widest text-black/60 hover:text-accent">
-            <span className="inline-flex items-center gap-1">All projects <ArrowRight size={12} strokeWidth={1.5} /></span>
-          </Link>
         </div>
 
         <ul className="grid gap-8 md:grid-cols-3 max-w-[1600px] p-8 pb-16">
@@ -79,8 +79,8 @@ export function FeaturedProjects() {
               key={p.slug}
               className="overflow-hidden rounded-2xl ring-0 ring-white/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-xl hover:ring-[10px] hover:ring-white/70"
             >
-              <Link
-                href={`/projects/${p.slug}`}
+              <a
+                href={`/#projects/${p.slug}`}
                 className="group relative block aspect-[16/10] bg-white/5"
               >
                 {p.thumbnail && (
@@ -107,10 +107,12 @@ export function FeaturedProjects() {
                     Read <ArrowRight size={11} strokeWidth={1.5} />
                   </div>
                 </div>
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
+
+        <AllProjects />
       </section>
     </div>
   );

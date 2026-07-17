@@ -5,11 +5,14 @@ import { SKILLS, GROUPS, type ProjectSkill } from "@/data/skills";
 
 function FullViz() {
   return (
-    <div className="space-y-8">
+    // Columns on wide screens so the five groups take less vertical space.
+    // Starts at xl — narrower breakpoints can't fit the label + 10-dot row in
+    // two columns. break-inside-avoid keeps each group whole.
+    <div className="columns-1 xl:columns-2 2xl:columns-3 gap-x-10">
       {GROUPS.map(({ key, label }) => {
         const skills = SKILLS.filter((s) => s.group === key);
         return (
-          <div key={key}>
+          <div key={key} className="break-inside-avoid mb-8">
             <p className="font-mono text-xs uppercase tracking-[0.14em] text-white/60 mb-3 pb-2 border-b border-white/[0.06]">
               {label}
             </p>

@@ -3,11 +3,21 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { smoothScrollTo } from "@/components/animation/lenisInstance";
 import { SynthToggleButton } from "../audio/SynthToggleButton";
+
+const NAV_LINKS = [
+  { id: "projects", label: "Projects" },
+  { id: "about", label: "About" },
+  { id: "contact", label: "Contact" },
+];
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+  const onHome = pathname === "/";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -15,6 +25,24 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // On the homepage, intercept the section links to smooth-scroll in-page and
+  // keep the hash shareable. On other routes, fall through to a normal
+  // navigation to /#section — the homepage then scrolls to it on load.
+  const handleSectionClick =
+    (id: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!onHome) return;
+      e.preventDefault();
+      smoothScrollTo(`#${id}`);
+      history.pushState(null, "", `#${id}`);
+    };
+
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!onHome) return;
+    e.preventDefault();
+    smoothScrollTo(0);
+    history.pushState(null, "", "/");
+  };
 
   // SynthPanel still deferred — it pulls in Zustand and panel state.
   const SynthPanel = dynamic(
@@ -33,6 +61,7 @@ export function Header() {
         <section className="flex justify-between w-full">
           <Link
             href="/"
+            onClick={handleLogoClick}
             className="font-mono text-sm tracking-tight text-black hover:text-accent"
           >
             Mike<span className="font-bold">Bucks</span>
@@ -40,22 +69,18 @@ export function Header() {
           <div className="flex justify-between gap-6 items-center">
             <nav aria-label="Primary">
               <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-black/80">
+                {NAV_LINKS.map((link) => (
+                  <li key={link.id}>
+                    <Link
+                      href={`/#${link.id}`}
+                      onClick={handleSectionClick(link.id)}
+                      className="hover:text-accent"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
                 <li>
-                  <Link href="/projects" className="hover:text-accent">
-                    Projects
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/about" className="hover:text-accent">
-                    About
-                  </Link>
-                </li>
-                <li>
-                  <a href="mailto:hello@example.com" className="hover:text-accent">
-                    Contact
-                  </a>
-                </li>
-                <li> 
                   <SynthToggleButton />
                 </li>
               </ul>

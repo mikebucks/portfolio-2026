@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { projects, getProject } from "@/data/projects";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { ProjectMediaList } from "@/components/projects/ProjectMediaList";
 
 type Params = { slug: string };
 
@@ -34,7 +35,7 @@ export default async function ProjectPage(
       <PageHeader
         eyebrow={
           <Link
-            href="/projects"
+            href="/#projects"
             className="font-mono text-xs text-white hover:text-accent"
           >
             ← Projects
@@ -61,55 +62,7 @@ export default async function ProjectPage(
       </section>
 
       {project.media && project.media.length > 0 && (
-        <section className="mt-16 space-y-12 max-w-5xl">
-          {project.media.map((m, i) => (
-            <figure key={i}>
-              {m.type === "image" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={m.src}
-                  alt={m.alt ?? ""}
-                  width={m.width}
-                  height={m.height}
-                  className="w-full h-auto rounded"
-                />
-              ) : m.type === "video" ? (
-                <video
-                  src={m.src}
-                  poster={m.poster}
-                  width={m.width}
-                  height={m.height}
-                  controls
-                  playsInline
-                  className="w-full h-auto rounded"
-                />
-              ) : (
-                <div
-                  className={`grid gap-4 ${
-                    m.columns === 3 ? "grid-cols-3" : "grid-cols-2"
-                  }`}
-                >
-                  {m.items.map((item, j) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={j}
-                      src={item.src}
-                      alt={item.alt ?? ""}
-                      width={item.width}
-                      height={item.height}
-                      className="aspect-square w-full h-auto object-cover rounded"
-                    />
-                  ))}
-                </div>
-              )}
-              {m.caption && (
-                <figcaption className="mt-3 font-mono text-xs text-white/50">
-                  {m.caption}
-                </figcaption>
-              )}
-            </figure>
-          ))}
-        </section>
+        <ProjectMediaList media={project.media} className="mt-16 max-w-5xl" />
       )}
       </article>
     </>

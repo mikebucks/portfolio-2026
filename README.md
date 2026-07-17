@@ -13,6 +13,18 @@ npm run dev
 
 Then visit http://localhost:3000.
 
+## Contact form
+
+The contact section posts to [Web3Forms](https://web3forms.com). Create a free
+access key tied to `dangerbucks@gmail.com` and add it to `.env.local`:
+
+```bash
+NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY=your-access-key
+```
+
+The key is public by design (safe to ship client-side). Until it's set, the form
+renders but submissions fail with a "not configured yet" message.
+
 ## Secret synth
 
 - Home row plays chromatic notes: `A S D F G H J K L ;`
