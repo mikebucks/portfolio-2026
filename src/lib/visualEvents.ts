@@ -87,7 +87,7 @@ export function tickVisualState(dt: number) {
     0,
     visualState.pointerImpulse - dt * 2.0,
   );
-  visualState.clickImpulse = Math.max(0, visualState.clickImpulse - dt * 1.6);
+  visualState.clickImpulse = Math.max(0, visualState.clickImpulse - dt * 0.6);
 }
 
 /** Bump from outside (e.g. pointer velocity, click) without going through the event bus. */

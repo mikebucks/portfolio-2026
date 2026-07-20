@@ -17,6 +17,7 @@ uniform float uTime;
 uniform float uShaderTime;
 uniform vec2  uResolution;
 uniform vec2  uPointer;
+uniform vec2  uClickPos;
 uniform float uClickImpulse;
 uniform float uNoteOn;
 uniform float uVelocity;
@@ -234,16 +235,39 @@ void main() {
   float waveAmp = 0.25 + mEcho * 0.55;
   float cursorWave = sin(dist * 16.0 - uTime * 2.4) * falloff * waveAmp / 0.25;
 
-  float pulse = 0.55 * uClickImpulse + 1.0 * uNoteOn * max(uVelocity, 0.4);
+  // ── Spatial click ripple ────────────────────────────────────────────────
+  // A shockwave that emanates FROM the click point instead of lifting the whole
+  // field. Its radius expands as the impulse decays (1 -> 0), so each click
+  // reads as a ring traveling outward from exactly where it landed, with a
+  // brighter pop at the origin. Everything is gated by uClickImpulse, so at
+  // rest it contributes nothing (and can't show a phantom hot spot at center).
+  vec2 clickUv = uClickPos * 0.5 + 0.5;
+  clickUv.x *= uResolution.x / uResolution.y;
+  float cDist = distance(uv, clickUv);
+  float clickRadius = (1.0 - uClickImpulse) * 1.3;      // grows as it fades
+  float ringD = (cDist - clickRadius) * 6.0;
+  float ring = exp(-ringD * ringD);                     // gaussian shell
+  float clickPop = exp(-cDist * 5.0);                   // hot core at origin
+  float clickAmp = uClickImpulse * (0.4 + mEcho * 0.7);
+  float clickWave = (ring + clickPop * 0.6) * clickAmp;
+
+  // Click no longer dominates the GLOBAL pulse (that's what made it read as a
+  // full-screen flash) — it keeps only a whisper of it; the visible click
+  // response now lives in the local clickWave below. Notes still pulse globally.
+  float pulse = 0.12 * uClickImpulse + 1.0 * uNoteOn * max(uVelocity, 0.4);
   pulse *= (0.5 + 0.5 * uReactivity);
   pulse = clamp(pulse, 0.0, 1.0);
 
   // Drift macro accelerates ambient motion (multiplied on top of the
-  // input-driven shaderTime). Stays monotonic.
-  float z = uShaderTime * (1.0 + mDrift * 1.6) + cursorWave * 0.25;
+  // input-driven shaderTime). Stays monotonic. The click ripple also warps the
+  // cell field locally so the shockwave disturbs the noise, not just brightness.
+  float z = uShaderTime * (1.0 + mDrift * 1.6) + cursorWave * 0.25 + clickWave * 0.3;
 
   float v = whacky(vec3(uv, z), mBloom);
   v = clamp(v * mix(1.0, 1.55, pulse), 0.0, 1.0);
+
+  // Localized brightness lift from the click, concentrated on the ring/core.
+  v = clamp(v + clickWave * 0.22, 0.0, 1.0);
 
   // Glow lifts overall luminance and softens the floor.
   float glowLift = mGlow * 0.18;
