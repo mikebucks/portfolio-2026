@@ -15,7 +15,7 @@ export function AboutSection() {
           About
         </h2>
         <p className="mb-10 font-mono text-xs uppercase tracking-widest text-white/60">
-          Born for such a time as this
+          IC x 3 (Design, Eng, Product)
         </p>
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
@@ -23,8 +23,8 @@ export function AboutSection() {
             My M.O. has always been to master as much of the product stack as
             possible. Starting my career as a UI Designer, I figured out coding
             my own designs was the best way to ship great work. That realization
-            led me on a decade-long tour as an Engineer, Creative Technologist,
-            and Technical Lead where I built apps and sites for some of the
+            led me on a decade-long tour as a <strong>Frontend Engineer</strong>, <strong>Creative Technologist</strong>,
+            and <strong>Technical Lead</strong> where I built apps and sites for some of the
             largest brands in the world.
           </p>
           <p>
@@ -32,9 +32,9 @@ export function AboutSection() {
             Product Design at Figment, the world&apos;s largest proof-of-stake
             crypto infrastructure company. Over the better part of 4 years, I
             grew a self-serve staking product from zero to over{" "}
-            <strong>$500,000,000</strong> of Ethereum staked as the sole designer
+            <strong>$500M</strong> of Ethereum staked as the sole designer
             for a decentralized app experience. All while serving Figment&apos;s
-            institutional customers and their ~<strong>$18,000,000,000</strong>{" "}
+            institutional customers, building financial analysis dashboards to serve their ~<strong>$18B</strong>{" "}
             worth of crypto staked to Figment&apos;s network of validators.
           </p>
           <p>

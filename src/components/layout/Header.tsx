@@ -16,6 +16,7 @@ const NAV_LINKS = [
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const pathname = usePathname();
   const onHome = pathname === "/";
 
@@ -25,6 +26,41 @@ export function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Scroll-spy: highlight the nav item whose section is crossing the viewport's
+  // vertical center. Only runs on the homepage, where the sections live.
+  useEffect(() => {
+    if (!onHome) {
+      setActiveId(null);
+      return;
+    }
+
+    const sections = NAV_LINKS.map((link) =>
+      document.getElementById(link.id),
+    ).filter((el): el is HTMLElement => el !== null);
+    if (sections.length === 0) return;
+
+    // A section counts as "active" only while it intersects the horizontal
+    // center line of the viewport (the -50%/-50% margins collapse the root to
+    // that line), so at most one section is active at a time. We track the set
+    // of intersecting sections so that scrolling above all of them (into the
+    // hero) clears the active id instead of leaving the last one stuck on.
+    const intersecting = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) intersecting.add(entry.target.id);
+          else intersecting.delete(entry.target.id);
+        }
+        // Preserve document order so the highest visible section wins.
+        const next = NAV_LINKS.find((link) => intersecting.has(link.id));
+        setActiveId(next?.id ?? null);
+      },
+      { rootMargin: "-50% 0px -50% 0px" },
+    );
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [onHome]);
 
   // On the homepage, intercept the section links to smooth-scroll in-page and
   // keep the hash shareable. On other routes, fall through to a normal
@@ -74,7 +110,11 @@ export function Header() {
                     <Link
                       href={`/#${link.id}`}
                       onClick={handleSectionClick(link.id)}
-                      className="hover:text-accent"
+                      aria-current={activeId === link.id ? "true" : undefined}
+                      className={cn(
+                        "hover:text-accent transition-colors",
+                        activeId === link.id && "active text-accent",
+                      )}
                     >
                       {link.label}
                     </Link>
