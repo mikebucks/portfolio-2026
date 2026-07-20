@@ -7,7 +7,7 @@
  *   z  Sway    — increases warp amount (more flowing)
  *   w  Tail    — lifts ripple amplitudes from cursor / clicks / notes
  */
-export const auroraFragment = /* glsl */ `
+export const correspondenceFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;

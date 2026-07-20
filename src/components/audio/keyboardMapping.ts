@@ -1,18 +1,22 @@
 /**
- * Home-row chromatic mapping. Keys are lowercased on lookup so Shift still
- * works as an octave modifier without eating the note.
+ * Home-row D Kurd handpan mapping — D Aeolian (natural minor), the classic
+ * "haunting/mysterious" handpan tuning. `a` is the D ding; the rest are the
+ * tone-field ring. No "wrong notes": every key is diatonic to D minor.
+ * A#3 is the Kurd's flat-2 (Bb) — written sharp so octave-shift parses it.
+ * Keys are lowercased on lookup so Shift still works as an octave modifier
+ * without eating the note.
  */
 export const KEYBOARD_NOTES: Record<string, string> = {
-  a: "C4",
-  s: "C#4",
-  d: "D4",
-  f: "D#4",
-  g: "E4",
-  h: "F4",
-  j: "F#4",
+  a: "D3",
+  s: "A3",
+  d: "A#3",
+  f: "C4",
+  g: "D4",
+  h: "E4",
+  j: "F4",
   k: "G4",
-  l: "G#4",
-  ";": "A4",
+  l: "A4",
+  ";": "C5",
 };
 
 const NOTE_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];

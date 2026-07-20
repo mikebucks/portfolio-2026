@@ -49,5 +49,5 @@ export type SynthSettings = {
   visualReactivity: number;
 };
 
-/** A 4-tuple of macro values, each 0..1. */
+/** A 4-tuple of 0..1 values — a theme's fixed shader `uMacros` vec4. */
 export type MacroValues = [number, number, number, number];

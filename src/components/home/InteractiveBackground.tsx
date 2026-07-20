@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
 import { useThemeStore } from "@/lib/store";
-import type { ThemeId } from "@/components/webgl/materials/shaders/themes";
+import {
+  THEME_PRESETS,
+  type ThemeId,
+} from "@/components/webgl/materials/shaders/themes";
 
 /**
  * Interactive shader surface. Two variants:
@@ -373,12 +376,11 @@ function WebGLCanvas({
           u.uVelocity.value = visualState.velocity;
           u.uReactivity.value = visualState.reactivity;
 
-          // Pull active-theme macros from the store each frame. Reading
-          // outside React keeps the render loop from re-rendering on every
-          // slider tweak; the store update fires synchronously.
-          const ts = useThemeStore.getState();
-          const m = ts.macros[ts.theme];
-          u.uMacros.value.set(m[0], m[1], m[2], m[3]);
+          // Feed the active theme's fixed shader constants into uMacros.
+          // Reading the store outside React keeps the render loop from
+          // re-rendering on theme changes; the store update fires synchronously.
+          const sm = THEME_PRESETS[useThemeStore.getState().theme].shaderMacros;
+          u.uMacros.value.set(sm[0], sm[1], sm[2], sm[3]);
 
           // Per-voice color uniforms.
           const rScale = 0.5 + 0.5 * visualState.reactivity;

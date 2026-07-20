@@ -4,18 +4,16 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import {
   DEFAULT_THEME,
   THEME_IDS,
-  defaultMacrosFor,
   resolveSettings,
   type ThemeId,
 } from "@/components/webgl/materials/shaders/themes";
-import type { MacroValues, SynthSettings } from "@/lib/synthTypes";
+import type { SynthSettings } from "@/lib/synthTypes";
 
 // Re-export the synth types so existing import sites (`@/lib/store`) keep
 // working without churn.
 export type {
   FilterType,
   LfoShape,
-  MacroValues,
   OscEngine,
   SynthSettings,
 } from "@/lib/synthTypes";
@@ -45,34 +43,22 @@ export const useUIStore = create<UIState>((set) => ({
   setMuted: (v) => set({ muted: v }),
 }));
 
-// ── Theme + macro store ────────────────────────────────────────────────────
-// The canonical state is `theme` + `macroValues[theme]`. The full
-// `SynthSettings` consumed by the audio engine is derived via
-// `resolveSettings`; keeping the source small means switching themes auto-
-// loads the matching synth preset, and the panel only needs four sliders.
-
-type MacrosByTheme = Record<ThemeId, MacroValues>;
-
-const buildDefaultMacros = (): MacrosByTheme =>
-  THEME_IDS.reduce<MacrosByTheme>((acc, id) => {
-    acc[id] = defaultMacrosFor(id);
-    return acc;
-  }, {} as MacrosByTheme);
+// ── Theme store ────────────────────────────────────────────────────────────
+// The canonical state is just the active `theme`. Each theme maps 1:1 to a
+// synth preset, so `resolveSettings(theme)` returns the full `SynthSettings`
+// consumed by the audio engine — the sound is edited directly in the preset's
+// `baseSettings`, with no macro layer on top.
 
 type ThemeStore = {
   theme: ThemeId;
-  macros: MacrosByTheme;
   setTheme: (theme: ThemeId) => void;
   cycleTheme: () => void;
-  setMacro: (index: 0 | 1 | 2 | 3, value: number) => void;
-  resetMacros: () => void;
 };
 
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set) => ({
       theme: DEFAULT_THEME,
-      macros: buildDefaultMacros(),
       setTheme: (theme) => set({ theme }),
       cycleTheme: () =>
         set((s) => {
@@ -80,64 +66,51 @@ export const useThemeStore = create<ThemeStore>()(
           const next = THEME_IDS[(idx + 1) % THEME_IDS.length];
           return { theme: next };
         }),
-      setMacro: (index, value) =>
-        set((s) => {
-          const current = s.macros[s.theme];
-          const next: MacroValues = [
-            current[0],
-            current[1],
-            current[2],
-            current[3],
-          ];
-          next[index] = clamp01(value);
-          return { macros: { ...s.macros, [s.theme]: next } };
-        }),
-      resetMacros: () =>
-        set((s) => ({
-          macros: { ...s.macros, [s.theme]: defaultMacrosFor(s.theme) },
-        })),
     }),
     {
       name: "portfolio:theme",
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      // v2 dropped the old per-theme `macros` map. v3 renamed the theme ids to
+      // the seven Hermetic principles; `migrate` maps any old id to its new
+      // one so a returning visitor keeps their selection, then falls back to
+      // the default for anything unrecognized.
+      version: 3,
       // Skip auto-hydration — `persist` running during SSR breaks the
       // useSyncExternalStore "stable server snapshot" contract and floods
       // the console with React warnings. We rehydrate explicitly after
-      // mount via `useThemeStorePersistence` below.
+      // mount via `rehydrateThemeStore` below.
       skipHydration: true,
-      migrate: () => ({
-        theme: DEFAULT_THEME,
-        macros: buildDefaultMacros(),
-      }),
-      // Newly added themes won't have entries in old localStorage — fill them
-      // in on rehydrate so we never read undefined.
-      onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        const filled: MacrosByTheme = { ...buildDefaultMacros(), ...state.macros };
-        state.macros = filled;
+      partialize: (s) => ({ theme: s.theme }),
+      migrate: (persisted) => {
+        const raw = (persisted as { theme?: string } | undefined)?.theme;
+        // Old (pre-v3) id → Hermetic-principle id.
+        const RENAMED: Record<string, ThemeId> = {
+          cellular: "mind",
+          aurora: "correspondence",
+          pulse: "vibration",
+          ember: "polarity",
+          tide: "rhythm",
+          static: "causation",
+          neon: "gender",
+        };
+        const t = raw && raw in RENAMED ? RENAMED[raw] : (raw as ThemeId);
+        return { theme: t && THEME_IDS.includes(t) ? t : DEFAULT_THEME };
       },
     },
   ),
 );
 
 /**
- * Hook: resolved SynthSettings for the active theme + its macro values.
+ * Hook: resolved SynthSettings for the active theme.
  *
  * Selectors must return referentially stable values across calls; doing the
  * resolveSettings() call directly in the selector returns a fresh object on
  * every read and trips React's `getServerSnapshot should be cached` guard.
- * Pull primitives, then memoize the resolution into a settings object.
+ * Pull the theme primitive, then memoize the resolution into a settings object.
  */
 export function useResolvedSynthSettings(): SynthSettings {
   const theme = useThemeStore((s) => s.theme);
-  const macros = useThemeStore((s) => s.macros[s.theme]);
-  return useMemo(() => resolveSettings(theme, macros), [theme, macros]);
-}
-
-/** Hook: macro values for the active theme (stable array reference). */
-export function useActiveMacros(): MacroValues {
-  return useThemeStore((s) => s.macros[s.theme]);
+  return useMemo(() => resolveSettings(theme), [theme]);
 }
 
 /**
@@ -148,8 +121,4 @@ export function useActiveMacros(): MacroValues {
 export function rehydrateThemeStore() {
   if (typeof window === "undefined") return;
   void useThemeStore.persist?.rehydrate();
-}
-
-function clamp01(v: number): number {
-  return v < 0 ? 0 : v > 1 ? 1 : v;
 }

@@ -5,10 +5,11 @@
  *
  * Each theme is a `ThemePreset` (in ./presets.ts) that bundles three things:
  *   1. A GLSL fragment shader.
- *   2. A baseline `SynthSettings`.
- *   3. Four `Macro`s — 0..1 sliders that morph the synth and feed into the
- *      shader as `uMacros vec4`. Themes are 1:1 with synth presets, so
+ *   2. A full `SynthSettings` (`baseSettings`) — the entire voice, edited
+ *      directly; there is no macro layer. Themes are 1:1 with sounds, so
  *      switching the theme also switches the sound.
+ *   3. A fixed `shaderMacros` vec4 fed to the shader as `uMacros` — per-theme
+ *      visual constants (formerly the macro-slider defaults).
  *
  * Shared shader uniforms:
  *
@@ -25,8 +26,8 @@
  *   uEnvelope    float
  *   uScroll      float
  *   uReactivity  float   0..1 user-controlled sensitivity
- *   uMacros      vec4    per-theme macro values, 0..1 each — drive both the
- *                        synth and the shader so the two stay in sync
+ *   uMacros      vec4    per-theme visual constants, 0..1 each (preset's
+ *                        `shaderMacros`) — shape the look per theme
  *   uNoteFreqNorms vec4  per-voice color (optional, currently used by cellular)
  *   uNoteAmts      vec4
  *
@@ -41,10 +42,9 @@ export {
   THEME_IDS,
   DEFAULT_THEME,
   resolveSettings,
-  defaultMacrosFor,
+  shaderMacrosFor,
   type ThemeId,
   type ThemePreset,
-  type Macro,
 } from "./presets";
 
 import { THEME_PRESETS, type ThemeId, type ThemePreset } from "./presets";

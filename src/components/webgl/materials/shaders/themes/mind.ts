@@ -8,7 +8,7 @@
  *   z  Drift   — boosts ambient time scale (cells flow faster)
  *   w  Echo    — adds outward ripple amplitude on cursor / clicks
  */
-export const cellularFragment = /* glsl */ `
+export const mindFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;

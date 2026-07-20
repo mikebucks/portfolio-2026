@@ -7,7 +7,7 @@
  *   z  Current — speeds up the underlying flow
  *   w  Foam    — strengthens caustic highlight density
  */
-export const tideFragment = /* glsl */ `
+export const rhythmFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;

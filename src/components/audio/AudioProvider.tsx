@@ -40,7 +40,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
   const engineRef = useRef<SynthEngine | null>(null);
   const unlockingRef = useRef<Promise<void> | null>(null);
 
-  // Pull persisted theme/macro state out of localStorage once on mount.
+  // Pull persisted theme state out of localStorage once on mount.
   // Skipping persist during SSR keeps useSyncExternalStore happy.
   useEffect(() => {
     rehydrateThemeStore();

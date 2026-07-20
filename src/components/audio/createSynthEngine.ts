@@ -39,7 +39,8 @@ const CYC_RES_DEPTH = 6;
  * shared filter — Tone's automatic LFO→Param routing has unit-coercion
  * quirks with frequency params and is brittle.
  *
- * Browser-only additions: stereo delay + reverb tail.
+ * Browser-only additions: a fixed "character" master chain — saturation,
+ * chorus, stereo widener, EQ — plus stereo delay + a dark reverb tail.
  */
 export function createSynthEngine(
   Tone: Tone,
@@ -58,11 +59,37 @@ export function createSynthEngine(
   // future without any audible lag.
   Tone.getContext().lookAhead = 0.015;
 
+  // Master chain, output → input:
+  //   voice → filter → drive → chorus → delay → reverb → widener → eq → volume → limiter
+  // The nodes between the filter and volume are always-on "character" — fixed,
+  // preset-independent values that pull every sound out of raw-oscillator
+  // "toy" territory: analog-ish saturation, chorus width, stereo spread, and a
+  // darkened/bodied EQ. They intentionally read no SynthSettings fields so
+  // presets never have to know about them.
   const limiter = new Tone.Limiter(-1).toDestination();
   const volume = new Tone.Volume(initial.masterVolume).connect(limiter);
-  const reverb = new Tone.Reverb({ decay: 3.4, wet: initial.reverbWet }).connect(
-    volume,
-  );
+
+  // Gentle master EQ: a little low-end body, a touch of mud scooped, and the
+  // top rolled off. Sitting last (after reverb) this also darkens the reverb
+  // tail, so the wash reads as "haunting" rather than fizzy.
+  const eq = new Tone.EQ3({
+    low: 1.5,
+    mid: -1,
+    high: -2.5,
+    lowFrequency: 250,
+    highFrequency: 3200,
+  }).connect(volume);
+
+  // Stereo spread on the whole mix — 0.5 is neutral, higher is wider.
+  const widener = new Tone.StereoWidener(0.7).connect(eq);
+
+  // Longer, darker tail than the old 3.4s. preDelay pushes the wash back off
+  // the transient so notes still speak clearly before they bloom.
+  const reverb = new Tone.Reverb({
+    decay: 5,
+    preDelay: 0.03,
+    wet: initial.reverbWet,
+  }).connect(widener);
   void reverb.generate();
 
   const delay = new Tone.FeedbackDelay({
@@ -71,12 +98,31 @@ export function createSynthEngine(
     wet: initial.delayWet,
   }).connect(reverb);
 
+  // Chorus is the biggest single anti-"toy" lever: it de-monos the pitched
+  // voices and adds slow movement. Its LFO must be started explicitly.
+  const chorus = new Tone.Chorus({
+    frequency: 0.6,
+    delayTime: 3.5,
+    depth: 0.6,
+    spread: 160,
+    wet: 0.3,
+  }).connect(delay);
+  chorus.start();
+
+  // Subtle soft-clip for harmonic "glue" / warmth. Kept low and pre-time-
+  // effects so it thickens the dry tone without dirtying the reverb/delay tails.
+  const drive = new Tone.Distortion({
+    distortion: 0.1,
+    oversample: "4x",
+    wet: 0.18,
+  }).connect(chorus);
+
   const filter = new Tone.Filter({
     frequency: initial.filterCutoff,
     Q: initial.filterResonance,
     type: initial.filterType,
     rolloff: -24,
-  }).connect(delay);
+  }).connect(drive);
 
   let voice: VoiceHandle = buildVoice(Tone, initial);
   voice.output.connect(filter);
@@ -282,8 +328,12 @@ export function createSynthEngine(
       cancelAnimationFrame(raf);
       voice.dispose();
       filter.dispose();
+      drive.dispose();
+      chorus.dispose();
       delay.dispose();
       reverb.dispose();
+      widener.dispose();
+      eq.dispose();
       volume.dispose();
       limiter.dispose();
     },
@@ -389,6 +439,11 @@ function buildSuper(Tone: Tone, s: SynthSettings): VoiceHandle {
 /** Two-operator FM — Wave morphs index, Timbre morphs harmonicity. */
 function buildFM(Tone: Tone, s: SynthSettings): VoiceHandle {
   const synth = new Tone.PolySynth(Tone.FMSynth, {
+    // Makeup gain: Tone's FMSynth outputs well below the subtractive engines
+    // (super/analog), so at equal masterVolume it reads much quieter. Lift the
+    // voice so presets are loudness-matched and masterVolume behaves the same
+    // across engines. The master limiter (-1 dB) still catches peaks/chords.
+    volume: 8,
     harmonicity: 0.5 + s.oscTimbre * 4,
     modulationIndex: 0.5 + s.oscWave * 18,
     envelope: envOf(s),

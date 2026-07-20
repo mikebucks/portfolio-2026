@@ -7,7 +7,7 @@
  *   z  Wobble — adds sinusoidal warp to the grid
  *   w  Boom   — shifts hue toward magenta and amplifies low-end saturation
  */
-export const pulseFragment = /* glsl */ `
+export const vibrationFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;

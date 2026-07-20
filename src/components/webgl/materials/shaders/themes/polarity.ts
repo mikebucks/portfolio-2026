@@ -7,7 +7,7 @@
  *   z  Crackle — adds high-frequency ember turbulence
  *   w  Smoke   — desaturates and darkens the periphery
  */
-export const emberFragment = /* glsl */ `
+export const polarityFragment = /* glsl */ `
 precision highp float;
 
 varying vec2 vUv;
