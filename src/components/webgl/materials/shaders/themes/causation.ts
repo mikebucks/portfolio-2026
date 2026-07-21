@@ -64,6 +64,29 @@ float terrain(in vec2 p, in float t) {
   return h * 0.3;
 }
 
+// Just the octave detail from terrain() — the same loop, with the \`relief\` and
+// global-drift base terms omitted. This is what shading contrast is measured
+// against instead of absolute world height.
+//
+// Those base terms lift and drop whole regions by several units, so keying off
+// raw pos.y meant flying into a basin crushed the entire frame dark while
+// cresting a massif washed it out — the look drifted with camera position.
+// The octave sum has the same statistical range everywhere on the map by
+// construction, so a ridge reads as a ridge wherever the camera happens to be.
+// (Deliberately NOT pos.y minus a baseline: the terrace mapping is nonlinear,
+// so no single scale factor tracks it across regions.)
+float terrainDetail(in vec2 p) {
+  vec2 q = p * 0.6;
+  float d = 0.0;
+  float s = 1.5;
+  for (int i = 0; i < 6; i++) {
+    d += s * cosNoise(q);
+    s *= 0.55;
+    q = m2 * q * 2.0;
+  }
+  return d * 0.3;
+}
+
 // Click swell, applied as an actual displacement of the terrain height (not a
 // screen overlay). \`clickC\` is the world-space xz where the click landed; the
 // wavefront is a raised ridge whose radius expands as uClickImpulse decays, so
@@ -200,22 +223,32 @@ void main() {
 
     float dif = clamp(dot(nor, light), 0.0, 1.0);
     float amb = 0.10 + 0.30 * clamp(nor.y, 0.0, 1.0);
-    float lum = amb * 0.4 + dif * sha * 1.02;
+    float lum = amb * 0.30 + dif * sha * 1.05;
 
     // Push mids toward black so the field reads as a dark base with bright
     // ridges (the Mind key), then Bloom claws contrast back for crisp plateaus.
-    lum = pow(clamp(lum, 0.0, 1.0), mix(1.9, 1.15, mBloom));
+    // Gamma is gentler than before — the old 1.9 floor was crushing the lit
+    // faces along with the shadows, which is what kept the crests gray.
+    lum = pow(clamp(lum, 0.0, 1.0), mix(1.7, 1.05, mBloom));
 
     // Low terrain sinks into black; only the raised plateaus stay luminous —
-    // gives the range depth instead of a flat snowfield.
-    float valley = smoothstep(-3.0, 6.0, pos.y);
-    lum *= mix(0.35, 1.0, valley);
+    // gives the range depth instead of a flat snowfield. Measured against the
+    // local baseline so the same ridge reads the same whether it sits on a
+    // massif or in a basin.
+    float valley = smoothstep(-0.45, 0.85, terrainDetail(pos.xz));
+    lum *= mix(0.16, 1.0, valley);
     lum = clamp(lum, 0.0, 1.0);
+
+    // S-curve pivoted on mid-gray: darks fall away, lit faces climb toward
+    // white, and the midpoint holds. This is the main contrast lever — a
+    // narrow toe-to-shoulder window is what separates ridge from valley
+    // instead of the whole range sitting in the mids.
+    lum = smoothstep(0.20, 0.80, lum);
 
     // Lift only the already-bright crests toward white — increases contrast
     // against the dark base without touching the shadows, so the range stops
     // reading as uniformly gray.
-    lum += smoothstep(0.55, 1.0, lum) * 0.18;
+    lum += smoothstep(0.60, 0.96, lum) * 0.35;
     lum = clamp(lum, 0.0, 1.0);
 
     // Distance fog folds far terrain back into the sky.

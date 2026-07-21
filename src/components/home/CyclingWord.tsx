@@ -30,7 +30,7 @@ export function CyclingWord() {
       return;
     }
 
-    const ROLL = 0.25; // duration of each upward roll
+    const ROLL = 0.35; // duration of each upward roll
     const LINGER = 1.15; // pause between rolls so each word can be read
 
     // Fire a shader "click" at the on-screen center of the word slot — same
