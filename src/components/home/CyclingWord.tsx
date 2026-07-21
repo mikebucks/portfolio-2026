@@ -31,7 +31,7 @@ export function CyclingWord() {
     }
 
     const ROLL = 0.25; // duration of each upward roll
-    const LINGER = 1; // pause between rolls so each word can be read
+    const LINGER = 1.15; // pause between rolls so each word can be read
 
     // Fire a shader "click" at the on-screen center of the word slot — same
     // signal a real pointer-down sends (normalized -1..1, y flipped). The

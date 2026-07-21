@@ -7,7 +7,7 @@ import { projects } from "@/data/projects";
  */
 export function AllProjects() {
   return (
-    <div className="max-w-[1600px] px-8 pb-20">
+    <div className="max-w-[1600px] pb-20">
       <h2 className="mb-6 font-mono text-xs uppercase tracking-widest text-black/60">
         All projects
       </h2>

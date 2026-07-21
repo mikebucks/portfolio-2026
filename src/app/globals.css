@@ -5,15 +5,6 @@
   --color-cream: #f4f1ea;
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  --animate-boat-float: boat-float 2.5s ease-in-out infinite;
-}
-
-@keyframes boat-float {
-  0%   { transform: translateY(0px) translateX(0px) rotate(0deg); }
-  20%  { transform: translateY(-1.5px) translateX(0.7px) rotate(0.4deg); }
-  50%  { transform: translateY(-2.5px) translateX(0px) rotate(-0.2deg); }
-  75%  { transform: translateY(-1px) translateX(-0.7px) rotate(0.3deg); }
-  100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
 }
 
 :root {

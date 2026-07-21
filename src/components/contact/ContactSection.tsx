@@ -67,7 +67,7 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative z-10 scroll-mt-24 bg-[#08080a]/70 backdrop-blur-md"
+      className="relative z-10 bg-[#08080a]/70 backdrop-blur-md"
     >
       <div className="max-w-[1600px] px-8 pt-20 pb-28">
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">

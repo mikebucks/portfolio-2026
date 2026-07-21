@@ -17,9 +17,9 @@ export function SynthToggleButton() {
       aria-pressed={open}
       aria-label={open ? "Close synth panel" : "Open synth panel"}
       title={open ? "Close synth" : "Open synth"}
-      className={`flex items-center justify-center transition ${open
+      className={`flex items-center justify-center text-black hover:text-accent transition ${open
           ? "cursor-zoom-out"
-          : "text-white/80 hover:bg-black/80 cursor-zoom-in"
+          : "cursor-zoom-in"
         }`}
     >
       
@@ -46,13 +46,19 @@ export function SynthToggleButton() {
         <path d="M14 12v4" />
         <path d="M18 12v4" /> */}
 
-
-
         {/* Faders Icon */}
-        <path d="M14 17H5"/>
+        {/* <path d="M14 17H5"/>
         <path d="M19 7h-9"/>
         <circle cx="17" cy="17" r="3"/>
-        <circle cx="7" cy="7" r="3"/>
+        <circle cx="7" cy="7" r="3"/> */}
+
+        {/* Philosopher's Seal Icon */}
+        <g fill="none" strokeWidth="1" strokeLinejoin="miter">
+          <circle cx="10" cy="10" r="9.3"/>
+          <polygon points="10,0.7 18.05,14.65 1.95,14.65"/>
+          <rect x="6.25" y="7.15" width="7.5" height="7.5"/>
+          <circle cx="10" cy="10.9" r="3.75"/>
+        </g>
       </svg>
     </button>
   );

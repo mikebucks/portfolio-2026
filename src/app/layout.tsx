@@ -11,6 +11,13 @@ export const metadata: Metadata = {
   description:
     "Design-engineering portfolio. Interfaces, systems, and the occasional audiovisual instrument.",
   metadataBase: new URL("https://example.com"),
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 // Match Safari's translucent UI chrome to the fixed 10px border in <body>
