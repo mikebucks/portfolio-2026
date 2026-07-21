@@ -2,7 +2,6 @@
 
 import { useGsapIntro } from "@/components/animation/useGsapIntro";
 import { CyclingWord } from "@/components/home/CyclingWord";
-import { InlineHighlight } from "@/components/ui/InlineHighlight";
 
 export function Hero() {
   const rootRef = useGsapIntro<HTMLElement>();

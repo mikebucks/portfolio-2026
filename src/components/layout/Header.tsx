@@ -88,12 +88,12 @@ export function Header() {
 
 
   return (
-    <>
+    <header className={cn("fixed top-0 z-30 w-full px-8 backdrop-blur-sm transition-all duration-400",
+      scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60")}>
       <SynthPanel />
-      <header className={cn(
-        "fixed inset-x-0 top-0 z-30 flex items-center justify-between w-full max-w-[1600px] px-8 backdrop-blur-sm transition-all duration-400",
-        scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60"
-      )}>
+      <div className={
+        "flex items-center justify-between inset-x-0 w-full max-w-[1600px]"
+      }>
         <section className="flex justify-between w-full">
           <Link
             href="/"
@@ -127,7 +127,7 @@ export function Header() {
             </nav>
           </div>
         </section>
-      </header>
-    </>
+      </div>
+    </header>
   );
 }

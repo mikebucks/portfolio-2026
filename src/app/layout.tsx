@@ -31,7 +31,7 @@ export default function RootLayout({
         <SmoothScroll />
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-[#f4f1ea]"
+          className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-cream"
         />
         <AudioProvider>
           <SynthKeyboard />
