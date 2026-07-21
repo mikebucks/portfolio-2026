@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
-// import { SynthToggleButton } from "../audio/SynthToggleButton";
+import { SynthToggleButton } from "../audio/SynthToggleButton";
 
 const NAV_LINKS = [
   { id: "projects", label: "Projects" },
@@ -120,9 +120,9 @@ export function Header() {
                     </Link>
                   </li>
                 ))}
-                {/* <li>
+                <li>
                   <SynthToggleButton />
-                </li> */}
+                </li>
               </ul>
             </nav>
           </div>

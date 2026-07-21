@@ -1,4 +1,5 @@
 import type { MacroValues, SynthSettings } from "@/lib/synthTypes";
+import { causationFragment } from "./causation";
 import { correspondenceFragment } from "./correspondence";
 import { mindFragment } from "./mind";
 import { polarityFragment } from "./polarity";
@@ -259,7 +260,7 @@ const rhythmPreset: ThemePreset = {
 // ── Causation · Cause & Effect ───────────────────────────────────────────────
 // "Every cause has its effect." Filtered noise — wind / surf through a resonant
 // band. The one non-pitched engine: the keyboard gives rhythmic control while
-// the base settings shape color and motion. Reuses the Mind shader.
+// the base settings shape color and motion. A scrolling terraced landscape.
 const causationBase: SynthSettings = {
   oscEngine: "noise",
   oscWave: 0.5, // noise color: <0.34 brown, <0.67 pink, else white
@@ -299,7 +300,7 @@ const causationPreset: ThemePreset = {
   id: "causation",
   label: "Causation",
   blurb: "Every cause has its effect; every effect its cause.",
-  fragment: mindFragment,
+  fragment: causationFragment,
   baseSettings: causationBase,
   shaderMacros: [0.5, 0.4, 0.35, 0.4],
 };

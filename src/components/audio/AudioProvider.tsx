@@ -31,9 +31,11 @@ export function useAudio() {
 }
 
 /**
- * Lazy audio provider: Tone.js is only imported after an explicit gesture
- * (pointerdown / keydown / touchstart) so the initial JS stays small and
- * autoplay restrictions are respected.
+ * Lazy audio provider: Tone.js is imported and the AudioContext started only
+ * after the user's first gesture, so the initial JS stays small and the
+ * browser's autoplay policy is satisfied. Browsers never prompt for audio —
+ * they just keep the context suspended until a gesture — so we treat the first
+ * pointer/key/touch anywhere as the opt-in (see the auto-unlock effect below).
  */
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -71,6 +73,33 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       unlockingRef.current = null;
     }
   }, [settings, setAudioUnlocked]);
+
+  // Auto-unlock on the first user gesture anywhere on the page. `unlock` closes
+  // over the latest `settings`, so read it through a ref rather than baking a
+  // stale copy into the once-attached listeners.
+  const unlockRef = useRef(unlock);
+  useEffect(() => {
+    unlockRef.current = unlock;
+  });
+
+  useEffect(() => {
+    if (unlocked) return;
+    const onFirstGesture = () => {
+      void unlockRef.current();
+      detach();
+    };
+    // Idempotent: unlock() guards against a second engine, so racing with a
+    // mapped keypress (which also unlocks) is harmless.
+    const detach = () => {
+      window.removeEventListener("pointerdown", onFirstGesture);
+      window.removeEventListener("keydown", onFirstGesture);
+      window.removeEventListener("touchstart", onFirstGesture);
+    };
+    window.addEventListener("pointerdown", onFirstGesture);
+    window.addEventListener("keydown", onFirstGesture);
+    window.addEventListener("touchstart", onFirstGesture);
+    return detach;
+  }, [unlocked]);
 
   // Keep engine in sync with settings as user tweaks the panel.
   useEffect(() => {

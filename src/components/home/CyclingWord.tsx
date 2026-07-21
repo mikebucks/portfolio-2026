@@ -31,7 +31,7 @@ export function CyclingWord() {
     }
 
     const ROLL = 0.25; // duration of each upward roll
-    const LINGER = 1.75; // pause between rolls so each word can be read
+    const LINGER = 1.15; // pause between rolls so each word can be read
 
     // Fire a shader "click" at the on-screen center of the word slot — same
     // signal a real pointer-down sends (normalized -1..1, y flipped). The
@@ -59,7 +59,7 @@ export function CyclingWord() {
       tl?.kill();
       gsap.set(track, { yPercent: 0 });
 
-      tl = gsap.timeline({ delay: firstPlay ? 1.9 : 0.4 });
+      tl = gsap.timeline({ delay: firstPlay ? 1.15 : 0.4 });
 
       let at = 0;
       for (let i = 1; i < WORDS.length; i++) {
