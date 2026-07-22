@@ -15,7 +15,7 @@ export function AboutSection() {
           About
         </h2>
         <p className="mb-10 font-mono text-xs uppercase tracking-widest text-white/60">
-          IC x 3 (Design, Eng, Product)
+          <strong>IC</strong>x<strong>3</strong> (Design, Eng, Product)
         </p>
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
