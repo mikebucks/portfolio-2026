@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight } from "lucide-react";
-import { SOCIALS, CONTACT_EMAIL } from "@/data/socials";
 
 // Web3Forms access keys are public by design (safe to ship client-side). Create
 // a free key tied to the contact inbox at https://web3forms.com and set it as
@@ -12,7 +10,7 @@ const ACCESS_KEY = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY ?? "";
 type Status = "idle" | "submitting" | "success" | "error";
 
 const fieldClass =
-  "w-full rounded-md border border-white/15 bg-white/[0.04] px-4 py-3 text-white placeholder-white/40 outline-none transition-colors focus:border-accent";
+  "w-full rounded-md border border-black/15 bg-black/[0.04] px-4 py-3 text-black placeholder-black/40 outline-none transition-colors focus:border-accent";
 
 export function ContactSection() {
   const [status, setStatus] = useState<Status>("idle");
@@ -67,17 +65,17 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative z-10 bg-[#08080a]/70 backdrop-blur-md"
+      className="relative z-10 bg-white/70 backdrop-blur-md"
     >
       <div className="max-w-[1600px] px-8 pt-20 pb-28">
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
           Contact
         </h2>
-        <p className="mb-12 max-w-2xl text-2xl md:text-3xl font-semibold tracking-tight text-white">
+        <p className="mb-12 max-w-2xl text-2xl md:text-3xl font-semibold tracking-tight text-black">
           Have something to build? Let&apos;s talk.
         </p>
 
-        <div className="grid gap-14 md:grid-cols-[1fr_auto]">
+        <div>
           {/* Form */}
           <form onSubmit={handleSubmit} className="max-w-xl">
             {/* Honeypot */}
@@ -93,7 +91,7 @@ export function ContactSection() {
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-white/60">
+                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
                     Name
                   </span>
                   <input
@@ -106,7 +104,7 @@ export function ContactSection() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-white/60">
+                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
                     Email
                   </span>
                   <input
@@ -120,7 +118,7 @@ export function ContactSection() {
                 </label>
               </div>
               <label className="block">
-                <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-white/60">
+                <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
                   Message
                 </span>
                 <textarea
@@ -153,40 +151,6 @@ export function ContactSection() {
               )}
             </div>
           </form>
-
-          {/* Social links */}
-          <div className="md:min-w-48">
-            <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-white/60">
-              Elsewhere
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <a
-                  href={`mailto:${CONTACT_EMAIL}`}
-                  className="group inline-flex items-center gap-1 text-white/90 underline decoration-white/20 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
-                >
-                  {CONTACT_EMAIL}
-                </a>
-              </li>
-              {SOCIALS.map((s) => (
-                <li key={s.label}>
-                  <a
-                    href={s.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group inline-flex items-center gap-1 text-white/90 underline decoration-white/20 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
-                  >
-                    {s.label}
-                    <ArrowUpRight
-                      size={14}
-                      strokeWidth={1.5}
-                      className="text-white/40 transition-colors group-hover:text-accent"
-                    />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
       </div>
     </section>

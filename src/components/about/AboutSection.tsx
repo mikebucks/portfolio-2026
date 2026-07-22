@@ -20,22 +20,22 @@ export function AboutSection() {
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
           <p>
-            My M.O. has always been to master as much of the product stack as
-            possible. Starting my career as a UI Designer, I figured out coding
-            my own designs was the best way to ship great work. That realization
+            My goal has always been to master as much of the product stack as
+            possible. Starting as a UI Designer, I figured out early that coding
+            my own designs was the easiest way to create the type of delightful work I was interested in. That realization
             led me on a decade-long tour as a <strong>Frontend Engineer</strong>, <strong>Creative Technologist</strong>,
-            and <strong>Technical Lead</strong> where I built apps and sites for some of the
+            and <strong>Technical Lead</strong> where I built experiences for some of the
             largest brands in the world.
           </p>
           <p>
             I&apos;ve since returned to the design world, most recently leading
             Product Design at Figment, the world&apos;s largest proof-of-stake
             crypto infrastructure company. Over the better part of 4 years, I
-            grew a self-serve staking product from zero to over{" "}
-            <strong>$500M</strong> of Ethereum staked as the sole designer
-            for a decentralized app experience. All while serving Figment&apos;s
-            institutional customers, building financial analysis dashboards to serve their ~<strong>$18B</strong>{" "}
-            worth of crypto staked to Figment&apos;s network of validators.
+            grew a self-serve staking product from near zero to over{" "}
+            <strong>$500M</strong> of Ethereum staked through a decentralized app experience. All while 
+            simultaneously serving Figment&apos;s institutional customers, building staking flows and financial 
+            analysis dashboards to serve their ~<strong>$18B</strong>{" "}
+            in assets staked to Figment&apos;s network of validators.
           </p>
           <p>
             My unique tenure has positioned me perfectly to take advantage of the
