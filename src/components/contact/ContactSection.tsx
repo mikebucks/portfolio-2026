@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
+import gsap from "gsap";
+import { prefersReducedMotion } from "@/lib/device";
 
 // Web3Forms access keys are public by design (safe to ship client-side). Create
 // a free key tied to the contact inbox at https://web3forms.com and set it as
@@ -15,6 +18,63 @@ const fieldClass =
 export function ContactSection() {
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [senderName, setSenderName] = useState("");
+  const successRef = useRef<HTMLDivElement>(null);
+  const formWrapRef = useRef<HTMLDivElement>(null);
+  // Reserve the form's rendered height so swapping in the (shorter) success
+  // state doesn't let the section collapse and jump. Re-measured on resize
+  // while the form is up.
+  const [reservedHeight, setReservedHeight] = useState<number>();
+
+  useEffect(() => {
+    if (status === "success") return;
+    const measure = () => {
+      if (formWrapRef.current) {
+        setReservedHeight(formWrapRef.current.offsetHeight);
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [status]);
+
+  // Reveal the success state in the site's intro language: the check badge
+  // pops in with a slight overshoot, then the message lines stagger up.
+  useEffect(() => {
+    const el = successRef.current;
+    if (status !== "success" || !el) return;
+
+    const badge = el.querySelector<HTMLElement>("[data-success-badge]");
+    const lines = el.querySelectorAll<HTMLElement>("[data-success-line]");
+
+    if (prefersReducedMotion()) {
+      gsap.set([badge, ...lines], { opacity: 1, y: 0, scale: 1 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+      tl.from(badge, {
+        opacity: 0,
+        scale: 0.6,
+        duration: 0.6,
+        ease: "back.out(2)",
+      });
+      tl.from(
+        lines,
+        {
+          opacity: 0,
+          y: 20,
+          duration: 0.9,
+          ease: "expo.out",
+          stagger: 0.08,
+        },
+        0.15,
+      );
+    }, successRef);
+
+    return () => ctx.revert();
+  }, [status]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -50,6 +110,7 @@ export function ContactSection() {
       });
       const json = await res.json();
       if (json.success) {
+        setSenderName(String(data.name ?? "").trim());
         setStatus("success");
         form.reset();
       } else {
@@ -71,13 +132,42 @@ export function ContactSection() {
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
           Contact
         </h2>
-        <p className="mb-12 max-w-2xl text-2xl md:text-3xl font-semibold tracking-tight text-black">
-          Have something to build? Let&apos;s talk.
-        </p>
 
-        <div>
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="max-w-xl">
+        <div style={{ minHeight: reservedHeight }}>
+        {status === "success" ? (
+          <div
+            ref={successRef}
+            className="max-w-xl"
+            role="status"
+            aria-live="polite"
+          >
+            <div
+              data-success-badge
+              className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-accent"
+            >
+              <Check size={24} strokeWidth={2.5} className="text-black" />
+            </div>
+            <p
+              data-success-line
+              className="mb-4 text-2xl md:text-3xl font-semibold tracking-tight text-black"
+            >
+              {senderName ? `Thanks, ${senderName}.` : "Thanks."} Message
+              received.
+            </p>
+            <p data-success-line className="max-w-md text-black/60">
+              I read every note that comes through here and I&apos;ll get back to
+              you soon. In the meantime, feel free to poke around the rest of the
+              site.
+            </p>
+          </div>
+        ) : (
+          <div ref={formWrapRef}>
+            <p className="mb-12 max-w-2xl text-2xl md:text-3xl font-semibold tracking-tight text-black">
+              Have something to build? Let&apos;s talk.
+            </p>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="max-w-xl">
             {/* Honeypot */}
             <input
               type="checkbox"
@@ -139,11 +229,6 @@ export function ContactSection() {
               >
                 {status === "submitting" ? "Sending…" : "Send message"}
               </button>
-              {status === "success" && (
-                <span className="font-mono text-xs text-accent" role="status">
-                  Thanks — I&apos;ll be in touch.
-                </span>
-              )}
               {status === "error" && error && (
                 <span className="font-mono text-xs text-red-400" role="alert">
                   {error}
@@ -151,6 +236,8 @@ export function ContactSection() {
               )}
             </div>
           </form>
+          </div>
+        )}
         </div>
       </div>
     </section>
