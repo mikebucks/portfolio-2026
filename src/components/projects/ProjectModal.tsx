@@ -148,8 +148,13 @@ export function ProjectModal() {
         type="button"
         onClick={close}
         aria-label="Close project"
-        style={{ opacity: isOpen ? 1 : 0, transition: reduce ? "none" : "opacity 200ms 380ms" }}
-        className="fixed right-5 top-5 z-[130] flex h-10 w-10 items-center justify-center rounded-full bg-black/5 text-black/70 transition-colors hover:bg-black/10 hover:text-black"
+        style={{
+          opacity: isOpen ? 1 : 0,
+          transition: reduce ? "none" : "opacity 200ms 380ms",
+          // Clear the notch safe area (viewport-fit=cover); 0 on desktop.
+          top: "calc(1.25rem + env(safe-area-inset-top, 0px))",
+        }}
+        className="fixed right-5 z-[130] flex h-10 w-10 items-center justify-center rounded-full bg-black/5 text-black/70 transition-colors hover:bg-black/10 hover:text-black"
       >
         <X size={18} strokeWidth={1.75} />
       </button>

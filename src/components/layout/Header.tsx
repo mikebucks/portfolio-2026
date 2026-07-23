@@ -88,7 +88,11 @@ export function Header() {
 
 
   return (
-    <header className={cn("fixed top-0 z-30 w-full px-8 backdrop-blur-sm transition-all duration-400",
+    // top offset by safe-area-inset-top (viewport-fit=cover): sit the nav below
+    // the notch / cream status-bar frame bar. Zero on desktop, so unchanged there.
+    <header
+      style={{ top: "env(safe-area-inset-top, 0px)" }}
+      className={cn("fixed z-30 w-full px-8 backdrop-blur-sm transition-all duration-400",
       scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60")}>
       <SynthPanel />
       <div className={

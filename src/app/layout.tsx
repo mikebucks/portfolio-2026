@@ -21,11 +21,18 @@ export const metadata: Metadata = {
   themeColor: "#f4f1ea",
 };
 
-// Match Safari's translucent UI chrome to the fixed 10px border in <body>
-// so the address bar / status bar read as part of the frame instead of
-// revealing the dark page content behind them.
+// Make Safari's translucent UI chrome read as part of the cream frame.
+//
+// Since Safari 26 (iOS 26 "Liquid Glass"), `theme-color` is IGNORED. Safari
+// instead tints its status bar and floating address bar by sampling the
+// `background-color` of position:fixed elements at the screen edges, falling
+// back to the <body> background. The opaque cream frame bars in <body> are
+// that sample; `viewport-fit: cover` is required so the page (and those bars)
+// extends under the chrome for Safari to read them, and so the bars can fill
+// the safe-area regions. `themeColor` is kept as a fallback for iOS < 26.
 export const viewport: Viewport = {
   themeColor: "#f4f1ea",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -40,9 +47,30 @@ export default function RootLayout({
           layer is being composited. svh is the static small-viewport height. */}
       <body className="min-h-svh antialiased relative">
         <SmoothScroll />
+        {/* Cream frame. On iOS 26 each edge must be its own OPAQUE
+            position:fixed element for Safari to sample its background-color and
+            tint the chrome cream (Safari ignores absolute children of a fixed
+            parent, and reads background-color, not border color — the old
+            single border div was transparent, so nothing got sampled). Top and
+            bottom fill the safe-area regions so the status bar and the floating
+            address bar read cream, continuous with the frame; left/right are
+            10px rails. On desktop the safe-area insets are 0, so every bar is
+            10px — identical to the previous border. */}
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 z-[100] border-[10px] border-cream"
+          className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[calc(env(safe-area-inset-top,0px)+10px)] bg-cream"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[100] h-[calc(env(safe-area-inset-bottom,0px)+10px)] bg-cream"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-y-0 left-0 z-[100] w-[calc(env(safe-area-inset-left,0px)+10px)] bg-cream"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-y-0 right-0 z-[100] w-[calc(env(safe-area-inset-right,0px)+10px)] bg-cream"
         />
         <AudioProvider>
           <SynthKeyboard />

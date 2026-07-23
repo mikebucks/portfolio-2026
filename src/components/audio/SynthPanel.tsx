@@ -41,7 +41,9 @@ export function SynthPanel() {
     <aside
       role="dialog"
       aria-label="Synth controls"
-      className="fixed top-0 right-0 z-40 w-[min(420px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-black/85 p-4 font-mono text-xs text-white shadow-2xl backdrop-blur-md"
+      // top offset for the notch safe area (viewport-fit=cover); 0 on desktop.
+      style={{ top: "env(safe-area-inset-top, 0px)" }}
+      className="fixed right-0 z-40 w-[min(420px,calc(100vw-2rem))] rounded-xl border border-white/10 bg-black/85 p-4 font-mono text-xs text-white shadow-2xl backdrop-blur-md"
     >
       <header className="flex items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">

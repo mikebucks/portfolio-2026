@@ -4,7 +4,15 @@ import { SOCIALS, CONTACT_EMAIL } from "@/data/socials";
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    <footer className="relative z-10 px-8 py-10 bg-cream">
+    // Extra bottom padding for the home-indicator safe area (viewport-fit=cover),
+    // so the last row clears the floating address bar. The footer is already
+    // cream, so the fixed cream bottom frame bar overlaps it invisibly.
+    <footer
+      style={{
+        paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))",
+      }}
+      className="relative z-10 px-8 pt-10 bg-cream"
+    >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-8">
         <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs">
           <li>
