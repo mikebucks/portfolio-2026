@@ -30,6 +30,27 @@ body {
   isolation: isolate;
 }
 
+/* The full-bleed shader layer. Pinned to the LARGE viewport (chrome retracted)
+   so its height never changes while iOS Safari animates its toolbars. A
+   mid-scroll size change reallocates — and therefore clears — the WebGL drawing
+   buffer, and the cleared frame gets composited: that is what makes the
+   background strobe. When the chrome is expanded the bottom ~60-90px simply
+   sits behind the toolbar and is revealed, already painted, as it retracts.
+
+   Written as a rule + @supports rather than two declarations in one block,
+   because Lightning CSS drops a same-property fallback whenever its build
+   targets all understand the later value. iOS Safari's vh has always been the
+   large viewport, so the fallback is exact on the engines that need it. */
+.bg-layer-full {
+  height: 100vh;
+}
+
+@supports (height: 100lvh) {
+  .bg-layer-full {
+    height: 100lvh;
+  }
+}
+
 html.lenis,
 html.lenis body {
   height: auto;

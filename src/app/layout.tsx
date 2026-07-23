@@ -34,7 +34,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-dvh antialiased relative">
+      {/* svh, not dvh: dvh is re-resolved on every step of iOS Safari's toolbar
+          animation, relayouting mid-scroll on the same frames the fixed shader
+          layer is being composited. svh is the static small-viewport height. */}
+      <body className="min-h-svh antialiased relative">
         <SmoothScroll />
         <div
           aria-hidden

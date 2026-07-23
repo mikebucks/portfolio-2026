@@ -9,7 +9,11 @@ export function Hero() {
   return (
     <section
       ref={rootRef}
-      className="relative z-10 flex min-h-[100dvh] flex-col justify-center px-8 mix-blend-difference"
+      // 100svh, not 100dvh: dvh re-resolves throughout iOS Safari's toolbar
+      // animation, so the hero (and with it the document height and this
+      // mix-blend-difference group) relayouts on every frame of the scroll.
+      // svh is static — it fills the screen with the chrome shown.
+      className="relative z-10 flex min-h-[100svh] flex-col justify-center px-8 mix-blend-difference"
     >
       <div className="max-w-200">
         <div

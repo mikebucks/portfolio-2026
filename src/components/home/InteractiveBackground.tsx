@@ -59,7 +59,11 @@ export function InteractiveBackground({
       style={{ transform: "translateZ(0)" }}
       className={
         variant === "full"
-          ? "pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#08080a]"
+          ? // Top-anchored with a fixed 100lvh height (.bg-layer-full) rather
+            // than inset-0: a fixed inset-0 box tracks iOS's *dynamic* viewport,
+            // so its height changes all the way through the toolbar animation.
+            // See the .bg-layer-full comment in globals.css.
+            "pointer-events-none fixed inset-x-0 top-0 bg-layer-full -z-10 overflow-hidden bg-[#08080a]"
           : // Render at full viewport height anchored to the banner's top, so
             // the shader is the SAME scale as the home page and the banner's
             // own overflow-hidden simply crops the bottom — no squashing.
@@ -170,10 +174,6 @@ function WebGLCanvas({
           w: canvas.clientWidth || window.innerWidth,
           h: canvas.clientHeight || window.innerHeight,
         });
-        {
-          const { w, h } = measure();
-          renderer.setSize(w, h, false);
-        }
 
         // ── Scene ─────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
@@ -181,13 +181,66 @@ function WebGLCanvas({
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
         const material = createBackgroundMaterial(themeRef.current);
-        // uResolution must be in physical (buffer) pixels — gl_FragCoord is also
-        // physical. Logical CSS pixels would be off by devicePixelRatio.
-        material.uniforms.uResolution.value.set(
-          renderer.domElement.width,
-          renderer.domElement.height,
-        );
         scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+        // ── Sizing ────────────────────────────────────────────────────────
+        // Resize events only RECORD a target; the drawing buffer is resized
+        // inside the render loop, immediately before the draw call.
+        //
+        // renderer.setSize assigns canvas.width/height, and assigning either
+        // reallocates and clears the WebGL drawing buffer. Doing that from an
+        // event handler leaves a cleared (black) buffer that the compositor can
+        // present before the next rAF paints it. iOS fires a stream of resizes
+        // while its toolbars animate and defers rAF during touch scrolling, so
+        // the background strobed for the whole animation. Resizing inside the
+        // tick means the frame that clears the buffer is the frame that
+        // repaints it.
+        const isTouch = device.isCoarsePointer();
+        // Far above any browser-toolbar delta (~50-120px), far below an
+        // orientation change (which swaps width, so it takes the other branch).
+        const CHROME_JITTER = 200;
+
+        let pendingW = 0;
+        let pendingH = 0;
+        // -1 so the first applyPendingResize always sizes the buffer.
+        let appliedW = -1;
+        let appliedH = -1;
+
+        // Scrollable range, cached here rather than read per scroll event.
+        // Reading scrollHeight mid-scroll forces a layout flush every frame,
+        // because Lenis and GSAP have already dirtied the DOM. uScroll is a
+        // slow-moving 0..1 ratio, so a stale range between resizes is harmless.
+        let scrollRange = 0;
+
+        const requestResize = () => {
+          scrollRange =
+            document.documentElement.scrollHeight - window.innerHeight;
+          const { w, h } = measure();
+          // .bg-layer-full pins the full-bleed layer to 100lvh so chrome can't
+          // resize it, but in-app browsers vary and lvh has been reported short
+          // on some hardware. Swallow any residual chrome-sized jitter here.
+          if (isTouch && w === pendingW && Math.abs(h - pendingH) < CHROME_JITTER) {
+            return;
+          }
+          pendingW = w;
+          pendingH = h;
+        };
+
+        const applyPendingResize = () => {
+          if (pendingW === appliedW && pendingH === appliedH) return;
+          appliedW = pendingW;
+          appliedH = pendingH;
+          renderer.setSize(appliedW, appliedH, false);
+          // uResolution must be in physical (buffer) pixels — gl_FragCoord is
+          // also physical. Logical CSS pixels would be off by devicePixelRatio.
+          material.uniforms.uResolution.value.set(
+            renderer.domElement.width,
+            renderer.domElement.height,
+          );
+        };
+
+        requestResize();
+        applyPendingResize();
 
         // Wire up live theme swapping. If the user changed theme during the
         // async import, sync to the latest value now.
@@ -296,27 +349,17 @@ function WebGLCanvas({
         };
 
         const onScroll = () => {
-          const h = document.documentElement.scrollHeight - window.innerHeight;
-          visualState.scroll = h > 0 ? window.scrollY / h : 0;
-        };
-
-        const onResize = () => {
-          const { w, h } = measure();
-          renderer.setSize(w, h, false);
-          // After resize, domElement.width/height reflect the new physical size.
-          material.uniforms.uResolution.value.set(
-            renderer.domElement.width,
-            renderer.domElement.height,
-          );
+          visualState.scroll =
+            scrollRange > 0 ? window.scrollY / scrollRange : 0;
         };
 
         window.addEventListener("pointermove", onMove, { passive: true });
         window.addEventListener("pointerdown", onDown, { passive: true });
         window.addEventListener("scroll", onScroll, { passive: true });
-        window.addEventListener("resize", onResize, { passive: true });
+        window.addEventListener("resize", requestResize, { passive: true });
         // Observe the element too — banner layout can change without a window
         // resize (e.g. content reflow), and this keeps the buffer in sync.
-        const resizeObserver = new ResizeObserver(onResize);
+        const resizeObserver = new ResizeObserver(requestResize);
         resizeObserver.observe(canvas);
         onScroll();
 
@@ -339,6 +382,9 @@ function WebGLCanvas({
           const now = performance.now();
           const dt = Math.min((now - last) / 1000, 0.05);
           last = now;
+
+          // Clear-and-repaint in the same frame — see the Sizing block above.
+          applyPendingResize();
 
           tickVisualState(dt);
 
@@ -422,7 +468,7 @@ function WebGLCanvas({
           window.removeEventListener("pointermove", onMove);
           window.removeEventListener("pointerdown", onDown);
           window.removeEventListener("scroll", onScroll);
-          window.removeEventListener("resize", onResize);
+          window.removeEventListener("resize", requestResize);
           swapThemeRef.current = null;
           material.dispose();
           renderer.dispose();
