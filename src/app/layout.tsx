@@ -18,6 +18,7 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  themeColor: "#f4f1ea",
 };
 
 // Match Safari's translucent UI chrome to the fixed 10px border in <body>

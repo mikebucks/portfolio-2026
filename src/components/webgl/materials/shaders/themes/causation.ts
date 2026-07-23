@@ -37,36 +37,31 @@ uniform vec4  uNoteAmts;
 
 const mat2 m2 = mat2(0.8, -0.6, 0.6, 0.8);
 
+// Wave basis. The original was 0.7 * (sin(x) + sin(y)) — separable and
+// axis-aligned, so every octave stamped down the same square lattice and the
+// range read as a predictable grid of peaks marching to the horizon. A third
+// wave at an incommensurate direction *and* frequency makes the sum
+// non-separable and quasi-periodic: it never exactly repeats, at any scale.
 float cosNoise(in vec2 p) {
-  return 0.7 * (sin(p.x) + sin(p.y));
+  return 0.56 * (
+      sin(p.x)
+    + sin(p.y)
+    + 0.9 * sin(0.7317 * p.x + 1.2471 * p.y + 1.71)
+  );
 }
 
-// Layered cosine-noise heightfield.
-float terrain(in vec2 p, in float t) {
-  vec2 q = p * 0.6;
-
-  // Large-scale rolling elevation — same cosine basis, but very low frequency,
-  // and NOT a domain warp: it only lifts/drops the base height, it never
-  // distorts the sample coords. So the range gains taller massifs and lower
-  // basins (less uniform) without the field smearing into a texture.
-  float relief = cosNoise(p * 0.06) + 0.5 * cosNoise(m2 * p * 0.11 + 3.0);
-
-  float h = sin(t * 0.2) * 4.0 + relief * 1.8;
-  float s = 1.5;
-  // Six octaves rather than seven: the seventh was pure high-frequency fizz that
-  // the terracing turned into a stippled blur on the peaks. Dropping it keeps
-  // the crests crisp while leaving the terraced shape untouched.
-  for (int i = 0; i < 6; i++) {
-    h += s * cosNoise(q);
-    s *= 0.55;
-    q = m2 * q * 2.0;
-  }
-  return h * 0.3;
+// Octave budget for a sample this far from the camera. Detail fine enough to
+// matter in the foreground is pure aliasing noise at the horizon, so the field
+// carries eight octaves up close and sheds them with distance — the standard
+// heightfield LOD trick. Weights are fractional (see \`octaves\`), so an octave
+// fades in rather than popping.
+float lodAt(in float d) {
+  return clamp(11.6 - log2(max(d, 1.0)), 5.5, 8.0);
 }
 
-// Just the octave detail from terrain() — the same loop, with the \`relief\` and
-// global-drift base terms omitted. This is what shading contrast is measured
-// against instead of absolute world height.
+// The octave detail of the heightfield, without the \`relief\` and global-drift
+// base terms. Shading contrast is measured against this rather than absolute
+// world height.
 //
 // Those base terms lift and drop whole regions by several units, so keying off
 // raw pos.y meant flying into a basin crushed the entire frame dark while
@@ -75,16 +70,61 @@ float terrain(in vec2 p, in float t) {
 // construction, so a ridge reads as a ridge wherever the camera happens to be.
 // (Deliberately NOT pos.y minus a baseline: the terrace mapping is nonlinear,
 // so no single scale factor tracks it across regions.)
-float terrainDetail(in vec2 p) {
+//
+// Lacunarity is 2.13, deliberately not 2.0: with a sine basis an exact doubling
+// makes every octave a harmonic of the fundamental, so the whole sum is
+// periodic on the first octave's lattice — that periodicity *was* the repeating
+// pattern. An irrational-ish ratio, plus a phase offset per octave so they
+// don't all align at the origin, breaks it permanently.
+//
+// Gain 0.575 against that lacunarity puts the slope ratio above 1, so each
+// octave adds proportionally *more* gradient than the last: the range gets
+// rougher the closer you look rather than resolving into smooth blobs. Eight
+// octaves reach ~120x the base frequency, about six times finer than the old
+// stack — that top end is what the foreground was missing.
+float octaves(in vec2 p, in float lod) {
   vec2 q = p * 0.6;
   float d = 0.0;
   float s = 1.5;
-  for (int i = 0; i < 6; i++) {
-    d += s * cosNoise(q);
-    s *= 0.55;
-    q = m2 * q * 2.0;
+  for (int i = 0; i < 8; i++) {
+    float w = clamp(lod - float(i), 0.0, 1.0);
+    if (w <= 0.0) break;
+    d += s * w * cosNoise(q);
+    s *= 0.575;
+    q = m2 * q * 2.13 + vec2(1.7, -2.3);
   }
   return d * 0.3;
+}
+
+// Sub-march relief used for shading only — finer than the ray marcher can
+// resolve, so it perturbs the normal instead of the geometry (see main).
+float microField(in vec2 p) {
+  vec2 q = p * 2.6;
+  float h = 0.0;
+  float s = 1.0;
+  for (int i = 0; i < 3; i++) {
+    h += s * cosNoise(q);
+    s *= 0.55;
+    q = m2 * q * 2.3 + 5.1;
+  }
+  return h;
+}
+
+// Layered heightfield.
+float terrain(in vec2 p, in float t, in float lod) {
+  // Large-scale rolling elevation — same wave basis, but very low frequency,
+  // and NOT a domain warp: it only lifts/drops the base height, it never
+  // distorts the sample coords. So the range gains taller massifs and lower
+  // basins (less uniform) without the field smearing into a texture. Three
+  // terms at unrelated frequencies rather than two: the longest one is wider
+  // than the whole visible draw distance, so the far ridges sit at genuinely
+  // different elevations instead of all hugging one horizon line.
+  float relief = cosNoise(p * 0.06)
+               + 0.5 * cosNoise(m2 * p * 0.113 + 3.0)
+               + 0.75 * cosNoise(p * 0.021 + 11.0);
+
+  float base = sin(t * 0.2) * 4.0 + relief * 1.8;
+  return base * 0.3 + octaves(p, lod);
 }
 
 // Click swell, applied as an actual displacement of the terrain height (not a
@@ -104,29 +144,41 @@ float clickLift(in vec2 xz, in vec2 clickC) {
 
 // Signed distance to the terraced surface. The mix between \`ceil(h)*2\` and the
 // raw height quantizes the field into plateaus — the "effects" of the theme.
-float map(in vec3 pos, in float t, in vec2 clickC) {
-  float h = terrain(pos.xz, t);
+//
+// The unit step is load-bearing and shouldn't be shrunk for extra contour
+// bands: this swings between the raw height and ~2x it, so each riser is as
+// tall as the terrain under it rather than as tall as the step. Halving the
+// step doesn't add plateaus, it just runs the same full-height swing twice as
+// often and the whole range dissolves into foam. Extra detail belongs in the
+// octave stack, which is where it now is.
+float map(in vec3 pos, in float t, in vec2 clickC, in float lod) {
+  float h = terrain(pos.xz, t, lod);
   float mf2 = (cos(2.0 * h * 3.14159265) + 1.0) * 0.5;
   float terr = mix(ceil(h) * 2.0, h, mf2);
   terr += clickLift(pos.xz, clickC);
   return pos.y - terr;
 }
 
-vec3 calcNormal(in vec3 pos, in float t, in vec2 clickC) {
-  vec2 e = vec2(0.02, 0.0);
+// Normal epsilon widens with distance so the added high-frequency octaves
+// average out on far slopes instead of shimmering pixel to pixel.
+vec3 calcNormal(in vec3 pos, in float t, in vec2 clickC, in float lod, in float dist) {
+  vec2 e = vec2(0.014 + dist * 0.0035, 0.0);
   return normalize(vec3(
-    map(pos + e.xyy, t, clickC) - map(pos - e.xyy, t, clickC),
-    map(pos + e.yxy, t, clickC) - map(pos - e.yxy, t, clickC),
-    map(pos + e.yyx, t, clickC) - map(pos - e.yyx, t, clickC)
+    map(pos + e.xyy, t, clickC, lod) - map(pos - e.xyy, t, clickC, lod),
+    map(pos + e.yxy, t, clickC, lod) - map(pos - e.yxy, t, clickC, lod),
+    map(pos + e.yyx, t, clickC, lod) - map(pos - e.yyx, t, clickC, lod)
   ));
 }
 
-float calcShadow(in vec3 ro, in vec3 rd, in float t, in vec2 clickC) {
+// Shadows run two octaves coarser than the surface they land on — the fine
+// detail is invisible in an occlusion term and this is 12 more field evaluations
+// per pixel.
+float calcShadow(in vec3 ro, in vec3 rd, in float t, in vec2 clickC, in float lod) {
   float res = 1.0;
   float d = 0.4;
   for (int i = 0; i < 12; i++) {
     vec3 pos = ro + d * rd;
-    float h = map(pos, t, clickC);
+    float h = map(pos, t, clickC, lod - 2.0);
     res = min(res, max(h, 0.0) * 1.2 / d);
     if (res < 0.02) break;
     d += clamp(h * 0.3, 0.15, 1.2);
@@ -199,15 +251,18 @@ void main() {
   vec3 crd = normalize(vec3(cq.x, cq.y - 1.5, -1.0));
   vec2 clickOrigin = (ro + (-ro.y / crd.y) * crd).xz;
 
-  // Sphere-trace the heightfield. A few more, slightly smaller steps sharpen the
-  // distant ridge silhouettes where the old march undersampled and softened them.
-  float tmax = 55.0;
+  // Sphere-trace the heightfield. Draw distance is deeper than before so the
+  // vista stacks more ridges before the fog takes over; the distance-driven LOD
+  // pays for it by making those far steps cheaper than the old fixed six
+  // octaves. The hit threshold relaxes with distance for the same reason —
+  // sub-pixel precision at 60 units is wasted marching.
+  float tmax = 65.0;
   float t = 0.0;
-  for (int i = 0; i < 60; i++) {
+  for (int i = 0; i < 56; i++) {
     vec3 pos = ro + rd * t;
-    float h = map(pos, mt, clickOrigin);
-    if (h < 0.06 || t > tmax) break;
-    t += h * 0.35;
+    float h = map(pos, mt, clickOrigin, lodAt(t));
+    if (h < 0.045 * (1.0 + t * 0.09) || t > tmax) break;
+    t += h * 0.33;
   }
 
   // Sky / background: a soft vertical grade from black up to a dim graphite,
@@ -217,9 +272,24 @@ void main() {
 
   if (t < tmax) {
     vec3 pos = ro + t * rd;
-    vec3 nor = calcNormal(pos, mt, clickOrigin);
+    float lod = lodAt(t);
+    vec3 nor = calcNormal(pos, mt, clickOrigin, lod, t);
+
+    // Micro-relief: finer than the march can resolve, so it tilts the shading
+    // normal instead of displacing the surface — foreground plateaus get a
+    // worked, rocky grain for the cost of three field taps rather than sixty.
+    // Faded out with distance so it never turns into fizz on the far ridges.
+    float micro = exp(-t * 0.03);
+    if (micro > 0.02) {
+      vec2 e2 = vec2(0.045, 0.0);
+      float m0 = microField(pos.xz);
+      float mx = microField(pos.xz + e2.xy) - m0;
+      float mz = microField(pos.xz + e2.yx) - m0;
+      nor = normalize(nor - vec3(mx, 0.0, mz) * (micro * 0.034 / e2.x));
+    }
+
     vec3 light = normalize(vec3(0.25, 0.65, -0.5));
-    float sha = calcShadow(pos + nor * 0.12, light, mt, clickOrigin);
+    float sha = calcShadow(pos + nor * 0.12, light, mt, clickOrigin, lod);
 
     float dif = clamp(dot(nor, light), 0.0, 1.0);
     float amb = 0.10 + 0.30 * clamp(nor.y, 0.0, 1.0);
@@ -235,7 +305,7 @@ void main() {
     // gives the range depth instead of a flat snowfield. Measured against the
     // local baseline so the same ridge reads the same whether it sits on a
     // massif or in a basin.
-    float valley = smoothstep(-0.45, 0.85, terrainDetail(pos.xz));
+    float valley = smoothstep(-0.45, 0.85, octaves(pos.xz, lod));
     lum *= mix(0.16, 1.0, valley);
     lum = clamp(lum, 0.0, 1.0);
 
@@ -243,16 +313,20 @@ void main() {
     // white, and the midpoint holds. This is the main contrast lever — a
     // narrow toe-to-shoulder window is what separates ridge from valley
     // instead of the whole range sitting in the mids.
-    lum = smoothstep(0.20, 0.80, lum);
+    lum = smoothstep(0.18, 0.86, lum);
 
     // Lift only the already-bright crests toward white — increases contrast
     // against the dark base without touching the shadows, so the range stops
-    // reading as uniformly gray.
-    lum += smoothstep(0.60, 0.96, lum) * 0.35;
+    // reading as uniformly gray. Gentler than it was: with the finer octaves
+    // now in the field, the old lift clipped whole lit faces to flat white and
+    // took every bit of that new structure with it.
+    lum += smoothstep(0.72, 1.0, lum) * 0.20;
     lum = clamp(lum, 0.0, 1.0);
 
-    // Distance fog folds far terrain back into the sky.
-    float fog = exp(-0.00035 * t * t);
+    // Distance fog folds far terrain back into the sky. Slackened to match the
+    // deeper draw distance — the far ridges stay faintly readable instead of
+    // dissolving where the old tmax used to cut them off.
+    float fog = exp(-0.00026 * t * t);
     col = mix(vec3(sky), vec3(lum), fog);
   }
 

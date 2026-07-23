@@ -43,8 +43,9 @@ export const projects: Project[] = [
     role: "Design & Engineering",
     thumbnail: "projects/chisel/thumbnail.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
-    summary: "Much more than a design system.",
+    summary: "More than a design system.",
     body: [
+      "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel, a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple: <strong>make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
       "Chisel, a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking. Chisel moves design from a step in the process available to a select few, to a layer of infrastructure anyone in the org can use.",
       "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo.",
     ],
