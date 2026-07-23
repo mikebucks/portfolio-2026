@@ -282,7 +282,14 @@ function WebGLCanvas({
         // ── Pointer / click / scroll ──────────────────────────────────────
         let lastX = 0, lastY = 0, lastT = 0, primed = false;
         let pointerHasMoved = false;
-        const { visualState, bumpPointerImpulse, triggerClick, tickVisualState, visualBus } = events;
+        const {
+          visualState,
+          bumpPointerImpulse,
+          triggerClick,
+          tickVisualState,
+          visualBus,
+          arePointerClicksLocked,
+        } = events;
 
         // ── Voice pool (polyphonic color) ─────────────────────────────────
         // Each note_on claims a slot; envelopes decay independently so
@@ -316,11 +323,31 @@ function WebGLCanvas({
             if (voices[i].env < lowestEnv) { lowestEnv = voices[i].env; target = i; }
           }
           // Store colorNorm at note-on time — stable for the life of the voice.
+          const colorNorm = noteToColorNorm(e.note);
           voices[target] = {
-            colorNorm: noteToColorNorm(e.note),
+            colorNorm,
             vel: e.velocity,
             env: e.velocity,
           };
+
+          // Notes disturb the terrain the same way a click does, but placed by
+          // pitch instead of by cursor: low to high runs left to right, so
+          // playing up the home row walks the wavefront across the view. The
+          // span covers ~70-1100Hz, which puts the unshifted row within the
+          // middle half of the frame and sends the octave-shifted extremes out
+          // toward the edges.
+          //
+          // Deliberately quieter than a deliberate click — keys fire far more
+          // often, and a chord lands several at once. They share the single
+          // click channel, so the newest note takes over the wavefront rather
+          // than compounding with the ones still decaying.
+          const pitchNorm =
+            Math.log2(Math.max(e.frequency, 1) / 70) / Math.log2(1100 / 70);
+          triggerClick(
+            Math.max(-1, Math.min(1, pitchNorm * 2 - 1)),
+            -0.1,
+            0.45 * Math.max(e.velocity, 0.6),
+          );
         });
 
         const onMove = (e: PointerEvent) => {
@@ -341,6 +368,9 @@ function WebGLCanvas({
         };
 
         const onDown = (e: PointerEvent) => {
+          // Muted while the hero headline is rolling — it fires its own pulses
+          // per word, and a click on top of those stacks wavefronts.
+          if (arePointerClicksLocked()) return;
           const rect = canvas.getBoundingClientRect();
           triggerClick(
             ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -415,6 +445,7 @@ function WebGLCanvas({
           u.uPointerImpulse.value = visualState.pointerImpulse;
           u.uClickPos.value.set(visualState.clickPos[0], visualState.clickPos[1]);
           u.uClickImpulse.value = visualState.clickImpulse;
+          u.uClickStrength.value = visualState.clickStrength;
           u.uScroll.value = visualState.scroll;
           u.uNoteOn.value = visualState.noteImpulse;
           u.uEnvelope.value = visualState.envelope;

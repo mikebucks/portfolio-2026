@@ -24,6 +24,9 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       uPointerImpulse: { value: 0 },
       uClickPos: { value: new THREE.Vector2(0, 0) },
       uClickImpulse: { value: 0 },
+      // Scales the click response without touching the impulse, which doubles
+      // as the wavefront's clock. Notes trigger the same channel more quietly.
+      uClickStrength: { value: 1 },
       uNoteOn: { value: 0 },
       uFrequency: { value: 0 },
       uVelocity: { value: 0 },

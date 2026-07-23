@@ -34,6 +34,7 @@ export type VisualState = {
   pointerImpulse: number; // 0..1, decays — bumped by pointer velocity
   clickPos: [number, number]; // last click in normalized -1..1
   clickImpulse: number; // 0..1, decays — bumped on click
+  clickStrength: number; // 0..1 scale on the click's visual response
   scroll: number; // 0..1 page progress
   noteImpulse: number; // 0..1, decays — bumped on note_on
   envelope: number; // 0..1 rough envelope follower
@@ -48,6 +49,7 @@ export const visualState: VisualState = {
   pointerImpulse: 0,
   clickPos: [0, 0],
   clickImpulse: 0,
+  clickStrength: 1,
   scroll: 0,
   noteImpulse: 0,
   envelope: 0,
@@ -98,8 +100,32 @@ export function bumpPointerImpulse(amount: number) {
   );
 }
 
-export function triggerClick(x: number, y: number) {
+/**
+ * Fire a click impulse at a normalized (-1..1) screen position.
+ *
+ * `strength` scales how loudly the shader answers without touching the impulse,
+ * which is also the wavefront's clock — themes derive the expanding radius from
+ * its decay, so a quieter event has to arrive quiet rather than pre-expanded.
+ * Notes use it to raise a gentler swell than a deliberate click.
+ */
+export function triggerClick(x: number, y: number, strength = 1) {
   visualState.clickPos[0] = x;
   visualState.clickPos[1] = y;
   visualState.clickImpulse = 1;
+  visualState.clickStrength = strength;
+}
+
+// Set while the hero headline is rolling. The roll drives its own background
+// pulses (CyclingWord calls triggerClick as each word lands), and a pointer
+// click landing on top of those stacks a second wavefront into the first — the
+// combination is what reads as too much. Only the pointer handler consults
+// this; the headline's own pulses are deliberate and go straight through.
+let pointerClicksLocked = false;
+
+export function setPointerClicksLocked(locked: boolean) {
+  pointerClicksLocked = locked;
+}
+
+export function arePointerClicksLocked() {
+  return pointerClicksLocked;
 }

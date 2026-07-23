@@ -32,8 +32,8 @@ export function AboutSection() {
             Product Design at Figment, the world&apos;s largest proof-of-stake
             crypto infrastructure company. Over the better part of 4 years, I
             grew a self-serve staking product from near zero to over{" "}
-            <strong>$500M</strong> of Ethereum staked through a decentralized app experience. All while 
-            simultaneously serving Figment&apos;s institutional customers, building staking flows and financial 
+            <strong>$500M</strong> of Ethereum staked through a decentralized app 
+            experience. All while simultaneously serving Figment&apos;s institutional customers, building staking flows and financial 
             analysis dashboards to serve their ~<strong>$18B</strong>{" "}
             in assets staked to Figment&apos;s network of validators.
           </p>

@@ -6,10 +6,14 @@
  * forever (cause), and every ridge is a stepped plateau — a discrete effect of
  * the continuous field beneath it.
  *
- * Reactivity mirrors Mind exactly:
+ * Reactivity:
  *   • pointer      pans the view + leaves a screen-space ripple (uPointer)
- *   • click        a soft swell that deforms the terrain itself (uClick*)
- *   • home-row audio drives the forward scroll pulse + the note-hue accents
+ *   • click        a wavefront that rebuilds the terrain outward from the point
+ *                  on the ground that was clicked (uClick*) — geometry, not an
+ *                  overlay: the ground rises through terrace levels and grows
+ *                  new plateaus as the front passes
+ *   • home-row     each note raises the same wavefront, quieter and placed by
+ *                  pitch, and drives the forward scroll pulse + hue accents
  *
  * Macros:
  *   x  Glow    — global brightness lift + softer floor
@@ -28,6 +32,7 @@ uniform vec2  uResolution;
 uniform vec2  uPointer;
 uniform vec2  uClickPos;
 uniform float uClickImpulse;
+uniform float uClickStrength;
 uniform float uNoteOn;
 uniform float uVelocity;
 uniform float uReactivity;
@@ -82,14 +87,24 @@ float lodAt(in float d) {
 // rougher the closer you look rather than resolving into smooth blobs. Eight
 // octaves reach ~120x the base frequency, about six times finer than the old
 // stack — that top end is what the foreground was missing.
-float octaves(in vec2 p, in float lod) {
-  vec2 q = p * 0.6;
+// \`redraw\` (0..1) is the click wavefront's grip on this spot — see clickWave.
+// Where it's high the stack samples a displaced domain and leans on its fine
+// octaves, so the ground the wave crosses re-forms into new, busier terrain
+// instead of just swelling: the click draws land rather than tinting pixels.
+float octaves(in vec2 p, in float lod, in float redraw) {
+  // Domain offset, not a scale — the field is read from somewhere else
+  // entirely, so what surfaces behind the front is different terrain, not the
+  // same terrain amplified.
+  vec2 q = p * 0.6 + redraw * 1.6;
   float d = 0.0;
   float s = 1.5;
   for (int i = 0; i < 8; i++) {
     float w = clamp(lod - float(i), 0.0, 1.0);
     if (w <= 0.0) break;
-    d += s * w * cosNoise(q);
+    // Only the fine octaves get the boost. Weighting the broad ones would move
+    // whole massifs and read as the camera lurching, not as detail arriving.
+    float gain = 1.0 + redraw * 0.6 * step(2.5, float(i));
+    d += s * w * gain * cosNoise(q);
     s *= 0.575;
     q = m2 * q * 2.13 + vec2(1.7, -2.3);
   }
@@ -111,7 +126,7 @@ float microField(in vec2 p) {
 }
 
 // Layered heightfield.
-float terrain(in vec2 p, in float t, in float lod) {
+float terrain(in vec2 p, in float t, in float lod, in float redraw) {
   // Large-scale rolling elevation — same wave basis, but very low frequency,
   // and NOT a domain warp: it only lifts/drops the base height, it never
   // distorts the sample coords. So the range gains taller massifs and lower
@@ -124,26 +139,54 @@ float terrain(in vec2 p, in float t, in float lod) {
                + 0.75 * cosNoise(p * 0.021 + 11.0);
 
   float base = sin(t * 0.2) * 4.0 + relief * 1.8;
-  return base * 0.3 + octaves(p, lod);
+  // The wave buys extra octaves as well as extra weight on them, so the swept
+  // ground genuinely resolves finer rather than only louder.
+  return base * 0.3 + octaves(p, lod + redraw * 1.1, redraw);
 }
 
-// Click swell, applied as an actual displacement of the terrain height (not a
-// screen overlay). \`clickC\` is the world-space xz where the click landed; the
-// wavefront is a raised ridge whose radius expands as uClickImpulse decays, so
-// the ground itself heaves outward from the click point. Kept low so it nudges
-// the land rather than erupting through it.
-float clickLift(in vec2 xz, in vec2 clickC) {
-  if (uClickImpulse < 0.001) return 0.0;
+// The click wavefront, in world xz. \`clickC\` is where the click actually
+// landed on the terrain (see main). Returns:
+//   .x  height added to the field, *before* terracing
+//   .y  "redraw" weight 0..1 — how hard this spot is being rebuilt
+//
+// The radius expands as uClickImpulse decays, so the ground heaves outward from
+// the point that was clicked: a narrow crest raising the land at the front, and
+// a wider band trailing it where the terrain rebuilds and then settles.
+//
+// uClickStrength scales the whole response without touching uClickImpulse,
+// which is what drives the radius — a weaker wave has to be *quieter*, not
+// pre-expanded, and scaling the impulse would have started it mid-flight. It
+// lets a keypress raise a gentler swell than a deliberate click.
+vec2 clickWave(in vec2 xz, in vec2 clickC) {
+  if (uClickImpulse < 0.001 || uClickStrength < 0.001) return vec2(0.0);
   float d = distance(xz, clickC);
-  float radius = (1.0 - uClickImpulse) * 34.0;      // wavefront grows as it fades
+  float radius = (1.0 - uClickImpulse) * 36.0;
   float x = d - radius;
-  float crest = exp(-x * x * 0.05);                 // raised leading ridge
-  float trough = 0.3 * exp(-(x + 5.0) * (x + 5.0) * 0.04); // slight dip trailing behind it
-  return (crest - trough) * uClickImpulse * (1.1 + uMacros.w * 1.3);
+  float amp = uClickImpulse * uClickStrength;
+
+  float crest  = exp(-x * x * 0.03);                          // raised leading ridge
+  float trough = 0.35 * exp(-(x + 7.0) * (x + 7.0) * 0.022);  // dip trailing behind it
+  float lift = (crest - trough) * amp * (0.75 + uMacros.w * 0.85);
+
+  // The redraw weight is a band trailing the front, not a filled disc. Filling
+  // the disc meant every point the wave had ever touched stayed rebuilt at full
+  // strength, so within about a second the "local" effect covered the frame and
+  // went back to reading as something done to the whole canvas. Rising as the
+  // front arrives and decaying over ~20 units behind it keeps a travelling wave
+  // with ground visibly settling in its wake.
+  //
+  // It rides that band and never the crest: the crest is a few units wide, and
+  // sliding the sample domain across something that narrow puts a near
+  // discontinuity in the field the sphere-trace cannot step over — it surfaces
+  // as long smeared streaks radiating from the click. This ramps over ~12 units.
+  float behind = radius - d;
+  float redraw = smoothstep(-5.0, 7.0, behind) * exp(-max(behind, 0.0) * 0.05)
+               * amp;
+
+  return vec2(lift, redraw);
 }
 
-// Signed distance to the terraced surface. The mix between \`ceil(h)*2\` and the
-// raw height quantizes the field into plateaus — the "effects" of the theme.
+// Quantizes the field into plateaus — the "effects" of the theme.
 //
 // The unit step is load-bearing and shouldn't be shrunk for extra contour
 // bands: this swings between the raw height and ~2x it, so each riser is as
@@ -151,12 +194,29 @@ float clickLift(in vec2 xz, in vec2 clickC) {
 // step doesn't add plateaus, it just runs the same full-height swing twice as
 // often and the whole range dissolves into foam. Extra detail belongs in the
 // octave stack, which is where it now is.
-float map(in vec3 pos, in float t, in vec2 clickC, in float lod) {
-  float h = terrain(pos.xz, t, lod);
+float terraced(in float h) {
   float mf2 = (cos(2.0 * h * 3.14159265) + 1.0) * 0.5;
-  float terr = mix(ceil(h) * 2.0, h, mf2);
-  terr += clickLift(pos.xz, clickC);
-  return pos.y - terr;
+  return mix(ceil(h) * 2.0, h, mf2);
+}
+
+// Signed distance to the surface, ignoring the click. The click ray marches
+// against this to find where it landed, which would otherwise be circular —
+// the wave's origin can't depend on the wave.
+float mapBase(in vec3 pos, in float t, in float lod) {
+  return pos.y - terraced(terrain(pos.xz, t, lod, 0.0));
+}
+
+// Signed distance to the surface the camera sees.
+//
+// The lift goes into the field *before* terracing, not onto the surface after
+// it. Added afterwards it was a smooth bump sliding over a terraced landscape —
+// geometry, but geometry that read as an overlay, which is exactly the
+// complaint. Going in beforehand, the rising ground climbs through terrace
+// levels and grows new plateaus and risers on the way up: the land restates
+// itself in its own vocabulary.
+float map(in vec3 pos, in float t, in vec2 clickC, in float lod) {
+  vec2 cw = clickWave(pos.xz, clickC);
+  return pos.y - terraced(terrain(pos.xz, t, lod, cw.y) + cw.x);
 }
 
 // Normal epsilon widens with distance so the added high-frequency octaves
@@ -221,9 +281,11 @@ void main() {
   float waveAmp = 0.25 + mEcho * 0.55;
   float cursorWave = sin(pDist * 16.0 - uTime * 2.4) * pFall * waveAmp / 0.25;
 
-  // Global pulse: notes dominate, click keeps only a whisper (as in Mind). The
-  // click's visible response lives in the terrain geometry, not here.
-  float pulse = 0.12 * uClickImpulse + 1.0 * uNoteOn * max(uVelocity, 0.4);
+  // Global pulse: notes only. The click used to lift the whole frame's
+  // brightness a little, which is a canvas-wide response to a local event — the
+  // one thing guaranteed to make the interaction feel like it lives on the
+  // surface of the screen. Its entire response is now terrain.
+  float pulse = uNoteOn * max(uVelocity, 0.4);
   pulse *= (0.5 + 0.5 * uReactivity);
   pulse = clamp(pulse, 0.0, 1.0);
 
@@ -244,12 +306,36 @@ void main() {
   q += pan * vec2(0.4, 0.28);
   vec3 rd = normalize(vec3(q.x, q.y - 1.5, -1.0));
 
-  // Project the click into world space by intersecting its view ray with the
-  // ground plane (y=0), giving the xz origin the terrain swell radiates from.
-  vec2 cq = uClickPos;
-  cq.x *= aspect;
-  vec3 crd = normalize(vec3(cq.x, cq.y - 1.5, -1.0));
-  vec2 clickOrigin = (ro + (-ro.y / crd.y) * crd).xz;
+  // Where the click landed, in world xz — the point the wave radiates from.
+  //
+  // This used to intersect the click ray with the y=0 ground plane, but the
+  // range stands several units above that, so the ray sailed over the ridge the
+  // user aimed at and the origin landed well beyond it. The wave then started
+  // somewhere unrelated to what was clicked, which is most of why it read as
+  // something happening to the canvas rather than to the land. Marching the
+  // real surface puts the origin under the cursor.
+  //
+  // Coarse and short: this only has to seed a 46-unit wavefront, and it runs
+  // for the ~1.7s a click stays alive.
+  //
+  // The pan uses uClickPos, not uPointer: the pointer sits exactly where the
+  // click landed at the moment it fires, so they agree then — but uClickPos
+  // holds still afterwards, and keying off the live pointer would drag the
+  // origin across the ground every time the mouse moved after clicking.
+  vec2 clickOrigin = vec2(1e5);
+  if (uClickImpulse > 0.001) {
+    vec2 cq = uClickPos;
+    cq.x *= aspect;
+    cq += uClickPos * vec2(0.4, 0.28);
+    vec3 crd = normalize(vec3(cq.x, cq.y - 1.5, -1.0));
+    float ct = 0.0;
+    for (int i = 0; i < 22; i++) {
+      float ch = mapBase(ro + crd * ct, mt, 5.5);
+      if (ch < 0.25 || ct > 70.0) break;
+      ct += ch * 0.45;
+    }
+    clickOrigin = (ro + crd * ct).xz;
+  }
 
   // Sphere-trace the heightfield. Draw distance is deeper than before so the
   // vista stacks more ridges before the fog takes over; the distance-driven LOD
@@ -305,7 +391,10 @@ void main() {
     // gives the range depth instead of a flat snowfield. Measured against the
     // local baseline so the same ridge reads the same whether it sits on a
     // massif or in a basin.
-    float valley = smoothstep(-0.45, 0.85, octaves(pos.xz, lod));
+    // Same redraw weight the geometry used, so the swept ground is shaded as
+    // the terrain it now is rather than the terrain it was.
+    float redraw = clickWave(pos.xz, clickOrigin).y;
+    float valley = smoothstep(-0.45, 0.85, octaves(pos.xz, lod + redraw * 1.1, redraw));
     lum *= mix(0.16, 1.0, valley);
     lum = clamp(lum, 0.0, 1.0);
 

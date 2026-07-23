@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
-import { triggerClick } from "@/lib/visualEvents";
+import { setPointerClicksLocked, triggerClick } from "@/lib/visualEvents";
 
 // The headline reveals "Designer" out of the intro, then rolls through the
 // roles marquee-style and lands — permanently — on "Builder". Builder only
@@ -59,7 +59,16 @@ export function CyclingWord() {
       tl?.kill();
       gsap.set(track, { yPercent: 0 });
 
-      tl = gsap.timeline({ delay: firstPlay ? 1.15 : 0.4 });
+      // The roll pulses the background itself on every word landing, so a
+      // pointer click during it stacks a second wavefront onto the headline's
+      // own. Mute pointer clicks for the duration; onComplete releases them,
+      // and so does teardown, since a killed timeline never completes.
+      setPointerClicksLocked(true);
+
+      tl = gsap.timeline({
+        delay: firstPlay ? 1.15 : 0.4,
+        onComplete: () => setPointerClicksLocked(false),
+      });
 
       let at = 0;
       for (let i = 1; i < WORDS.length; i++) {
@@ -103,6 +112,9 @@ export function CyclingWord() {
     return () => {
       io.disconnect();
       tl?.kill();
+      // kill() skips onComplete — without this the lock outlives the component
+      // and clicks stay dead for the rest of the session.
+      setPointerClicksLocked(false);
     };
   }, []);
 
