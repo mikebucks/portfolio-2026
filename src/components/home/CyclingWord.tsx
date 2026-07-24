@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { setPointerClicksLocked, triggerClick } from "@/lib/visualEvents";
+import { useIntroStore } from "@/lib/store";
 
 // The headline reveals "Designer" out of the intro, then rolls through the
 // roles marquee-style and lands — permanently — on "Builder". Builder only
@@ -94,7 +95,20 @@ export function CyclingWord() {
     const section = track.closest("section") ?? track;
     let wasOut = false;
 
-    play();
+    // Hold the first roll until the intro reveals the headline, so "Designer"
+    // rolls out of the H1 as it flies up rather than under the cream cover. On
+    // a re-entry to the home route the flag is already set, so this fires now.
+    let unsubIntro = () => {};
+    if (useIntroStore.getState().headlinePlay) {
+      play();
+    } else {
+      unsubIntro = useIntroStore.subscribe((s) => {
+        if (s.headlinePlay) {
+          unsubIntro();
+          play();
+        }
+      });
+    }
 
     const io = new IntersectionObserver(
       ([entry]) => {
@@ -110,6 +124,7 @@ export function CyclingWord() {
     io.observe(section);
 
     return () => {
+      unsubIntro();
       io.disconnect();
       tl?.kill();
       // kill() skips onComplete — without this the lock outlives the component

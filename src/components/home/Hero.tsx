@@ -1,14 +1,13 @@
 "use client";
 
-import { useGsapIntro } from "@/components/animation/useGsapIntro";
 import { CyclingWord } from "@/components/home/CyclingWord";
 
 export function Hero() {
-  const rootRef = useGsapIntro<HTMLElement>();
-
+  // The intro reveal (eyebrow + headline flying up) is driven centrally by
+  // IntroSequence, which targets the [data-intro] elements below — it sequences
+  // them after the cream wipe and the header, so the animation can't live here.
   return (
     <section
-      ref={rootRef}
       // 100svh, not 100dvh: dvh re-resolves throughout iOS Safari's toolbar
       // animation, so the hero (and with it the document height and this
       // mix-blend-difference group) relayouts on every frame of the scroll.

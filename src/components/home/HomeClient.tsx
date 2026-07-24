@@ -3,6 +3,7 @@
 import { Hero } from "./Hero";
 import { FeaturedProjects } from "./FeaturedProjects";
 import { InteractiveBackground } from "./InteractiveBackground";
+import { IntroSequence } from "./IntroSequence";
 import { AboutSection } from "@/components/about/AboutSection";
 import { ContactSection } from "@/components/contact/ContactSection";
 import { ProjectModal } from "@/components/projects/ProjectModal";
@@ -19,6 +20,7 @@ export function HomeClient() {
       <AboutSection />
       <ContactSection />
       <ProjectModal />
+      <IntroSequence />
     </div>
   );
 }

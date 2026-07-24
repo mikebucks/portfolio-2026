@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
-import { useThemeStore } from "@/lib/store";
+import { useThemeStore, useIntroStore } from "@/lib/store";
 import {
   THEME_PRESETS,
   type ThemeId,
@@ -48,6 +48,16 @@ export function InteractiveBackground({
       setStatus("unsupported");
     }
   }, []);
+
+  // Release the cream intro reveal once the full-bleed shader has painted its
+  // first frame — or immediately on the unsupported (CSS-gradient) fallback,
+  // which has nothing to wait for. Only the full background gates the intro.
+  useEffect(() => {
+    if (variant !== "full") return;
+    if (status === "ready" || status === "unsupported") {
+      useIntroStore.getState().setReady();
+    }
+  }, [variant, status]);
 
   return (
     <div

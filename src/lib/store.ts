@@ -43,6 +43,34 @@ export const useUIStore = create<UIState>((set) => ({
   setMuted: (v) => set({ muted: v }),
 }));
 
+// ── Intro store ──────────────────────────────────────────────────────────────
+// Coordinates the first-load page-in animation across three separate React
+// trees that can't share refs: the cream reveal overlay + hero headline (in
+// HomeClient), the global header (in the root layout), and the CyclingWord roll
+// (deep in the hero). IntroSequence owns the master GSAP timeline and flips
+// these flags; the other pieces subscribe and react.
+//
+//   ready         — the shader painted its first real frame (or WebGL is
+//                   unavailable / a safety timeout elapsed). The cue to begin
+//                   the reveal. Set by InteractiveBackground.
+//   headlinePlay  — the timeline has reached the headline phase. The hero word
+//                   roll (CyclingWord) waits on this so it stays in sync with
+//                   the headline flying up instead of rolling under the cream.
+
+type IntroStore = {
+  ready: boolean;
+  headlinePlay: boolean;
+  setReady: () => void;
+  setHeadlinePlay: () => void;
+};
+
+export const useIntroStore = create<IntroStore>((set) => ({
+  ready: false,
+  headlinePlay: false,
+  setReady: () => set({ ready: true }),
+  setHeadlinePlay: () => set({ headlinePlay: true }),
+}));
+
 // ── Theme store ────────────────────────────────────────────────────────────
 // The canonical state is just the active `theme`. Each theme maps 1:1 to a
 // synth preset, so `resolveSettings(theme)` returns the full `SynthSettings`

@@ -91,8 +91,12 @@ export function Header() {
     // top offset by safe-area-inset-top (viewport-fit=cover): sit the nav below
     // the notch / cream status-bar frame bar. Zero on desktop, so unchanged there.
     <header
+      data-intro-header
       style={{ top: "env(safe-area-inset-top, 0px)" }}
-      className={cn("fixed z-30 w-full px-8 backdrop-blur-sm transition-all duration-400",
+      // Transition only the scroll-state properties (padding + background), NOT
+      // `all`: the intro flies the header in with a GSAP transform, and a CSS
+      // transition on `transform` would fight GSAP's per-frame writes.
+      className={cn("fixed z-30 w-full px-8 backdrop-blur-sm transition-[background-color,padding] duration-400",
       scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60")}>
       <SynthPanel />
       <div className={
