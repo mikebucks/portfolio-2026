@@ -221,13 +221,19 @@ float map(in vec3 pos, in float t, in vec2 clickC, in float lod) {
 
 // Normal epsilon widens with distance so the added high-frequency octaves
 // average out on far slopes instead of shimmering pixel to pixel.
+//
+// Tetrahedron (4-tap) gradient rather than the central-difference 6-tap: two
+// fewer field evaluations per shaded pixel for a normal that's visually
+// indistinguishable on this terrain.
 vec3 calcNormal(in vec3 pos, in float t, in vec2 clickC, in float lod, in float dist) {
-  vec2 e = vec2(0.014 + dist * 0.0035, 0.0);
-  return normalize(vec3(
-    map(pos + e.xyy, t, clickC, lod) - map(pos - e.xyy, t, clickC, lod),
-    map(pos + e.yxy, t, clickC, lod) - map(pos - e.yxy, t, clickC, lod),
-    map(pos + e.yyx, t, clickC, lod) - map(pos - e.yyx, t, clickC, lod)
-  ));
+  float h = 0.014 + dist * 0.0035;
+  vec2 k = vec2(1.0, -1.0);
+  return normalize(
+    k.xyy * map(pos + k.xyy * h, t, clickC, lod) +
+    k.yyx * map(pos + k.yyx * h, t, clickC, lod) +
+    k.yxy * map(pos + k.yxy * h, t, clickC, lod) +
+    k.xxx * map(pos + k.xxx * h, t, clickC, lod)
+  );
 }
 
 // Shadows run two octaves coarser than the surface they land on — the fine
@@ -236,12 +242,15 @@ vec3 calcNormal(in vec3 pos, in float t, in vec2 clickC, in float lod, in float 
 float calcShadow(in vec3 ro, in vec3 rd, in float t, in vec2 clickC, in float lod) {
   float res = 1.0;
   float d = 0.4;
-  for (int i = 0; i < 12; i++) {
+  // 8 steps rather than 12: shadows are an occlusion term two octaves coarser
+  // than the surface, so the last few marching steps don't read. Slightly larger
+  // minimum step keeps the reach.
+  for (int i = 0; i < 8; i++) {
     vec3 pos = ro + d * rd;
     float h = map(pos, t, clickC, lod - 2.0);
     res = min(res, max(h, 0.0) * 1.2 / d);
     if (res < 0.02) break;
-    d += clamp(h * 0.3, 0.15, 1.2);
+    d += clamp(h * 0.3, 0.2, 1.4);
   }
   return clamp(res, 0.0, 1.0);
 }
@@ -344,11 +353,14 @@ void main() {
   // sub-pixel precision at 60 units is wasted marching.
   float tmax = 65.0;
   float t = 0.0;
-  for (int i = 0; i < 56; i++) {
+  // 44 steps with a marginally longer stride and a slightly relaxed, distance-
+  // scaled hit threshold, so rays still reach the same draw distance and
+  // converge — the far ridges were already sub-pixel where the extra steps went.
+  for (int i = 0; i < 44; i++) {
     vec3 pos = ro + rd * t;
     float h = map(pos, mt, clickOrigin, lodAt(t));
-    if (h < 0.045 * (1.0 + t * 0.09) || t > tmax) break;
-    t += h * 0.33;
+    if (h < 0.05 * (1.0 + t * 0.10) || t > tmax) break;
+    t += h * 0.37;
   }
 
   // Sky / background: a soft vertical grade from black up to a dim graphite,

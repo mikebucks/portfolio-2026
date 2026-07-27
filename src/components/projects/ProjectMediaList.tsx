@@ -32,7 +32,11 @@ export function ProjectMediaFigure({
           poster={m.poster}
           width={m.width}
           height={m.height}
-          controls
+          // GIF-style clips autoplay muted + loop with no chrome; otherwise it's
+          // a normal click-to-play video with controls.
+          {...(m.autoplay
+            ? { autoPlay: true, muted: true, loop: m.loop ?? true }
+            : { controls: true, loop: m.loop })}
           playsInline
           className="w-full h-auto rounded"
         />

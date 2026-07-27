@@ -43,9 +43,11 @@ export function ProjectDetail({ project }: { project: Project }) {
 
         {blocks.map((block, i) =>
           block.type === "text" ? (
-            <p
+            // A <div> (not <p>) so block-level rich text like <ol>/<ul> is valid
+            // markup — a <p> would be force-closed before a list.
+            <div
               key={i}
-              className="mt-6 leading-relaxed text-black/80 [&_a]:underline [&_strong]:font-semibold [&_strong]:text-black"
+              className="mt-6 leading-relaxed text-black/80 [&_a]:underline [&_strong]:font-semibold [&_strong]:text-black [&_ol]:mt-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-2 [&_li]:pl-1 [&_li]:marker:text-black/40"
               // Trusted, in-repo authored copy (see ProjectBlock) — not user input.
               dangerouslySetInnerHTML={{ __html: block.html }}
             />

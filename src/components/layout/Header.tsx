@@ -14,6 +14,15 @@ const NAV_LINKS = [
   { id: "contact", label: "Contact" },
 ];
 
+// SynthPanel still deferred (it pulls in Zustand + panel state), but defined at
+// module scope: creating it inside the component re-created the lazy identity on
+// every Header render (scroll + active-nav changes), remounting the panel each
+// time.
+const SynthPanel = dynamic(
+  () => import("../audio/SynthPanel").then((m) => m.SynthPanel),
+  { ssr: false },
+);
+
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -79,13 +88,6 @@ export function Header() {
     smoothScrollTo(0);
     history.pushState(null, "", "/");
   };
-
-  // SynthPanel still deferred — it pulls in Zustand and panel state.
-  const SynthPanel = dynamic(
-    () => import("../audio/SynthPanel").then((m) => m.SynthPanel),
-    { ssr: false },
-  );
-
 
   return (
     // top offset by safe-area-inset-top (viewport-fit=cover): sit the nav below

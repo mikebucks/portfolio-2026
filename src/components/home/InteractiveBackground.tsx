@@ -155,12 +155,14 @@ function WebGLCanvas({
           events,
           device,
           perf,
+          { isBackgroundCovered },
         ] = await Promise.all([
           import("three"),
           import("@/components/webgl/materials/backgroundMaterial"),
           import("@/lib/visualEvents"),
           import("@/lib/device"),
           import("@/lib/performance"),
+          import("@/lib/backgroundGate"),
         ]);
 
         // Mount was abandoned while chunks downloaded — don't build anything.
@@ -174,7 +176,22 @@ function WebGLCanvas({
           powerPreference: "high-performance",
         });
         renderer.setClearColor(0x08080a);
-        renderer.setPixelRatio(device.getClampedDpr());
+
+        // Adaptive DPR ladder: start from the device-clamped ceiling and step
+        // down toward a floor when the GPU can't hold frame rate (see the
+        // adaptive-quality controller below). Weak devices (isLowPower) begin one
+        // rung down so they don't have to tank a second of frames to get there.
+        const baseDpr = device.getClampedDpr();
+        const dprLevels = [baseDpr, baseDpr * 0.85, baseDpr * 0.7, baseDpr * 0.6];
+        const lowPower = device.isLowPower();
+        // Causation is a ray-marched terrain — far heavier per pixel than the flat
+        // themes — so it renders at a lower DPR. Its soft grayscale hides the drop.
+        // Effective DPR = adaptive quality level × this per-theme scale.
+        const dprScaleForTheme = (t: ThemeId) => (t === "causation" ? 0.72 : 1);
+        let qualityDpr = dprLevels[lowPower ? 1 : 0];
+        let themeDprScale = dprScaleForTheme(themeRef.current);
+        let currentDpr = qualityDpr * themeDprScale;
+        renderer.setPixelRatio(currentDpr);
 
         // Measure our own element rather than the window, so the same code path
         // serves both the full-bleed background and a bounded header banner.
@@ -191,7 +208,10 @@ function WebGLCanvas({
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
         const material = createBackgroundMaterial(themeRef.current);
-        scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+        // Keep the geometry reachable so teardown can dispose it — an inline
+        // `new PlaneGeometry` would leak its GPU buffer on every remount.
+        const planeGeo = new THREE.PlaneGeometry(2, 2);
+        scene.add(new THREE.Mesh(planeGeo, material));
 
         // ── Sizing ────────────────────────────────────────────────────────
         // Resize events only RECORD a target; the drawing buffer is resized
@@ -252,6 +272,28 @@ function WebGLCanvas({
         requestResize();
         applyPendingResize();
 
+        // Change the render DPR and force a buffer realloc at the new ratio —
+        // setPixelRatio alone doesn't resize, so clear the applied cache and
+        // re-run the sizing that also refreshes uResolution.
+        const applyEffectiveDpr = () => {
+          const next = qualityDpr * themeDprScale;
+          if (next === currentDpr) return;
+          currentDpr = next;
+          renderer.setPixelRatio(next);
+          appliedW = -1;
+          appliedH = -1;
+          applyPendingResize();
+        };
+
+        const quality = perf.createAdaptiveQuality({
+          dprLevels,
+          startLevel: lowPower ? 1 : 0,
+          onChange: (dpr) => {
+            qualityDpr = dpr;
+            applyEffectiveDpr();
+          },
+        });
+
         // Wire up live theme swapping. If the user changed theme during the
         // async import, sync to the latest value now.
         let activeTheme = themeRef.current;
@@ -259,6 +301,8 @@ function WebGLCanvas({
           if (next === activeTheme) return;
           applyTheme(material, next);
           activeTheme = next;
+          themeDprScale = dprScaleForTheme(next);
+          applyEffectiveDpr();
         };
         if (themeRef.current !== activeTheme) {
           swapThemeRef.current(themeRef.current);
@@ -267,7 +311,11 @@ function WebGLCanvas({
         // ── Particles ─────────────────────────────────────────────────────
         let particleMat: THREE.PointsMaterial | null = null;
         let particleMesh: THREE.Points | null = null;
-        if (!device.prefersReducedMotion() && !device.isCoarsePointer()) {
+        if (
+          !device.prefersReducedMotion() &&
+          !device.isCoarsePointer() &&
+          !lowPower
+        ) {
           const count = 500;
           const pos = new Float32Array(count * 3);
           for (let i = 0; i < count; i++) {
@@ -418,10 +466,19 @@ function WebGLCanvas({
 
         const tick = () => {
           animId = requestAnimationFrame(tick);
-          if (paused) return;
+          // Skip the draw when the tab is hidden OR an opaque overlay (the project
+          // modal) fully covers the layer — every frame under it is invisible.
+          // `last` is intentionally not advanced here; the dt clamp below absorbs
+          // the gap on resume, exactly as the tab-hidden pause already relies on.
+          if (paused || isBackgroundCovered()) return;
           const now = performance.now();
           const dt = Math.min((now - last) / 1000, 0.05);
           last = now;
+
+          // Sample frame rate and adapt DPR before drawing. Only reached on real
+          // (non-paused, non-covered) frames, so a modal or hidden tab never
+          // pollutes the average.
+          quality.tick();
 
           // Clear-and-repaint in the same frame — see the Sizing block above.
           applyPendingResize();
@@ -512,7 +569,13 @@ function WebGLCanvas({
           window.removeEventListener("resize", requestResize);
           swapThemeRef.current = null;
           material.dispose();
+          planeGeo.dispose();
+          particleMesh?.geometry.dispose();
+          particleMat?.dispose();
           renderer.dispose();
+          // dispose() alone doesn't guarantee the context is released promptly;
+          // force it so repeated home visits can't accumulate WebGL contexts.
+          renderer.forceContextLoss();
         };
 
         // A last-moment abandon (unmounted between the await and here) must not

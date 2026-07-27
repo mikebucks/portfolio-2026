@@ -151,6 +151,10 @@ export function createSynthEngine(
   let cycPhase = 0;
   let lastT = performance.now();
   let raf = 0;
+  // The RAF only needs to run while its output can be heard. It self-suspends
+  // when nothing audible remains (see isModActive / tick) and is woken by
+  // noteOn or a tab becoming visible again.
+  let loopActive = false;
 
   function tickFilterEnv(dt: number) {
     const { attack, decay, sustain } = current;
@@ -206,11 +210,18 @@ export function createSynthEngine(
     }
   }
 
-  function tick() {
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - lastT) / 1000);
-    lastT = now;
+  // True while modulation can still shape audible sound: a note is held, or the
+  // filter envelope is still releasing its tail. When neither holds, no signal
+  // reaches the (non-self-oscillating) filter, so freezing modulation is
+  // inaudible — the cue to suspend the loop.
+  function isModActive() {
+    return active.size > 0 || fenv.stage !== "idle";
+  }
 
+  // One modulation step. Split out of the RAF so noteOn can run it synchronously
+  // and set the filter for the attack this instant, rather than waiting a frame
+  // (the loop may have been suspended while idle). dt=0 is a valid "set now".
+  function stepModulation(dt: number) {
     tickFilterEnv(dt);
 
     lfoPhase += dt * current.lfoRate;
@@ -234,10 +245,42 @@ export function createSynthEngine(
       0.008,
     );
     filter.Q.setTargetAtTime(q, audioNow, 0.008);
+  }
 
+  function tick() {
+    const now = performance.now();
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+
+    stepModulation(dt);
+
+    // Suspend once nothing audible remains, or while the tab is hidden. noteOn
+    // (or onVisibility) restarts the loop; the audio graph keeps its own tail
+    // going without us — only the per-frame JS modulation stops.
+    if (!isModActive() || document.hidden) {
+      loopActive = false;
+      raf = 0;
+      return;
+    }
     raf = requestAnimationFrame(tick);
   }
-  raf = requestAnimationFrame(tick);
+
+  function startLoop() {
+    if (loopActive || document.hidden) return;
+    loopActive = true;
+    lastT = performance.now();
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Resume when the tab returns, if there's still something to modulate.
+  const onVisibility = () => {
+    if (!document.hidden && isModActive()) startLoop();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+
+  // Seed the filter to its resting cutoff/Q so the first note lands correctly
+  // without the loop having had to run yet.
+  stepModulation(0);
 
   function rebuildIfEngineChanged(s: SynthSettings) {
     if (s.oscEngine === voice.kind) return;
@@ -265,6 +308,10 @@ export function createSynthEngine(
       // Retrigger the filter envelope on every note (including chord additions),
       // matching the prior articulation.
       fenv.stage = "attack";
+      // Set the filter for this attack immediately, then (re)start the loop —
+      // it may have been suspended while idle.
+      stepModulation(0);
+      startLoop();
 
       const freq = Tone.Frequency(note).toFrequency();
       visualBus.emit({
@@ -326,6 +373,7 @@ export function createSynthEngine(
     },
     dispose() {
       cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVisibility);
       voice.dispose();
       filter.dispose();
       drive.dispose();

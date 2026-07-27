@@ -15,6 +15,14 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
+      /**
+       * GIF-style playback: autoplays muted, loops, and hides the controls bar.
+       * Use for silent looping clips (a lighter, sharper GIF replacement).
+       * Omit for a normal click-to-play video with controls.
+       */
+      autoplay?: boolean;
+      /** Loop playback. Defaults to `true` when `autoplay` is set. */
+      loop?: boolean;
     }
   | {
       type: "grid";
@@ -78,24 +86,24 @@ export const projects: Project[] = [
         type: "text",
         html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
       },
-      // Media blocks can sit anywhere in this array to pepper images in amongst
-      // the copy, e.g.:
-      // { type: "image", src: "/projects/chisel/skills.png", alt: "Chisel skills" },
+      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
       {
         type: "text",
-        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo.",
+        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
+      },
+      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li>A single source of truth for all UI components and patterns. Improvement in overall quality and consistency of UIs by eliminating the need to translate static designs to code.</li>
+            <li>Rapid prototyping for PMs, Engineers, and Designers. We can express design intents directly to the front end codebase instead of creating approximations in Figma that don't map 1:1 with code.</li>
+            <li>Faster product iteration. Simple edits like copy changes and layout adjustments can be handled by PMs without the unnecessary overhead of Linear tickets, Figma updates, and engineering pipelines.</li>
+          </ol>
+        `,
       },
     ],
-  },
-  {
-    slug: "beatvox",
-    title: "BeatVox",
-    role: "Solo Founder",
-    thumbnail: "https://picsum.photos/seed/beatvox/800/600",
-    tags: ["swiftui", "audio", "design"],
-    summary: "TODO",
-    body: ["TODO"],
-    media: [],
   },
   {
     slug: "figment-dapp",
@@ -103,9 +111,16 @@ export const projects: Project[] = [
     role: "Product Design & Growth",
     thumbnail: "projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
-    summary: "Digital asset management for financial institutions.",
-    body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
-    media: [],
+    summary: "$500m in Ethereum staked in 12 months",
+    // body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
+    // media: [],
+    content: [
+      {
+        type: "text",
+        html: ""
+      },
+      { type: "video", src: "/projects/figment-dapp/eth-flow.mp4", alt: "Ethereum staking flow in Ledger dApp", autoplay: true, },
+    ],
   },
   {
     slug: "book-of-idra",
@@ -133,6 +148,16 @@ export const projects: Project[] = [
       { type: "image", src: "/projects/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
       { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
     ],
+  },
+  {
+    slug: "beatvox",
+    title: "BeatVox",
+    role: "Solo Founder",
+    thumbnail: "https://picsum.photos/seed/beatvox/800/600",
+    tags: ["swiftui", "audio", "design"],
+    summary: "TODO",
+    body: ["TODO"],
+    media: [],
   },
   {
     slug: "figment-dashboard",

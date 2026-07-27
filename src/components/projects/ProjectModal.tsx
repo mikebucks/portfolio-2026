@@ -6,6 +6,7 @@ import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
 import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
+import { setBackgroundCovered } from "@/lib/backgroundGate";
 import { ProjectDetail } from "./ProjectDetail";
 
 /** Parse `#projects/<slug>` → a valid project slug, or null. */
@@ -98,6 +99,16 @@ export function ProjectModal() {
       lenis?.start();
     };
   }, [slug, close]);
+
+  // Let the shader background stop drawing while the opaque cover fully hides it.
+  // Only `open` is a full-viewport opaque cover — during the enter/leave grow the
+  // cover is still translucent/partial and the shader peeks through, so gating on
+  // `open` (not merely "mounted") keeps this a genuinely invisible pause.
+  useEffect(() => {
+    const covered = phase === "open";
+    setBackgroundCovered(covered);
+    return () => setBackgroundCovered(false);
+  }, [phase]);
 
   const project = slug ? getProject(slug) : null;
   if (!slug || !project) return null;
