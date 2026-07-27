@@ -1,9 +1,9 @@
 import { ArrowRight } from "lucide-react";
-import { projects } from "@/data/projects";
+import { featuredProjects } from "@/data/projects";
 import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
-  const featured = projects.slice(0, 3);
+  const featured = featuredProjects;
 
   return (
     <section

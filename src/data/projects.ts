@@ -23,16 +23,37 @@ export type ProjectMedia =
       caption?: string;
     };
 
+/**
+ * A single ordered block of a project's detail page. `text` is rich text — its
+ * `html` is rendered as trusted markup (this content is authored here in-repo,
+ * never user input), so inline tags like <strong> / <em> / <a> render instead
+ * of showing as literal characters. All the media block types can be freely
+ * interleaved with text, letting images be peppered in amongst the copy.
+ */
+export type ProjectBlock = { type: "text"; html: string } | ProjectMedia;
+
 export type Project = {
   slug: string;
   title: string;
   role: string;
   summary: string;
   tags: string[];
-  body?: string[];
+  /**
+   * Preferred authoring format: an ordered mix of copy and media. When present,
+   * this supersedes `body` + `media` on the detail page.
+   */
+  content?: ProjectBlock[];
   /** Used on featured cards and the projects index list. */
   thumbnail?: string;
-  /** Full-sized images and videos shown on the project detail page, in order. */
+  /**
+   * Legacy copy paragraphs, rendered before `media`. Each string is rich text
+   * (inline HTML allowed). Prefer `content` for new projects.
+   */
+  body?: string[];
+  /**
+   * Legacy trailing media stack, rendered after `body`. Prefer `content` for
+   * new projects so media can be interleaved with copy.
+   */
   media?: ProjectMedia[];
 };
 
@@ -44,13 +65,27 @@ export const projects: Project[] = [
     thumbnail: "projects/chisel/thumbnail.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
     summary: "More than a design system.",
-    body: [
-      "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple:",
-      "<strong>make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
-      "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
-      "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo.",
+    content: [
+      {
+        type: "text",
+        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple:",
+      },
+      {
+        type: "text",
+        html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
+      },
+      {
+        type: "text",
+        html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
+      },
+      // Media blocks can sit anywhere in this array to pepper images in amongst
+      // the copy, e.g.:
+      // { type: "image", src: "/projects/chisel/skills.png", alt: "Chisel skills" },
+      {
+        type: "text",
+        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo.",
+      },
     ],
-    media: [],
   },
   {
     slug: "beatvox",
@@ -204,4 +239,48 @@ export const projects: Project[] = [
 
 export function getProject(slug: string) {
   return projects.find((p) => p.slug === slug);
+}
+
+/** How many leading projects are treated as "featured" cards. */
+export const FEATURED_COUNT = 3;
+
+/** The featured cards shown up top under "Recently shipped". */
+export const featuredProjects = projects.slice(0, FEATURED_COUNT);
+
+/**
+ * Everything else — the long index. Excludes the featured projects so they
+ * aren't immediately repeated now that both live on the same page.
+ */
+export const otherProjects = projects.slice(FEATURED_COUNT);
+
+/**
+ * Collect a project's image srcs, in reading order, for the hover-reveal strip
+ * and the click Flip. Pulls the thumbnail first, then any images from `content`
+ * (new format) or `media` (legacy) — including grid items — deduped. Videos
+ * contribute their poster if present.
+ */
+export function projectImages(project: Project, limit = 5): string[] {
+  const out: string[] = [];
+  const push = (src?: string) => {
+    if (!src) return;
+    // Thumbnails are authored without a leading slash; media with one. Normalize
+    // to root-absolute (leave remote http(s) URLs untouched) so both work as
+    // background-image / <img> srcs from any route.
+    const norm = /^https?:\/\//.test(src) ? src : src.startsWith("/") ? src : `/${src}`;
+    if (!out.includes(norm)) out.push(norm);
+  };
+
+  push(project.thumbnail);
+
+  const media: ProjectMedia[] = project.content
+    ? project.content.filter((b): b is ProjectMedia => b.type !== "text")
+    : (project.media ?? []);
+
+  for (const m of media) {
+    if (m.type === "image") push(m.src);
+    else if (m.type === "video") push(m.poster);
+    else for (const item of m.items) push(item.src);
+  }
+
+  return out.slice(0, limit);
 }

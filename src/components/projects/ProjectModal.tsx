@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
+import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
 import { ProjectDetail } from "./ProjectDetail";
 
 /** Parse `#projects/<slug>` → a valid project slug, or null. */
@@ -33,6 +34,9 @@ export function ProjectModal() {
   // Mounted slug — lags `target` so the leave transition can play.
   const [slug, setSlug] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("enter");
+  // When opened from an "All projects" row, the row's rect the cover grows from
+  // (and collapses back into on close). Null for deep links / featured cards.
+  const [origin, setOrigin] = useState<OriginRect | null>(null);
 
   const sync = useCallback(() => setTarget(slugFromHash()), []);
 
@@ -53,6 +57,7 @@ export function ProjectModal() {
     if (target && target !== slug) {
       setSlug(target);
       setPhase("enter");
+      setOrigin(consumeProjectOrigin());
     } else if (!target && slug) {
       setPhase("leave");
       const reduce = prefersReducedMotion();
@@ -99,23 +104,47 @@ export function ProjectModal() {
 
   const reduce = prefersReducedMotion();
   const isOpen = phase === "open";
+  // Grows out slower than it collapses back, matching the open/close feel.
+  const coverEase = "cubic-bezier(0.7, 0, 0.2, 1)";
+  const coverMs = phase === "leave" ? CLOSE_MS : OPEN_MS;
 
   return (
     <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true">
-      {/* Cream frame that thickens inward to fill the viewport (sits behind the
-          scroll surface, so once both are cream the content reads on top). */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 box-border"
-        style={{
-          borderStyle: "solid",
-          borderColor: "#f4f1ea",
-          borderWidth: isOpen ? "100vmax" : 10,
-          transition: reduce
-            ? "none"
-            : `border-width ${OPEN_MS}ms cubic-bezier(0.7, 0, 0.2, 1)`,
-        }}
-      />
+      {origin && !reduce ? (
+        // Opened from a project row: a cream box grows out of that row to fill
+        // the viewport (and collapses back into it on close).
+        <div
+          aria-hidden
+          className="pointer-events-none fixed"
+          style={{
+            background: "#f4f1ea",
+            // Fades transparent → cream across the grow (and back out on close),
+            // so the row doesn't snap to a solid block the instant it's clicked.
+            opacity: isOpen ? 1 : 0,
+            top: isOpen ? 0 : origin.top,
+            left: isOpen ? 0 : origin.left,
+            width: isOpen ? "100vw" : origin.width,
+            height: isOpen ? "100vh" : origin.height,
+            borderRadius: isOpen ? 0 : 6,
+            transition: `opacity ${coverMs}ms ${coverEase}, top ${coverMs}ms ${coverEase}, left ${coverMs}ms ${coverEase}, width ${coverMs}ms ${coverEase}, height ${coverMs}ms ${coverEase}, border-radius ${coverMs}ms ${coverEase}`,
+          }}
+        />
+      ) : (
+        // Cream frame that thickens inward to fill the viewport (sits behind the
+        // scroll surface, so once both are cream the content reads on top).
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 box-border"
+          style={{
+            borderStyle: "solid",
+            borderColor: "#f4f1ea",
+            borderWidth: isOpen ? "100vmax" : 10,
+            transition: reduce
+              ? "none"
+              : `border-width ${OPEN_MS}ms ${coverEase}`,
+          }}
+        />
+      )}
 
       <div
         data-lenis-prevent

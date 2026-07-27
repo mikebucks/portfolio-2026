@@ -1,5 +1,20 @@
-import type { Project } from "@/data/projects";
-import { ProjectMediaList } from "./ProjectMediaList";
+import type { Project, ProjectBlock } from "@/data/projects";
+import { ProjectMediaFigure } from "./ProjectMediaList";
+
+/**
+ * Normalize a project into an ordered block list. Prefers the new `content`
+ * field; otherwise falls back to the legacy `body` (rich-text paragraphs)
+ * followed by the trailing `media` stack.
+ */
+function toBlocks(project: Project): ProjectBlock[] {
+  if (project.content) return project.content;
+  return [
+    ...(project.body ?? []).map(
+      (html): ProjectBlock => ({ type: "text", html }),
+    ),
+    ...(project.media ?? []),
+  ];
+}
 
 /**
  * Cream-themed (dark-text) project detail body, used inside the project modal.
@@ -7,6 +22,8 @@ import { ProjectMediaList } from "./ProjectMediaList";
  * shares only the media renderer.
  */
 export function ProjectDetail({ project }: { project: Project }) {
+  const blocks = toBlocks(project);
+
   return (
     <article className="mx-auto max-w-5xl px-6 pt-14 pb-24 md:px-10">
       <header>
@@ -23,20 +40,25 @@ export function ProjectDetail({ project }: { project: Project }) {
 
       <section className="mt-10">
         <p className="text-lg leading-relaxed text-black">{project.summary}</p>
-        {project.body?.map((para, i) => (
-          <p key={i} className="mt-6 leading-relaxed text-black/80">
-            {para}
-          </p>
-        ))}
-      </section>
 
-      {project.media && project.media.length > 0 && (
-        <ProjectMediaList
-          media={project.media}
-          className="mt-14"
-          captionClassName="text-black/50"
-        />
-      )}
+        {blocks.map((block, i) =>
+          block.type === "text" ? (
+            <p
+              key={i}
+              className="mt-6 leading-relaxed text-black/80 [&_a]:underline [&_strong]:font-semibold [&_strong]:text-black"
+              // Trusted, in-repo authored copy (see ProjectBlock) — not user input.
+              dangerouslySetInnerHTML={{ __html: block.html }}
+            />
+          ) : (
+            <ProjectMediaFigure
+              key={i}
+              media={block}
+              className="mt-12"
+              captionClassName="text-black/50"
+            />
+          ),
+        )}
+      </section>
     </article>
   );
 }
