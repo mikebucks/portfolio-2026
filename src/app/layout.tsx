@@ -1,10 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { SynthKeyboard } from "@/components/audio/SynthKeyboard";
 import { SmoothScroll } from "@/components/animation/SmoothScroll";
+
+// Variable font: one file covers 400–700, which is the full range the UI uses
+// (normal / medium / semibold / bold). Exposed as a CSS variable rather than a
+// class so --font-display in globals.css stays the single place typography is
+// declared. `swap` keeps the system fallback painting during the font fetch —
+// the hero animates in on load and must not wait on a font.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Portfolio — 2026",
@@ -41,7 +53,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       {/* svh, not dvh: dvh is re-resolved on every step of iOS Safari's toolbar
           animation, relayouting mid-scroll on the same frames the fixed shader
           layer is being composited. svh is the static small-viewport height. */}

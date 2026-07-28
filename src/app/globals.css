@@ -3,7 +3,7 @@
 @theme {
   --color-accent: #ff5f15;
   --color-cream: #f4f1ea;
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
