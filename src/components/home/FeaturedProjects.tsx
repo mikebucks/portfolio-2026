@@ -1,9 +1,34 @@
+"use client";
+
+import type { MouseEvent } from "react";
 import { ArrowRight } from "lucide-react";
 import { featuredProjects } from "@/data/projects";
+import { prefersReducedMotion } from "@/lib/device";
+import { setProjectOrigin } from "@/lib/projectTransition";
 import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
   const featured = featuredProjects;
+
+  // Same hand-off the "All projects" rows use: stash the clicked card's rect so
+  // the modal's cream cover grows out of the thumbnail rather than playing the
+  // default frame-expand. See projectTransition + ProjectModal.
+  function onCardClick(e: MouseEvent<HTMLAnchorElement>, slug: string) {
+    // Modified clicks (new tab, etc.) and reduced-motion users keep the plain
+    // anchor — the modal still opens via the hash, just without the grow.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    if (prefersReducedMotion()) return;
+
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setProjectOrigin({
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    });
+    window.location.hash = `projects/${slug}`;
+  }
 
   return (
     <section
@@ -21,18 +46,26 @@ export function FeaturedProjects() {
           // No case study yet: the card keeps its art but doesn't link — the
           // "Read →" affordance becomes a "Coming soon" badge, and the hover
           // zoom / ring lift are dropped so it reads as inert.
-          const Card = p.comingSoon ? "div" : "a";
+          // An <a> with no href is inert: not clickable, not tabbable, no
+          // pointer cursor — so the coming-soon card keeps identical layout
+          // without pretending to be a link.
           return (
             <li
               key={p.slug}
               className={
                 p.comingSoon
-                  ? "overflow-hidden rounded-2xl"
-                  : "overflow-hidden rounded-2xl ring-0 ring-white/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-xl hover:ring-[10px] hover:ring-white/70"
+                  ? "overflow-hidden rounded-sm"
+                  : "overflow-hidden rounded-sm ring-0 ring-cream/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-md hover:ring-[10px] hover:ring-cream/70"
               }
             >
-              <Card
-                {...(p.comingSoon ? {} : { href: `/#projects/${p.slug}` })}
+              <a
+                {...(p.comingSoon
+                  ? {}
+                  : {
+                      href: `/#projects/${p.slug}`,
+                      onClick: (e: MouseEvent<HTMLAnchorElement>) =>
+                        onCardClick(e, p.slug),
+                    })}
                 className="group relative block aspect-[16/10] bg-white/5"
               >
                 {p.thumbnail && (
@@ -69,7 +102,7 @@ export function FeaturedProjects() {
                     </div>
                   )}
                 </div>
-              </Card>
+              </a>
             </li>
           );
         })}
