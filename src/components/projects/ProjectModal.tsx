@@ -9,12 +9,17 @@ import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
 import { setBackgroundCovered } from "@/lib/backgroundGate";
 import { ProjectDetail } from "./ProjectDetail";
 
-/** Parse `#projects/<slug>` → a valid project slug, or null. */
+/**
+ * Parse `#projects/<slug>` → a valid project slug, or null. Projects flagged
+ * `comingSoon` have no case study to show, so they don't open even via a
+ * hand-typed or shared hash.
+ */
 function slugFromHash(): string | null {
   const m = window.location.hash.match(/^#projects\/(.+)$/);
   if (!m) return null;
   const slug = decodeURIComponent(m[1]);
-  return getProject(slug) ? slug : null;
+  const project = getProject(slug);
+  return project && !project.comingSoon ? slug : null;
 }
 
 type Phase = "enter" | "open" | "leave";

@@ -54,6 +54,11 @@ export type Project = {
   /** Used on featured cards and the projects index list. */
   thumbnail?: string;
   /**
+   * Case study isn't written yet: the index row shows a "Coming soon" badge
+   * instead of linking, and `#projects/<slug>` won't open the modal.
+   */
+  comingSoon?: boolean;
+  /**
    * Legacy copy paragraphs, rendered before `media`. Each string is rich text
    * (inline HTML allowed). Prefer `content` for new projects.
    */
@@ -66,6 +71,57 @@ export type Project = {
 };
 
 export const projects: Project[] = [
+  {
+    slug: "figment-dapp",
+    title: "Figment dApp",
+    role: "Product Design & Growth",
+    thumbnail: "projects/figment-dapp/thumbnail.png",
+    tags: ["react", "web3", "design"],
+    summary: "A self-serve swing for an institutional infra provider",
+    content: [
+      {
+        type: "text",
+        html: "While leading Product Design at Figment, an institutional proof-of-stake crypto infrastructure company, I redesigned a nascent and neglected dApp inside the Ledger Wallet marketplace with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
+      },
+      { 
+        type: "text",
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2, myself and a PM, took a scrappy approach to the project. We stripped back every uneccessary piece of copy, UI, and completely gutted any industry jargon. The results surprised us."
+      },
+      { 
+        type: "text",
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. </strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
+      },
+      { 
+        type: "video", 
+        src: "/projects/figment-dapp/eth-flow.mp4", 
+        alt: "Ethereum staking flow in Ledger dApp", 
+        autoplay: true, 
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/dashboard.png"
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/sol.png"
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/eth-stake.png"
+      },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li>Net new assets under stake of over $500m</li>
+            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
+            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
+          </ol>
+        `,
+      },
+    ],
+  },
   {
     slug: "chisel",
     title: "Chisel",
@@ -106,23 +162,6 @@ export const projects: Project[] = [
     ],
   },
   {
-    slug: "figment-dapp",
-    title: "Figment dApp",
-    role: "Product Design & Growth",
-    thumbnail: "projects/figment-dapp/thumbnail.png",
-    tags: ["react", "web3", "design"],
-    summary: "$500m in Ethereum staked in 12 months",
-    // body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
-    // media: [],
-    content: [
-      {
-        type: "text",
-        html: ""
-      },
-      { type: "video", src: "/projects/figment-dapp/eth-flow.mp4", alt: "Ethereum staking flow in Ledger dApp", autoplay: true, },
-    ],
-  },
-  {
     slug: "book-of-idra",
     title: "Book of Idra",
     role: "Design Engineering",
@@ -154,8 +193,9 @@ export const projects: Project[] = [
     title: "BeatVox",
     role: "Solo Founder",
     thumbnail: "https://picsum.photos/seed/beatvox/800/600",
+    comingSoon: true,
     tags: ["swiftui", "audio", "design"],
-    summary: "TODO",
+    summary: "The musical sketchbook",
     body: ["TODO"],
     media: [],
   },
@@ -164,6 +204,7 @@ export const projects: Project[] = [
     title: "Figment Dashboard",
     role: "Product Design & Growth",
     thumbnail: "projects/figment-dapp/thumbnail.png",
+    comingSoon: true,
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions.",
     body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],

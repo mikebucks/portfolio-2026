@@ -19,7 +19,7 @@ export function AboutSection() {
         </p>
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
-          <p>Design leader with a builder's mindset and skills to match. I've been designing, engineering, and strategizing digital products for 20 years. My diverse experience and skills have given me the flexibility to operate at any level of the product stack. I'm perfectly positioned to help your I’m perfectly positioned to help Engineering, Product, and Design orgs take full advantage of the LLM boom.</p>
+          <p>High impact individual contributor with a builder's mindset and skills to match. I've been designing, engineering, and strategizing digital products for over 20 years. My range of skills have given me the flexibility to operate at any level of the product stack. I'm perfectly positioned to help Engineering, Product, and Design orgs take full advantage of the LLM boom.</p>
         </div>
 
         <div className="mt-16">

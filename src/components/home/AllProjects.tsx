@@ -110,6 +110,29 @@ export function AllProjects() {
       <ul className="divide-y divide-black/10 border-y border-black/10">
         {otherProjects.map((p) => {
           const images = projectImages(p);
+
+          // No case study yet: the row is inert (plain <div>, no hover strip)
+          // and wears a badge instead of linking into the modal.
+          if (p.comingSoon) {
+            return (
+              <li key={p.slug}>
+                <div className="flex items-center gap-6 py-6">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-xl md:text-2xl font-medium text-black/40">
+                      {p.title}
+                    </div>
+                    <div className="mt-1 truncate text-sm text-black/35">
+                      {p.summary}
+                    </div>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-black/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-black/45">
+                    Coming soon
+                  </span>
+                </div>
+              </li>
+            );
+          }
+
           return (
             <li key={p.slug}>
               <a
