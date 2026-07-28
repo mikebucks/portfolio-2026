@@ -85,11 +85,11 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2, myself and a PM, took a scrappy approach to the project. We stripped back every uneccessary piece of copy, UI, and completely gutted any industry jargon. The results surprised us."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
       },
       { 
         type: "text",
-        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. </strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
       },
       { 
         type: "video", 
@@ -165,7 +165,7 @@ export const projects: Project[] = [
     slug: "figment-dashboard",
     title: "Figment Dashboard",
     role: "Product Design & Growth",
-    thumbnail: "projects/figment-dapp/thumbnail.png",
+    thumbnail: "projects/figment-dashboard/thumbnail.png",
     comingSoon: true,
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions",

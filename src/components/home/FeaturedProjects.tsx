@@ -33,7 +33,7 @@ export function FeaturedProjects() {
   return (
     <section
       id="projects"
-      className="relative z-10 -mt-2 px-8 pt-16 bg-white/70 backdrop-blur-md"
+      className="relative z-10 px-8 pt-8 bg-white/70 backdrop-blur-md"
     >
       <div className="flex items-baseline justify-between w-full max-w-[1600px]">
         <h2 className="text-2xl md:text-3xl font-semibold text-black tracking-tight">
@@ -41,7 +41,7 @@ export function FeaturedProjects() {
         </h2>
       </div>
 
-      <ul className="grid gap-8 md:grid-cols-3 max-w-[1600px] pt-8 pb-16">
+      <ul className="grid gap-4 md:grid-cols-3 max-w-[1600px] pt-8 pb-16">
         {featured.map((p) => {
           // No case study yet: the card keeps its art but doesn't link — the
           // "Read →" affordance becomes a "Coming soon" badge, and the hover
@@ -54,8 +54,8 @@ export function FeaturedProjects() {
               key={p.slug}
               className={
                 p.comingSoon
-                  ? "overflow-hidden rounded-sm"
-                  : "overflow-hidden rounded-sm ring-0 ring-cream/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-md hover:ring-[10px] hover:ring-cream/70"
+                  ? "overflow-hidden rounded-xs"
+                  : "overflow-hidden rounded-xs ring-0 ring-cream/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:rounded-sm hover:ring-[8px] hover:ring-cream/70"
               }
             >
               <a
@@ -82,7 +82,7 @@ export function FeaturedProjects() {
                 )}
 
                 {/* Scrim — heavier at bottom for text legibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/5" />
 
                 {/* Content */}
                 <div className="relative h-full p-5 flex flex-col justify-end">
@@ -93,11 +93,11 @@ export function FeaturedProjects() {
                     {p.summary}
                   </div>
                   {p.comingSoon ? (
-                    <div className="mt-5 self-start rounded-full border border-accent/50 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-accent">
+                    <div className="mt-1.5 self-start rounded-full border border-accent/50 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-accent">
                       Coming soon
                     </div>
                   ) : (
-                    <div className="mt-5 font-mono text-xs text-white/40 group-hover:text-accent transition-colors duration-150 inline-flex items-center gap-1">
+                    <div className="mt-1.5 font-mono text-xs text-white/40 group-hover:text-accent transition-colors duration-150 inline-flex items-center gap-1">
                       Read <ArrowRight size={11} strokeWidth={1.5} />
                     </div>
                   )}
