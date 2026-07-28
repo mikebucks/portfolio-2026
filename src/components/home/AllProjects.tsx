@@ -118,14 +118,14 @@ export function AllProjects() {
               <li key={p.slug}>
                 <div className="flex items-center gap-6 py-6">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-xl md:text-2xl font-medium text-black/40">
+                    <div className="truncate text-xl md:text-2xl font-medium text-black/70">
                       {p.title}
                     </div>
-                    <div className="mt-1 truncate text-sm text-black/35">
+                    <div className="mt-1 truncate text-sm text-black/50">
                       {p.summary}
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full border border-black/15 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-black/45">
+                  <span className="shrink-0 rounded-full border border-accent/35 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-accent">
                     Coming soon
                   </span>
                 </div>
