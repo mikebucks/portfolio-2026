@@ -84,30 +84,22 @@ export const projects: Project[] = [
         html: "While leading Product Design at Figment, an institutional proof-of-stake crypto infrastructure company, I redesigned a nascent and neglected dApp inside the Ledger Wallet marketplace with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
       },
       { 
-        type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
-      },
-      { 
-        type: "text",
-        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
-      },
-      { 
         type: "video", 
         src: "/projects/figment-dapp/eth-flow.mp4", 
         alt: "Ethereum staking flow in Ledger dApp", 
         autoplay: true, 
       },
+      { 
+        type: "text",
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
+      },
       {
         type: "image",
         src: "/projects/figment-dapp/dashboard.png"
       },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/sol.png"
-      },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/eth-stake.png"
+      { 
+        type: "text",
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
       },
       {
         type: "text",
@@ -119,6 +111,14 @@ export const projects: Project[] = [
             <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
           </ol>
         `,
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/sol.png"
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/eth-stake.png"
       },
     ],
   },
@@ -138,16 +138,17 @@ export const projects: Project[] = [
         type: "text",
         html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
       },
+      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
       {
         type: "text",
         html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
       },
-      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
+      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
       {
         type: "text",
         html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
       },
-      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
+      
       {
         type: "text",
         html: `
