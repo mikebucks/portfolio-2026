@@ -156,6 +156,7 @@ function WebGLCanvas({
           device,
           perf,
           { isBackgroundCovered },
+          { WAVE_SIZE, captureWaveform, waveformShape },
         ] = await Promise.all([
           import("three"),
           import("@/components/webgl/materials/backgroundMaterial"),
@@ -163,6 +164,7 @@ function WebGLCanvas({
           import("@/lib/device"),
           import("@/lib/performance"),
           import("@/lib/backgroundGate"),
+          import("@/lib/audioScope"),
         ]);
 
         // Mount was abandoned while chunks downloaded — don't build anything.
@@ -461,6 +463,38 @@ function WebGLCanvas({
         // and ramps up to source-shader pace at peak click/note input.
         // Always monotonic so the noise field never reverses on input decay.
         let shaderTime = 0;
+        // ── Synth waveform ───────────────────────────────────────────────
+        // One cycle of the live voice, uploaded as a 256×1 texture. RGBA/byte
+        // rather than a float format so it needs no extension and no WebGL2
+        // fallback; 8 bits is well past what a visual displacement resolves.
+        const waveData = new Uint8Array(WAVE_SIZE * 4);
+        const waveTex = new THREE.DataTexture(waveData, WAVE_SIZE, 1);
+        waveTex.wrapS = THREE.RepeatWrapping;
+        waveTex.minFilter = THREE.LinearFilter;
+        waveTex.magFilter = THREE.LinearFilter;
+        material.uniforms.uWave.value = waveTex;
+
+        const uploadWave = () => {
+          const s = waveformShape();
+          for (let i = 0; i < WAVE_SIZE; i++) {
+            const v = Math.round((s[i] * 0.5 + 0.5) * 255);
+            const b = v < 0 ? 0 : v > 255 ? 255 : v;
+            const o = i * 4;
+            waveData[o] = b;
+            waveData[o + 1] = b;
+            waveData[o + 2] = b;
+            waveData[o + 3] = 255;
+          }
+          waveTex.needsUpdate = true;
+        };
+        // Seed with the resting sine so the first frame is already correct.
+        uploadWave();
+
+        // Eased copy of the pointer, fed to uPointerLag.
+        const pointerLag: [number, number] = [-9, -9];
+        let pointerLagPrimed = false;
+        // Eased follow angle for the Vibration square, fed to uSquareRot.
+        let squareRot = 0;
         // Latches on the first painted frame so we reveal the canvas once.
         let firstFramePainted = false;
 
@@ -503,12 +537,59 @@ function WebGLCanvas({
           const rate = 0.05 + 0.95 * pulse;
           shaderTime += dt * rate;
 
+          // Re-capture the voice. Returns false on silence, which leaves the
+          // last captured cycle in place — that retained shape is what clicks
+          // and pointer motion animate when nothing is sounding.
+          if (captureWaveform(visualState.frequency)) uploadWave();
+
           const u = material.uniforms;
           u.uTime.value += dt;
           u.uShaderTime.value = shaderTime;
           if (pointerHasMoved) {
             u.uPointer.value.set(visualState.pointer[0], visualState.pointer[1]);
+            // Exponential ease toward the live pointer, frame-rate independent.
+            // Snapped on the first move so it doesn't crawl in from the
+            // off-screen sentinel the uniform starts at.
+            if (pointerLagPrimed) {
+              const k = 1 - Math.exp(-dt / 0.26);
+              pointerLag[0] += (visualState.pointer[0] - pointerLag[0]) * k;
+              pointerLag[1] += (visualState.pointer[1] - pointerLag[1]) * k;
+            } else {
+              pointerLag[0] = visualState.pointer[0];
+              pointerLag[1] = visualState.pointer[1];
+              pointerLagPrimed = true;
+            }
+            u.uPointerLag.value.set(pointerLag[0], pointerLag[1]);
           }
+
+          // Vibration's square turns to follow the cursor within the quadrant
+          // its attracted corner occupies. Crossing an axis hands off to the
+          // neighbouring corner and the target angle jumps from one extreme to
+          // the other; easing toward it lets the square drift into its new
+          // resting angle instead of snapping. Mirrors the geometry in
+          // vibration.ts — see the corner-selection block there.
+          let squareRotTarget = 0;
+          if (pointerHasMoved) {
+            const aspect =
+              u.uResolution.value.y > 0
+                ? u.uResolution.value.x / u.uResolution.value.y
+                : 1;
+            const mx = pointerLag[0] * 0.5 * aspect;
+            const my = pointerLag[1] * 0.5;
+            const md = Math.hypot(mx, my);
+            if (md > 1e-4) {
+              // Angle from the attracted corner's rest diagonal to the cursor,
+              // i.e. the cursor's angle folded into the ±45° of its quadrant.
+              const residual =
+                Math.atan2(my, mx) - Math.atan2(Math.sign(my), Math.sign(mx));
+              // Matches the shader's smoothstep(0.0, 0.06, md) grip.
+              const g = Math.min(1, Math.max(0, md / 0.06));
+              squareRotTarget = residual * 0.32 * (g * g * (3 - 2 * g));
+            }
+          }
+          squareRot +=
+            (squareRotTarget - squareRot) * (1 - Math.exp(-dt / 0.32));
+          u.uSquareRot.value = squareRot;
           u.uPointerImpulse.value = visualState.pointerImpulse;
           u.uClickPos.value.set(visualState.clickPos[0], visualState.clickPos[1]);
           u.uClickImpulse.value = visualState.clickImpulse;
@@ -569,6 +650,7 @@ function WebGLCanvas({
           window.removeEventListener("resize", requestResize);
           swapThemeRef.current = null;
           material.dispose();
+          waveTex.dispose();
           planeGeo.dispose();
           particleMesh?.geometry.dispose();
           particleMat?.dispose();

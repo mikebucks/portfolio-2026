@@ -26,6 +26,10 @@
  *   uEnvelope    float
  *   uScroll      float
  *   uReactivity  float   0..1 user-controlled sensitivity
+ *   uWave        sampler2D  one cycle of the synth's live output, 256x1, red
+ *                        channel, 0..1 with 0.5 as silence. Repeat-wrapped, so
+ *                        x counts periods. Retained through silence (see
+ *                        lib/audioScope.ts) — safe to drive from any impulse.
  *   uMacros      vec4    per-theme visual constants, 0..1 each (preset's
  *                        `shaderMacros`) — shape the look per theme
  *   uNoteFreqNorms vec4  per-voice color (optional, currently used by cellular)

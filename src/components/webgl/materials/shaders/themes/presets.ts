@@ -1,6 +1,7 @@
 import type { MacroValues, SynthSettings } from "@/lib/synthTypes";
 import { causationFragment } from "./causation";
 import { correspondenceFragment } from "./correspondence";
+import { genderFragment } from "./gender";
 import { mindFragment } from "./mind";
 import { polarityFragment } from "./polarity";
 import { rhythmFragment } from "./rhythm";
@@ -43,6 +44,7 @@ const mindBase: SynthSettings = {
   oscEngine: "fm",
   oscWave: 0.45,
   oscTimbre: 0.35,
+  octave: 0,
 
   filterType: "lowpass",
   filterCutoff: 2600,
@@ -87,6 +89,7 @@ const correspondenceBase: SynthSettings = {
   oscEngine: "super",
   oscWave: 0.55,
   oscTimbre: 0.45,
+  octave: 0,
 
   filterType: "lowpass",
   filterCutoff: 2400,
@@ -126,38 +129,77 @@ const correspondencePreset: ThemePreset = {
 };
 
 // ── Vibration ────────────────────────────────────────────────────────────────
-// "Nothing rests; everything vibrates." Punchy pulse-wave analog on a grid.
+// "Nothing rests; everything vibrates." Junglist bassline synth — fundamental
+// on from the first cycle, a short knock on the front, warm growling mids under
+// it. Everything here is tuned for a bass that lands immediately: detune kept
+// narrow so the stack can't cancel itself, and the filter envelope kept low so
+// the attack is a knock rather than a bright zap.
 const vibrationBase: SynthSettings = {
-  oscEngine: "analog",
-  oscWave: 0.5,
+  // Four saws at ~8 cents. Wide detune is what makes a Reese, but down at D1 a
+  // 46-cent spread beats at roughly 1 Hz — the stack partially cancels itself
+  // about half a second in, which reads as the bass arriving late. Narrow
+  // spread keeps the saws reinforcing, so the note is at full weight instantly;
+  // the grind comes from resonance and the master drive instead.
+  oscEngine: "super",
+  oscWave: 0.10,
   oscTimbre: 0.3,
 
+  // Two octaves down. The shared handpan mapping starts at D3, which is
+  // baritone territory — the ding lands on D1 (~37 Hz) here.
+  octave: -2,
+
+  // Cutoff is what sets this preset's perceived loudness, not masterVolume.
+  // Two octaves down, almost all of the voice's energy sits between 37 and
+  // 260 Hz — a region where the ear needs roughly 20dB more level for the same
+  // loudness, and where most laptop speakers can barely move air at all. Adding
+  // gain there just drives the -1dB master limiter and gets clamped back, which
+  // is why turning it up did nothing.
+  //
+  // Opening the corner to ~620 Hz lets the 4th through 8th harmonics of the
+  // low notes through. Those sit where hearing and small drivers are both at
+  // their best, and they carry the loudness the fundamental cannot — the note
+  // is still as deep, it just becomes audible.
   filterType: "lowpass",
-  filterCutoff: 1800,
-  filterResonance: 1.2,
-  filterEnvAmount: 0.55,
+  filterCutoff: 620,
+  filterResonance: 4.0,
+  filterEnvAmount: 0.15,
 
-  attack: 0.005,
-  decay: 0.18,
-  sustain: 0.45,
-  release: 0.4,
+  // The knock: opens to ~1.4kHz for 100ms, then settles near 1.1kHz. Kept well
+  // short of the 3.5kHz sweep an earlier 0.6 env amount produced — that was the
+  // tinny zap.
+  //
+  // Sustain is shared by the amp and filter envelopes, so it can't go low for
+  // punch without the note itself dropping to a pluck. 0.55 holds the line and
+  // the short decay carries the attack instead.
+  attack: 0.001,
+  decay: 0.10,
+  sustain: 0.55,
+  release: 0.25,
 
+  // Slow filter drift, shallow enough (±120 Hz) that the cutoff nevera
+  // approaches the 40 Hz floor and starts clipping against it.
   lfoShape: "triangle",
-  lfoRate: 4.0,
-  lfoAmount: 0.10,
+  lfoRate: 0.7,
+  lfoAmount: 0.05,
 
-  cycEnvRate: 1.0,
-  cycEnvAmount: 0.0,
+  // Resonance itself crawls ±1 — the scrape. Deliberately not in step with the
+  // filter LFO, so the two never settle into an audible pattern.
+  cycEnvRate: 0.45,
+  cycEnvAmount: 0.16,
 
+  // No portamento. On a PolySynth each voice slides from whatever it last
+  // played, which smears the front of the note — fatal for a bassline.
   glide: 0.0,
 
-  delayTime: 0.22,
-  delayFeedback: 0.40,
-  delayWet: 0.20,
-  reverbWet: 0.20,
+  // Bass wants to stay dry and forward — the wet chain is only there to keep
+  // it from sounding pasted on.
+  delayTime: 0.16,
+  delayFeedback: 0.20,
+  delayWet: 0.06,
+  reverbWet: 0.03,
 
-  masterVolume: -9,
-  visualReactivity: 0.85,
+  masterVolume: -7,
+  visualReactivity: 0.95,
 };
 
 const vibrationPreset: ThemePreset = {
@@ -175,6 +217,7 @@ const polarityBase: SynthSettings = {
   oscEngine: "fm",
   oscWave: 0.45,
   oscTimbre: 0.35,
+  octave: 0,
 
   filterType: "lowpass",
   filterCutoff: 2600,
@@ -219,6 +262,7 @@ const rhythmBase: SynthSettings = {
   oscEngine: "karplus",
   oscWave: 0.7,
   oscTimbre: 0.4,
+  octave: 0,
 
   filterType: "lowpass",
   filterCutoff: 3200,
@@ -265,6 +309,7 @@ const causationBase: SynthSettings = {
   oscEngine: "noise",
   oscWave: 0.5, // noise color: <0.34 brown, <0.67 pink, else white
   oscTimbre: 0.5,
+  octave: 0, // non-pitched engine — kept for shape only
 
   filterType: "bandpass",
   filterCutoff: 1400,
@@ -307,11 +352,11 @@ const causationPreset: ThemePreset = {
 
 // ── Gender ───────────────────────────────────────────────────────────────────
 // "Gender is in everything." Bright, resonant analog lead — sharp, acid.
-// Reuses the Vibration shader.
 const genderBase: SynthSettings = {
   oscEngine: "analog",
   oscWave: 0.7,
   oscTimbre: 0.5,
+  octave: 0,
 
   filterType: "lowpass",
   filterCutoff: 2600,
@@ -345,7 +390,7 @@ const genderPreset: ThemePreset = {
   id: "gender",
   label: "Gender",
   blurb: "Gender is in everything; all things have two principles.",
-  fragment: vibrationFragment,
+  fragment: genderFragment,
   baseSettings: genderBase,
   shaderMacros: [0.5, 0.5, 0.35, 0.4],
 };

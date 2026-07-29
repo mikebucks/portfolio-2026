@@ -1,3 +1,5 @@
+import { NOTE_HUE_GLSL } from "./palette";
+
 /**
  * Cellular noise theme — based on Jesse Harlan's "cell noise with fast math".
  * Free license to use and modify.
@@ -185,20 +187,7 @@ vec2 cellular(vec3 P) {
   return sqrt(d11.xy);
 }
 
-vec3 noteHue(float freqNorm) {
-  vec3 c0 = vec3(0.38, 0.32, 0.72);
-  vec3 c1 = vec3(0.28, 0.50, 0.82);
-  vec3 c2 = vec3(0.22, 0.66, 0.62);
-  vec3 c3 = vec3(0.72, 0.56, 0.28);
-  vec3 c4 = vec3(0.70, 0.38, 0.52);
-  float t = clamp(freqNorm, 0.0, 1.0) * 4.0;
-  float i = floor(t);
-  float f = smoothstep(0.0, 1.0, fract(t));
-  if (i < 0.5)      return mix(c0, c1, f);
-  else if (i < 1.5) return mix(c1, c2, f);
-  else if (i < 2.5) return mix(c2, c3, f);
-  else              return mix(c3, c4, f);
-}
+${NOTE_HUE_GLSL}
 
 float whacky(vec3 p, float bloom) {
   float v = 0.1;

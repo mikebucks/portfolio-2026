@@ -5,7 +5,9 @@ import type {
   OscEngine,
   SynthSettings,
 } from "@/lib/store";
+import { registerWaveformSource } from "@/lib/audioScope";
 import { visualBus } from "@/lib/visualEvents";
+import { shiftOctave } from "./keyboardMapping";
 
 export type SynthEngine = {
   noteOn: (note: string, velocity?: number) => void;
@@ -68,6 +70,16 @@ export function createSynthEngine(
   // presets never have to know about them.
   const limiter = new Tone.Limiter(-1).toDestination();
   const volume = new Tone.Volume(initial.masterVolume).connect(limiter);
+
+  // Scope tap for the visual layer. Sits on the master so it sees the voice as
+  // it is actually heard, character chain and all. 2048 samples is enough to
+  // hold a full period of the lowest playable note at 48kHz.
+  const scope = new Tone.Waveform(2048);
+  volume.connect(scope);
+  const releaseScope = registerWaveformSource({
+    read: () => scope.getValue() as Float32Array,
+    sampleRate: Tone.getContext().sampleRate,
+  });
 
   // Gentle master EQ: a little low-end body, a touch of mud scooped, and the
   // top rolled off. Sitting last (after reverb) this also darkens the reverb
@@ -297,10 +309,25 @@ export function createSynthEngine(
     setTimeout(() => old.dispose(), Math.max(80, s.release * 1000 + 80));
   }
 
+  // Preset transpose. Applied at the engine boundary rather than in the
+  // keyboard mapping so callers keep passing the untransposed name — as long as
+  // noteOn and noteOff shift identically, `active` stays keyed consistently and
+  // a release still finds its note.
+  const transpose = (note: string) =>
+    current.octave === 0 ? note : shiftOctave(note, current.octave);
+
+  // What each held key actually sounded. Switching theme mid-note swaps
+  // `current.octave` between the attack and the release, so re-deriving the
+  // note at noteOff would look up a pitch that was never started and strand the
+  // voice sounding forever.
+  const sounding = new Map<string, string>();
+
   return {
-    noteOn(note, velocity = 0.8) {
+    noteOn(rawNote, velocity = 0.8) {
+      const note = transpose(rawNote);
       if (active.has(note)) return;
       active.set(note, velocity);
+      sounding.set(rawNote, note);
 
       const t = Tone.now();
       voice.triggerAttack(note, t, velocity);
@@ -322,7 +349,9 @@ export function createSynthEngine(
         timestamp: performance.now(),
       });
     },
-    noteOff(note) {
+    noteOff(rawNote) {
+      const note = sounding.get(rawNote) ?? transpose(rawNote);
+      sounding.delete(rawNote);
       if (!active.has(note)) return;
       active.delete(note);
 
@@ -343,6 +372,7 @@ export function createSynthEngine(
     releaseAll() {
       voice.releaseAll();
       active.clear();
+      sounding.clear();
       fenv.releaseFrom = fenv.value;
       fenv.stage = "release";
     },
@@ -374,6 +404,8 @@ export function createSynthEngine(
     dispose() {
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVisibility);
+      releaseScope();
+      scope.dispose();
       voice.dispose();
       filter.dispose();
       drive.dispose();

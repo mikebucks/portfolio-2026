@@ -21,6 +21,14 @@ export type SynthSettings = {
   oscWave: number;
   oscTimbre: number;
 
+  /**
+   * Octave transpose applied to every note before it reaches the voice. The
+   * keyboard mapping is one fixed handpan layout shared by all themes, so a
+   * preset that needs to sit in a different register — a bass, say — shifts it
+   * here rather than the mapping being rewritten per theme.
+   */
+  octave: number;
+
   filterType: FilterType;
   filterCutoff: number;
   filterResonance: number;
