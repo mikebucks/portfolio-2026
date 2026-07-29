@@ -33,7 +33,7 @@ export function FeaturedProjects() {
   return (
     <section
       id="projects"
-      className="relative z-10 px-8 pt-8 bg-white/70 backdrop-blur-md"
+      className="relative z-10 gutter-x pt-8 bg-white/70 backdrop-blur-md"
     >
       <div className="flex items-baseline justify-between w-full max-w-[1600px]">
         <h2 className="text-2xl md:text-3xl font-semibold text-black tracking-tight">

@@ -98,7 +98,7 @@ export function Header() {
       // Transition only the scroll-state properties (padding + background), NOT
       // `all`: the intro flies the header in with a GSAP transform, and a CSS
       // transition on `transform` would fight GSAP's per-frame writes.
-      className={cn("fixed z-30 w-full px-8 backdrop-blur-sm transition-[background-color,padding] duration-400",
+      className={cn("fixed z-30 w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
       scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60")}>
       <SynthPanel />
       <div className={

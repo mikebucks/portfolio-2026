@@ -128,7 +128,7 @@ export function ContactSection() {
       id="contact"
       className="relative z-10 bg-white/70 backdrop-blur-md"
     >
-      <div className="max-w-[1600px] px-8 pt-20 pb-28">
+      <div className="max-w-[1600px] gutter-x pt-20 pb-28">
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
           Contact
         </h2>

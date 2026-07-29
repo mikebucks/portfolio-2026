@@ -25,7 +25,7 @@ export function ProjectDetail({ project }: { project: Project }) {
   const blocks = toBlocks(project);
 
   return (
-    <article className="mx-auto max-w-5xl px-6 pt-14 pb-24 md:px-10">
+    <article className="mx-auto max-w-5xl gutter-x pt-14 pb-24 md:px-10">
       <header>
         <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-black">
           {project.title}

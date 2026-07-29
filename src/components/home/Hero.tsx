@@ -12,7 +12,7 @@ export function Hero() {
       // animation, so the hero (and with it the document height and this
       // mix-blend-difference group) relayouts on every frame of the scroll.
       // svh is static — it fills the screen with the chrome shown.
-      className="relative z-10 flex min-h-[100svh] flex-col justify-center px-8 mix-blend-difference"
+      className="relative z-10 flex min-h-[100svh] flex-col justify-center gutter-x mix-blend-difference"
     >
       <div className="max-w-200">
         <div
@@ -28,7 +28,7 @@ export function Hero() {
           // mix-blend-difference on large text in iOS Safari. Drop the former
           // and override the latter for this blended element.
           style={{ WebkitFontSmoothing: "auto" }}
-          className="mt-2 -ml-[4px] text-4xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight"
+          className="mt-2 -ml-[4px] text-3xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight"
         >
           Digital Product <CyclingWord />
           <br />

@@ -12,6 +12,17 @@
   --ink: #08080a;
 }
 
+/* The site's outer gutter — every full-bleed section pads its sides with this,
+   so the mobile value is a single knob. 1.25rem is the widest that still lets
+   the header nav and the hero headline fit a 400px-wide viewport. */
+@utility gutter-x {
+  padding-inline: 1.25rem;
+
+  @media (width >= 40rem) {
+    padding-inline: 2rem;
+  }
+}
+
 /* Only the root element gets the background.
    If body also has a background it paints OVER position:fixed z-index:-10
    children — hiding the WebGL canvas and CSS gradient entirely. */

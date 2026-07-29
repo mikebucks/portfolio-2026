@@ -10,7 +10,7 @@ export function AboutSection() {
       id="about"
       className="relative z-10 bg-[#08080a]/70 backdrop-blur-md"
     >
-      <div className="max-w-[1600px] px-8 pt-20 pb-24">
+      <div className="max-w-[1600px] gutter-x pt-20 pb-24">
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
           About
         </h2>

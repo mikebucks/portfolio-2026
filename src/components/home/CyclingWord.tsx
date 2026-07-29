@@ -136,9 +136,12 @@ export function CyclingWord() {
   return (
     <span className="relative inline-block whitespace-nowrap align-baseline">
       {/* Reserves inline width + baseline so the surrounding text lays out
-          normally. Matches the resting word ("Builder"). */}
+          normally. Sized to the WIDEST role, not the resting one ("Builder"):
+          the roll overlay is absolutely positioned, so a slot only wide enough
+          for "Builder" lets "Designer" hang ~33px past the headline box — on a
+          400px viewport that spills off-screen and adds a horizontal scroll. */}
       <span className="invisible" aria-hidden>
-        Builder
+        Designer
       </span>
 
       {/* Overlay carries the animated roll without disturbing the text baseline. */}

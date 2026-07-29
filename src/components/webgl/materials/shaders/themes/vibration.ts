@@ -296,10 +296,14 @@ void main() {
   col += hueA * fr;
   col += hueC * fb;
   col += hueD * fd;
-  col = mix(col, ground, fg);
-  // A shade short of a full cut, so the lower shelf reads as depth rather than
-  // as a second hole punched through the field.
-  col = mix(col, ground, fe * 0.85);
+  // Neither cut goes all the way to the ground. A full cut is opaque — it
+  // erases whatever it crosses, so the dark shapes read as holes and the bright
+  // bands simply end at them. Holding back leaves the band showing through,
+  // dimmed, so the crossing reads as one shape passing behind another. Over the
+  // bare ground both are still exactly the ground, since there is nothing under
+  // them to show.
+  col = mix(col, ground, fg * 0.82);
+  col = mix(col, ground, fe * 0.68);
 
   col = clamp(col, 0.0, 1.0);
 
