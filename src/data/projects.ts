@@ -148,7 +148,6 @@ export const projects: Project[] = [
         type: "text",
         html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
       },
-      
       {
         type: "text",
         html: `
