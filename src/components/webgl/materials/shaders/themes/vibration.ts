@@ -210,13 +210,14 @@ void main() {
   float hd = py - (wave(p.x * cyc * 2.60 - t * 1.45) * amp * 0.28 * envD + mid + fan * 1.9 + bend);
   float he = py - (wave(p.x * slow * 0.6 + t * 0.55) * amp * 0.75 * envE + mid - fan * 2.1 + bend * 0.4);
 
-  // Drive tightens the edges; input softens them into a flare. Back near the
-  // sketch's 1000 / 100: the split is the point, one crisp band reading as a
-  // shape against two soft ones reading as glow. Making all three crisp lost
-  // the glow that surrounds the lobes in the original.
-  float flare = 1.0 - 0.5 * mBoom * hit;
-  float sharpA = mix(700.0, 1600.0, mDrive) * flare;
-  float sharpB = mix(70.0, 170.0, mDrive) * flare;
+  // Drive tightens the edges; input softens them into a flare. The split is the
+  // point — one crisp band reading as a shape against soft ones reading as
+  // glow — but the soft exponent was low enough that its edge ran a fifth of
+  // the frame, so the bands it bounds were mostly gradient. Roughly doubled, so
+  // they still glow without losing their outline.
+  float flare = 1.0 - 0.35 * mBoom * hit;
+  float sharpA = mix(900.0, 2000.0, mDrive) * flare;
+  float sharpB = mix(140.0, 320.0, mDrive) * flare;
 
   float fr = band(hr, hg, sharpA);
   float fg = band(hg, hb, sharpB);
