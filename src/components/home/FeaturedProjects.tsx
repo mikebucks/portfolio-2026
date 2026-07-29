@@ -81,8 +81,9 @@ export function FeaturedProjects() {
                   />
                 )}
 
-                {/* Scrim — heavier at bottom for text legibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/5" />
+                {/* Scrim — compressed to the lower half so the art stays
+                    visible up top, staying dark down low for text legibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 from-0% via-black/60 via-25% to-transparent to-55%" />
 
                 {/* Content */}
                 <div className="relative h-full p-5 flex flex-col justify-end">
