@@ -104,7 +104,7 @@ export function AllProjects() {
 
   return (
     <div ref={rootRef} className="max-w-[1600px] pb-20">
-      <h2 className="mb-6 font-mono text-xs uppercase tracking-widest text-black/60">
+      <h2 className="mb-6 font-mono text-xs uppercase tracking-widest text-black/80">
         All projects
       </h2>
       <ul className="divide-y divide-black/10 border-y border-black/10">

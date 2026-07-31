@@ -72,6 +72,45 @@ export type Project = {
 
 export const projects: Project[] = [
   {
+    slug: "chisel",
+    title: "Chisel",
+    role: "Design & Engineering",
+    thumbnail: "projects/chisel/thumbnail.png",
+    tags: ["design-systems", "react", "vercel", "continuous-integraion"],
+    summary: "The agentic design system",
+    content: [
+      {
+        type: "text",
+        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple:",
+      },
+      {
+        type: "text",
+        html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
+      },
+      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
+      {
+        type: "text",
+        html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
+      },
+      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
+      {
+        type: "text",
+        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
+      },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li>A single source of truth for all UI components and patterns. Improvement in overall quality and consistency of UIs by eliminating the need to translate static designs to code.</li>
+            <li>Rapid prototyping for PMs, Engineers, and Designers. We can express design intents directly to the front end codebase instead of creating approximations in Figma that don't map 1:1 with code.</li>
+            <li>Faster product iteration. Simple edits like copy changes and layout adjustments can be handled by PMs without the unnecessary overhead of Linear tickets, Figma updates, and engineering pipelines.</li>
+          </ol>
+        `,
+      },
+    ],
+  },
+  {
     slug: "figment-dapp",
     title: "Figment dApp",
     role: "Product Design & Growth",
@@ -119,45 +158,6 @@ export const projects: Project[] = [
       {
         type: "image",
         src: "/projects/figment-dapp/eth-stake.png"
-      },
-    ],
-  },
-  {
-    slug: "chisel",
-    title: "Chisel",
-    role: "Design & Engineering",
-    thumbnail: "projects/chisel/thumbnail.png",
-    tags: ["design-systems", "react", "vercel", "continuous-integraion"],
-    summary: "The agentic design system",
-    content: [
-      {
-        type: "text",
-        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple:",
-      },
-      {
-        type: "text",
-        html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
-      },
-      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
-      {
-        type: "text",
-        html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
-      },
-      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
-      {
-        type: "text",
-        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
-      },
-      {
-        type: "text",
-        html: `
-        <strong>Outcomes</strong>
-          <ol>
-            <li>A single source of truth for all UI components and patterns. Improvement in overall quality and consistency of UIs by eliminating the need to translate static designs to code.</li>
-            <li>Rapid prototyping for PMs, Engineers, and Designers. We can express design intents directly to the front end codebase instead of creating approximations in Figma that don't map 1:1 with code.</li>
-            <li>Faster product iteration. Simple edits like copy changes and layout adjustments can be handled by PMs without the unnecessary overhead of Linear tickets, Figma updates, and engineering pipelines.</li>
-          </ol>
-        `,
       },
     ],
   },

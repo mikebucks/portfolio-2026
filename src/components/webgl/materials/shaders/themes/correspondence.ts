@@ -20,7 +20,7 @@
  * swell a lot.
  *
  * Macros:
- *   x  Mass     — ambient ball radius
+ *   x  Mass     — ambient ball radius, the whole spread scaling with it
  *   y  Drift    — orbit speed
  *   z  Contrast — separation between the two tones
  *   w  Tail     — lifts the wavefront thrown by clicks / notes
@@ -102,20 +102,17 @@ void main() {
   float drive = clamp(pulse, 0.0, 1.0);
   float eased = drive * drive;
 
-  // Growth applies to the body of the swarm only; the giants below hold their
-  // ambient size. Scaling them too is what floods the field — a giant at 4x
-  // spans over half the screen on its own and its tail reaches far past that,
-  // so every gap closes and the screen goes flat.
+  // Growth is graded by size in the loop below. Scaling every ball alike is what
+  // floods the field: 220 balls can only grow so far before they are simply
+  // touching, and a flat trebling puts geometric coverage over 100% — one solid
+  // sheet. Weighting it toward the balls that are already large spends the same
+  // area budget on far fewer, bigger blobs, so the top of the range reaches
+  // three times its old peak while the gaps stay open.
   //
-  // The body's ambient size is set at half of where it would otherwise sit, so
-  // quadrupling lands it at the size a doubling used to reach. That is the only
-  // way to widen the range: how big the swarm can get at full tilt is fixed by
-  // geometry — 150 balls can only grow so far before they are simply touching —
-  // so a bigger reaction has to come out of the ambient end, not the peak.
-  //
-  // Tail deliberately does not scale this: it would reintroduce the clipping
+  // Tail deliberately does not scale these: it would reintroduce the clipping
   // above. It shapes the wavefront instead.
-  float bodyGrow = 1.0 + eased * 3.0;
+  float growSmall = 1.0 + eased * 0.60;
+  float growBig   = 1.0 + eased * 3.85;
 
   // Ambient radius, in y-units. Fixed — growth rides on bodyGrow instead, so the
   // band stays put and each ball's size is its own business.
@@ -161,16 +158,17 @@ void main() {
     vec2 toPtr = ptr - c;
     c += toPtr * (pull / (1.0 + dot(toPtr, toPtr) * 14.0));
 
-    // Each ball's radius, as a multiple of the base. The body of the swarm
-    // spreads evenly over 0.3-1.8x; only the top 4% of the draw picks up the
-    // giant tail on top, ramping quadratically to 18x — about five of them on
-    // screen, the share held steady as the ball count changes. Giants have to stay this rare: an inverse-square tail scales with
-    // radius squared, so one big ball lifts the field a long way past its own
-    // rim. Doubling their number costs most of the swell headroom above; a swarm
-    // full of them floods every gap and fuses into a single solid mass. Weight
-    // is radius squared, since that is what the band below thresholds against.
-    float giant = clamp((u - 0.96) / 0.04, 0.0, 1.0);
-    float rf = (0.30 + 1.50 * u) * bodyGrow + 15.0 * giant * giant;
+    // Each ball's radius, as a multiple of the base, drawn as one continuous
+    // curve rather than in classes. A separate giant tier read as bimodal — a
+    // handful of huge blobs among uniformly tiny ones, five of them holding
+    // nearly two thirds of the visible area. Spread across a single range the
+    // biggest five hold about a twentieth, and every size in between is
+    // represented. The mild power keeps a lean toward the small end so the
+    // field still has texture rather than reading as one repeated dot.
+    float sz = u * sqrt(u);
+    float rf = mix(1.0, 3.4, sz)
+             * mix(growSmall, growBig, smoothstep(0.55, 1.0, sz));
+
     vec2 d = p - c;
     sum += (rf * rf) / max(dot(d, d), 1e-6);
 
