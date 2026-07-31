@@ -62,6 +62,59 @@ body {
   }
 }
 
+/* ── Project modal ─────────────────────────────────────────────────────────
+   The project lightbox is translucent so the shader background reads through
+   it. Every other layer of the page would read through it too, so while the
+   modal is up the page's own content fades out and the shader is the only
+   thing left behind the panel.
+
+   Driven by a `data-project-modal` attribute on <body> (set by ProjectModal)
+   rather than by props: the header and footer live in the root layout, not in
+   the modal's React tree, and this way neither has to become stateful.
+
+   The page doesn't just switch off: it scales down as it fades, on the same
+   curve and duration as the panel growing over it, so the two read as one
+   move — the page recedes, the case study takes its place. */
+[data-modal-hide] {
+  transform-origin: 50% 50%;
+  /* No `transform` and no `will-change` in the rest state, on purpose: either
+     one would make this a permanent stacking context, and the hero's
+     mix-blend-difference would stop reaching the shader behind it. Both only
+     apply while the modal is up, where the hero is faded out anyway. */
+  /* This duration is the CLOSE (CLOSE_MS in ProjectModal) — the page coming
+     back as the panel collapses. Opening overrides it below, so each direction
+     matches the panel's own timing. */
+  transition:
+    opacity 320ms cubic-bezier(0.7, 0, 0.2, 1),
+    transform 320ms cubic-bezier(0.7, 0, 0.2, 1);
+}
+
+/* The page column is the full document height, so its own center is nowhere
+   near the viewport and scaling about it would sling the content sideways.
+   ProjectModal pins the origin to the middle of what's actually on screen when
+   the modal opens; scroll is locked from that moment, so one measurement holds
+   for the whole open-and-close. */
+[data-modal-hide="page"] {
+  transform-origin: 50% var(--modal-origin-y, 50%);
+}
+
+body[data-project-modal="open"] [data-modal-hide] {
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+  /* OPEN_MS. */
+  transition-duration: 480ms;
+}
+
+/* The header's bar (cream, or white + blur before scroll) is painted on the
+   <header> itself, while its contents fade via [data-modal-hide] above. Drop
+   the bar here instead of fading the element, so GSAP's intro autoAlpha tween
+   stays the only thing writing the header's opacity. */
+body[data-project-modal="open"] header[data-intro-header] {
+  background-color: transparent;
+  backdrop-filter: none;
+}
+
 html.lenis,
 html.lenis body {
   height: auto;

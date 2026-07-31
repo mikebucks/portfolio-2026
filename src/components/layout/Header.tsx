@@ -100,43 +100,49 @@ export function Header() {
       // transition on `transform` would fight GSAP's per-frame writes.
       className={cn("fixed z-30 w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
       scrolled ? "py-4 bg-cream" : "pt-8 pb-6 bg-white/60")}>
-      <SynthPanel />
-      <div className={
-        "flex items-center justify-between inset-x-0 w-full max-w-[1600px]"
-      }>
-        <section className="flex justify-between w-full">
-          <Link
-            href="/"
-            onClick={handleLogoClick}
-            className="font-mono text-sm tracking-tight text-black hover:text-accent"
-          >
-            Mike<span className="font-bold">Bucks</span>
-          </Link>
-          <div className="flex justify-between gap-6 items-center">
-            <nav aria-label="Primary">
-              <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-black/80">
-                {NAV_LINKS.map((link) => (
-                  <li key={link.id}>
-                    <Link
-                      href={`/#${link.id}`}
-                      onClick={handleSectionClick(link.id)}
-                      aria-current={activeId === link.id ? "true" : undefined}
-                      className={cn(
-                        "hover:text-accent transition-colors",
-                        activeId === link.id && "active text-accent",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
+      {/* Contents fade out behind the translucent project modal; the bar's own
+          background is cleared by the same rules. Kept off the <header>
+          element so GSAP's intro autoAlpha tween owns its opacity alone.
+          See globals.css. */}
+      <div data-modal-hide>
+        <SynthPanel />
+        <div className={
+          "flex items-center justify-between inset-x-0 w-full max-w-[1600px]"
+        }>
+          <section className="flex justify-between w-full">
+            <Link
+              href="/"
+              onClick={handleLogoClick}
+              className="font-mono text-sm tracking-tight text-black hover:text-accent"
+            >
+              Mike<span className="font-bold">Bucks</span>
+            </Link>
+            <div className="flex justify-between gap-6 items-center">
+              <nav aria-label="Primary">
+                <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-black/80">
+                  {NAV_LINKS.map((link) => (
+                    <li key={link.id}>
+                      <Link
+                        href={`/#${link.id}`}
+                        onClick={handleSectionClick(link.id)}
+                        aria-current={activeId === link.id ? "true" : undefined}
+                        className={cn(
+                          "hover:text-accent transition-colors",
+                          activeId === link.id && "active text-accent",
+                        )}
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <SynthToggleButton />
                   </li>
-                ))}
-                <li>
-                  <SynthToggleButton />
-                </li>
-              </ul>
-            </nav>
-          </div>
-        </section>
+                </ul>
+              </nav>
+            </div>
+          </section>
+        </div>
       </div>
     </header>
   );

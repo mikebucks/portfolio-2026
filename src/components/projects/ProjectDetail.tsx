@@ -30,17 +30,15 @@ export function ProjectDetail({ project }: { project: Project }) {
         <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-black">
           {project.title}
         </h2>
-        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-black/60">
-          <span>{project.role}</span>
-          {project.tags.filter(Boolean).map((t) => (
-            <span key={t}>#{t}</span>
-          ))}
+        <p className="mt-4 max-w-3xl text-xl md:text-2xl font-light leading-snug text-black/75">
+          {project.summary}
+        </p>
+        <div className="mt-5 font-mono text-xs text-black/60">
+          {project.role}
         </div>
       </header>
 
-      <section className="mt-10">
-        <p className="text-lg leading-relaxed text-black">{project.summary}</p>
-
+      <section className="mt-8">
         {blocks.map((block, i) =>
           block.type === "text" ? (
             // A <div> (not <p>) so block-level rich text like <ol>/<ul> is valid

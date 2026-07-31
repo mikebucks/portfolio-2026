@@ -81,22 +81,34 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking, and its mission is simple:",
+        html: "Every org I've worked in restricts access to design, product, and code systems to a select few. Something as simple as a copy change becomes a Linear ticket, a Figma update, an engineering sprint, and a week or more of latency.",
+      },
+      {
+        type: "text",
+        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking with a lofty mission...",
       },
       {
         type: "text",
         html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
       },
-      { type: "image", src: "/projects/chisel/chisel-process.png", alt: "Chisel process then vs now" },
+      { 
+        type: "image", 
+        src: "/projects/chisel/chisel-process.png",
+        caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use." ,
+        alt: "Chisel process then vs now" },
       {
         type: "text",
-        html: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use.",
+        html: "Chisel codifies all the context an agent needs to design and build production-ready features directly in Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
       },
+      { type: "image", src: "/projects/chisel/chisel-stack.png", alt: "Chisel stack" },
+
       { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
+      
       {
         type: "text",
-        html: "At the heart of Chisel is a set of Claude Code skills that turn a prompt into a fully functioning feature inside Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
+        html: "",
       },
+      
       {
         type: "text",
         html: `

@@ -155,7 +155,6 @@ function WebGLCanvas({
           events,
           device,
           perf,
-          { isBackgroundCovered },
           { WAVE_SIZE, captureWaveform, waveformShape },
         ] = await Promise.all([
           import("three"),
@@ -163,7 +162,6 @@ function WebGLCanvas({
           import("@/lib/visualEvents"),
           import("@/lib/device"),
           import("@/lib/performance"),
-          import("@/lib/backgroundGate"),
           import("@/lib/audioScope"),
         ]);
 
@@ -500,18 +498,15 @@ function WebGLCanvas({
 
         const tick = () => {
           animId = requestAnimationFrame(tick);
-          // Skip the draw when the tab is hidden OR an opaque overlay (the project
-          // modal) fully covers the layer — every frame under it is invisible.
-          // `last` is intentionally not advanced here; the dt clamp below absorbs
-          // the gap on resume, exactly as the tab-hidden pause already relies on.
-          if (paused || isBackgroundCovered()) return;
+          // Skip the draw when the tab is hidden. `last` is intentionally not
+          // advanced here; the dt clamp below absorbs the gap on resume.
+          if (paused) return;
           const now = performance.now();
           const dt = Math.min((now - last) / 1000, 0.05);
           last = now;
 
           // Sample frame rate and adapt DPR before drawing. Only reached on real
-          // (non-paused, non-covered) frames, so a modal or hidden tab never
-          // pollutes the average.
+          // (non-paused) frames, so a hidden tab never pollutes the average.
           quality.tick();
 
           // Clear-and-repaint in the same frame — see the Sizing block above.

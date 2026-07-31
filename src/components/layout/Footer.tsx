@@ -8,6 +8,8 @@ export function Footer() {
     // so the last row clears the floating address bar. The footer is already
     // cream, so the fixed cream bottom frame bar overlaps it invisibly.
     <footer
+      // Fades out behind the translucent project modal — see globals.css.
+      data-modal-hide
       style={{
         paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))",
       }}

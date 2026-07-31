@@ -6,7 +6,6 @@ import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
 import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
-import { setBackgroundCovered } from "@/lib/backgroundGate";
 import { ProjectDetail } from "./ProjectDetail";
 
 /**
@@ -28,9 +27,19 @@ type Phase = "enter" | "open" | "leave";
 const OPEN_MS = 480;
 const CLOSE_MS = 320;
 
+// The panel's cream, held short of opaque so the shader background bleeds
+// through it. The page's own content is faded out underneath (see the
+// `data-project-modal` effect below), so this is the shader and nothing else.
+const PANEL = "rgba(244, 241, 234, 0.82)";
+// Softens the shader behind the panel so long-form copy stays readable while
+// the background still reads through. Ramps up with the panel rather than
+// switching on, so it needs a length at both ends — `none` can't be
+// interpolated, `blur(0px)` can.
+const PANEL_BLUR = (open: boolean) => `blur(${open ? 10 : 0}px)`;
+
 /**
  * Hash-routed project lightbox. `#projects/<slug>` opens a full-viewport cream
- * modal; the intro reads as the page's 10px cream frame thickening inward to
+ * panel; the intro reads as the page's 10px cream frame thickening inward to
  * fill the screen, then the detail content rises into place. Driven by CSS
  * transitions (not a rAF ticker) so it plays reliably regardless of tab state.
  */
@@ -105,14 +114,44 @@ export function ProjectModal() {
     };
   }, [slug, close]);
 
-  // Let the shader background stop drawing while the opaque cover fully hides it.
-  // Only `open` is a full-viewport opaque cover — during the enter/leave grow the
-  // cover is still translucent/partial and the shader peeks through, so gating on
-  // `open` (not merely "mounted") keeps this a genuinely invisible pause.
+  // Pin the point the page scales toward, measured once per open. The page
+  // column spans the whole document, so its own center is far off screen; this
+  // puts the origin at the middle of the current viewport, making the page look
+  // like it recedes straight back behind the panel. Measured on mount only —
+  // by the time the phase flips to `open` the column is already mid-transform,
+  // and re-measuring would move the origin out from under the animation.
+  //
+  // Left in place afterwards rather than cleaned up: transform-origin is inert
+  // once the column is back to `transform: none`, and clearing it while the
+  // page is still scaling back would snap it sideways.
   useEffect(() => {
-    const covered = phase === "open";
-    setBackgroundCovered(covered);
-    return () => setBackgroundCovered(false);
+    if (!slug) return;
+    const page = document.querySelector<HTMLElement>('[data-modal-hide="page"]');
+    if (!page) return;
+    const y = -page.getBoundingClientRect().top + window.innerHeight / 2;
+    document.body.style.setProperty("--modal-origin-y", `${Math.round(y)}px`);
+  }, [slug]);
+
+  // Scale and fade the page's own content (hero, sections, header bar, footer)
+  // out while the panel is up. The panel is translucent so the shader reads
+  // through it; without this the page sections would read through it too.
+  // Released the moment the leave transition starts, so the page is back by the
+  // time the panel has finished collapsing. See globals.css for the rules this
+  // drives — including the matching durations that keep the page's retreat and
+  // the panel's growth on the same clock.
+  //
+  // Keyed on the `open` phase rather than merely being mounted, so the page
+  // starts receding on the same frame the panel starts growing — the `enter`
+  // phase is the panel's committed collapsed state, before anything moves.
+  useEffect(() => {
+    if (phase === "open") {
+      document.body.dataset.projectModal = "open";
+    } else {
+      delete document.body.dataset.projectModal;
+    }
+    return () => {
+      delete document.body.dataset.projectModal;
+    };
   }, [phase]);
 
   const project = slug ? getProject(slug) : null;
@@ -133,7 +172,7 @@ export function ProjectModal() {
           aria-hidden
           className="pointer-events-none fixed"
           style={{
-            background: "#f4f1ea",
+            background: PANEL,
             // Fades transparent → cream across the grow (and back out on close),
             // so the row doesn't snap to a solid block the instant it's clicked.
             opacity: isOpen ? 1 : 0,
@@ -142,29 +181,42 @@ export function ProjectModal() {
             width: isOpen ? "100vw" : origin.width,
             height: isOpen ? "100vh" : origin.height,
             borderRadius: isOpen ? 0 : 6,
-            transition: `opacity ${coverMs}ms ${coverEase}, top ${coverMs}ms ${coverEase}, left ${coverMs}ms ${coverEase}, width ${coverMs}ms ${coverEase}, height ${coverMs}ms ${coverEase}, border-radius ${coverMs}ms ${coverEase}`,
+            backdropFilter: PANEL_BLUR(isOpen),
+            WebkitBackdropFilter: PANEL_BLUR(isOpen),
+            transition: `opacity ${coverMs}ms ${coverEase}, top ${coverMs}ms ${coverEase}, left ${coverMs}ms ${coverEase}, width ${coverMs}ms ${coverEase}, height ${coverMs}ms ${coverEase}, border-radius ${coverMs}ms ${coverEase}, backdrop-filter ${coverMs}ms ${coverEase}, -webkit-backdrop-filter ${coverMs}ms ${coverEase}`,
           }}
         />
       ) : (
         // Cream frame that thickens inward to fill the viewport (sits behind the
-        // scroll surface, so once both are cream the content reads on top).
+        // scroll surface, which is transparent, so the detail reads on top of
+        // this single tinted layer — two stacked translucent creams would
+        // compound into an opaque one).
+        //
+        // An inset ring rather than a border: the four sides of a border meet at
+        // mitered corners, and now that the cream is translucent those joins
+        // antialias into faint diagonals across the panel. An inset box-shadow
+        // paints the whole ring as one region, so the tint stays even.
+        //
+        // The blur can't grow inward with the ring — backdrop-filter applies to
+        // the element's whole backdrop, not to where the shadow paints — so it
+        // ramps up evenly across the viewport over the same duration instead.
         <div
           aria-hidden
-          className="pointer-events-none fixed inset-0 box-border"
+          className="pointer-events-none fixed inset-0"
           style={{
-            borderStyle: "solid",
-            borderColor: "#f4f1ea",
-            borderWidth: isOpen ? "100vmax" : 10,
+            boxShadow: `inset 0 0 0 ${isOpen ? "100vmax" : "10px"} ${PANEL}`,
+            backdropFilter: PANEL_BLUR(isOpen),
+            WebkitBackdropFilter: PANEL_BLUR(isOpen),
             transition: reduce
               ? "none"
-              : `border-width ${OPEN_MS}ms ${coverEase}`,
+              : `box-shadow ${OPEN_MS}ms ${coverEase}, backdrop-filter ${OPEN_MS}ms ${coverEase}, -webkit-backdrop-filter ${OPEN_MS}ms ${coverEase}`,
           }}
         />
       )}
 
       <div
         data-lenis-prevent
-        className="absolute inset-0 overflow-y-auto bg-cream"
+        className="absolute inset-0 overflow-y-auto"
         style={{
           opacity: isOpen ? 1 : 0,
           transition: reduce
