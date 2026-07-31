@@ -4,7 +4,7 @@ import type { MouseEvent } from "react";
 import { ArrowRight } from "lucide-react";
 import { featuredProjects } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
-import { setProjectOrigin } from "@/lib/projectTransition";
+import { captureProjectOrigin } from "@/lib/projectTransition";
 import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
@@ -20,13 +20,7 @@ export function FeaturedProjects() {
     if (prefersReducedMotion()) return;
 
     e.preventDefault();
-    const rect = e.currentTarget.getBoundingClientRect();
-    setProjectOrigin({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    });
+    captureProjectOrigin(e.currentTarget);
     window.location.hash = `projects/${slug}`;
   }
 

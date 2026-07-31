@@ -1,3 +1,4 @@
+import { ProjectLink } from "@/components/projects/ProjectLink";
 import { SkillsViz } from "@/components/skills/SkillsViz";
 
 /**
@@ -19,9 +20,9 @@ export function AboutSection() {
         </p>
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
-          <p>High impact IC with a builder's mindset. I <strong>design</strong>, <strong>engineer</strong>, <strong>strategize</strong>, and <strong>grow</strong> digital products. A natural systems thinker, I understand how the design system, the codebase, the metrics, and the customer conversations relate, and I build the infrastructure to connect them. I'm equally comfortable crafting UIs, interviewing customers, mapping business processes, shipping production code, or prototyping novel feature concepts.</p>
+          <p>High impact IC with a builder's mindset. I <strong>design</strong>, <strong>engineer</strong>, <strong>strategize</strong>, and <strong>grow</strong> digital products. A natural systems thinker, I understand how the design system, the codebase, the metrics, and the customer conversations relate and build infrastructure connecting them. I'm equally comfortable crafting UIs, interviewing customers, mapping business processes, shipping production code, or prototyping novel feature concepts.</p>
 
-          <p>Lately I'm focused on building agentic systems. I built <a className="text-accent hover:text-white/60" href="/#projects/chisel">Chisel, a design system that turns a prompt into production code</a>, Claude Code skills wired into a real CI pipeline. Before that I redesigned <a className="text-accent hover:text-white/60" href="/#projects/figment-dapp">Figment's staking dApp and grew it from roughly $0 to $500M+ in staked assets</a> on a team of 2, myself and a PM.</p>
+          <p>Lately I'm focused on building agentic systems. I built <ProjectLink slug="chisel" className="text-accent hover:text-white/60">Chisel, a design system that turns a prompt into production code</ProjectLink>, Claude Code skills wired into a real CI pipeline. Before that I redesigned <ProjectLink slug="figment-dapp" className="text-accent hover:text-white/60">Figment's staking dApp and grew it from roughly $0 to $500M+ in staked assets</ProjectLink> on a team of 2, myself and a PM.</p>
         </div>
 
         <div className="mt-16">

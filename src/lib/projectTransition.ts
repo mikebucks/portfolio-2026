@@ -21,6 +21,17 @@ export function setProjectOrigin(rect: OriginRect) {
   originRect = rect;
 }
 
+/** Stash `el`'s current on-screen box as the origin the cover grows from. */
+export function captureProjectOrigin(el: Element) {
+  const r = el.getBoundingClientRect();
+  setProjectOrigin({
+    top: r.top,
+    left: r.left,
+    width: r.width,
+    height: r.height,
+  });
+}
+
 /** Read and clear the pending origin rect (null if the modal was opened another way). */
 export function consumeProjectOrigin(): OriginRect | null {
   const r = originRect;

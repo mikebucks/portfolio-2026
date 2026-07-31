@@ -4,7 +4,7 @@ import { useLayoutEffect, useRef, type MouseEvent } from "react";
 import gsap from "gsap";
 import { otherProjects, projectImages } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
-import { setProjectOrigin } from "@/lib/projectTransition";
+import { captureProjectOrigin } from "@/lib/projectTransition";
 
 // Menu-to-grid hover, adapted from the Codrops "Menu to Grid" interaction:
 // hovering a row slides a strip of preview thumbnails in from the right
@@ -79,13 +79,7 @@ export function AllProjects() {
 
     e.preventDefault();
     const row = e.currentTarget;
-    const rect = row.getBoundingClientRect();
-    setProjectOrigin({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-    });
+    captureProjectOrigin(row);
 
     // Bloom the revealed strip as the cream cover is about to rise over it.
     gsap.to(row.querySelectorAll("[data-img]"), {
