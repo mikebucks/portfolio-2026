@@ -184,10 +184,16 @@ function WebGLCanvas({
         const baseDpr = device.getClampedDpr();
         const dprLevels = [baseDpr, baseDpr * 0.85, baseDpr * 0.7, baseDpr * 0.6];
         const lowPower = device.isLowPower();
-        // Causation is a ray-marched terrain — far heavier per pixel than the flat
-        // themes — so it renders at a lower DPR. Its soft grayscale hides the drop.
+        // Two themes cost far more per pixel than the flat ones and render at a
+        // lower DPR. Causation is a ray-marched terrain, and its soft grayscale
+        // hides the drop. Polarity walks twenty-eight rings of particles over a
+        // figure that fills the frame, so unlike the other themes there is no
+        // cheap empty space to cull against; its particles are round gaussian
+        // falloffs with no hard edge to alias, which is what makes them survive
+        // being drawn at three quarters scale.
         // Effective DPR = adaptive quality level × this per-theme scale.
-        const dprScaleForTheme = (t: ThemeId) => (t === "causation" ? 0.72 : 1);
+        const dprScaleForTheme = (t: ThemeId) =>
+          t === "causation" ? 0.72 : t === "polarity" ? 0.76 : 1;
         let qualityDpr = dprLevels[lowPower ? 1 : 0];
         let themeDprScale = dprScaleForTheme(themeRef.current);
         let currentDpr = qualityDpr * themeDprScale;
@@ -493,6 +499,8 @@ function WebGLCanvas({
         let pointerLagPrimed = false;
         // Eased follow angle for the Vibration square, fed to uSquareRot.
         let squareRot = 0;
+        // Eased camera elevation for Polarity, fed to uViewTilt.
+        let viewTilt = 0;
         // Latches on the first painted frame so we reveal the canvas once.
         let firstFramePainted = false;
 
@@ -585,6 +593,20 @@ function WebGLCanvas({
           squareRot +=
             (squareRotTarget - squareRot) * (1 - Math.exp(-dt / 0.32));
           u.uSquareRot.value = squareRot;
+
+          // Polarity swings the camera from head-on to overhead while a note
+          // sounds and lets it fall back as the note dies. The note lands as a
+          // step and the envelope falls linearly, so the ease is asymmetric:
+          // quick enough up that the swing belongs to the attack, slow enough
+          // down that it reads as the sound decaying rather than as a rewind.
+          // Driven by the envelope, so a soft note only lifts the camera part
+          // of the way.
+          const tiltTarget = Math.min(1, visualState.envelope * 1.3);
+          viewTilt +=
+            (tiltTarget - viewTilt) *
+            (1 - Math.exp(-dt / (tiltTarget > viewTilt ? 0.20 : 0.90)));
+          u.uViewTilt.value = viewTilt;
+
           u.uPointerImpulse.value = visualState.pointerImpulse;
           u.uClickPos.value.set(visualState.clickPos[0], visualState.clickPos[1]);
           u.uClickImpulse.value = visualState.clickImpulse;

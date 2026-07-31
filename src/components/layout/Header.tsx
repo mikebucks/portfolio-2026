@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -26,8 +26,27 @@ const SynthPanel = dynamic(
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const onHome = pathname === "/";
+
+  // Publish the bar's rendered height as --header-h so fixed overlays (the
+  // synth panel) can start below the nav instead of on top of it. It isn't a
+  // constant — the scroll state swaps the padding, and it animates — so
+  // observe it rather than measuring once.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        "--header-h",
+        `${el.offsetHeight}px`,
+      );
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -93,6 +112,7 @@ export function Header() {
     // top offset by safe-area-inset-top (viewport-fit=cover): sit the nav below
     // the notch / cream status-bar frame bar. Zero on desktop, so unchanged there.
     <header
+      ref={headerRef}
       data-intro-header
       style={{ top: "env(safe-area-inset-top, 0px)" }}
       // Transition only the scroll-state properties (padding + background), NOT

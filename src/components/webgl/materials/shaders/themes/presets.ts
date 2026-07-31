@@ -76,7 +76,7 @@ const mindBase: SynthSettings = {
 
 const mindPreset: ThemePreset = {
   id: "mind",
-  label: "Mind",
+  label: "Mentalism",
   blurb: "The All is Mind; the Universe is Mental.",
   fragment: mindFragment,
   baseSettings: mindBase,
@@ -205,7 +205,7 @@ const vibrationBase: SynthSettings = {
 const vibrationPreset: ThemePreset = {
   id: "vibration",
   label: "Vibration",
-  blurb: "Nothing rests; everything moves and vibrates.",
+  blurb: "Nothing rests; everything moves; everything vibrates.",
   fragment: vibrationFragment,
   baseSettings: vibrationBase,
   shaderMacros: [0.4, 0.45, 0.3, 0.4],
@@ -250,10 +250,13 @@ const polarityBase: SynthSettings = {
 const polarityPreset: ThemePreset = {
   id: "polarity",
   label: "Polarity",
-  blurb: "Everything is dual; all truths are half-truths.",
+  blurb: "Everything is dual; everything has poles; everything hadd its pair of opposites; like and unlike are the same; opposites are identical in nature, but different in deggree; extremes meet; all truths are but half-truths; all pardoxxes may be reconciled.",
   fragment: polarityFragment,
   baseSettings: polarityBase,
-  shaderMacros: [0.5, 0.3, 0.4, 0.45],
+  // Scale / Flow / Spiral / Bloom. Spiral is kept low on purpose: in unison the
+  // wavefront is one of the torus's own parallels and the form is unmistakable,
+  // and it takes very little stagger to lose that.
+  shaderMacros: [0.5, 0.45, 0.22, 0.45],
 };
 
 // ── Rhythm ───────────────────────────────────────────────────────────────────
@@ -295,7 +298,7 @@ const rhythmBase: SynthSettings = {
 const rhythmPreset: ThemePreset = {
   id: "rhythm",
   label: "Rhythm",
-  blurb: "Everything flows, out and in; all things rise and fall.",
+  blurb: "Everything flows, out and in; everything has its tides; all things rise and fall; the pendulum-swing manifests in everything; the measure of the swing to the right is the measure of the swing to the left; rhythm compensates.",
   fragment: rhythmFragment,
   baseSettings: rhythmBase,
   shaderMacros: [0.45, 0.4, 0.35, 0.4],
@@ -343,8 +346,8 @@ const causationBase: SynthSettings = {
 
 const causationPreset: ThemePreset = {
   id: "causation",
-  label: "Causation",
-  blurb: "Every cause has its effect; every effect its cause.",
+  label: "Cause & Effect",
+  blurb: "Every cause has its Effect; every Effect has its Cause; enerything happens according to Law; Chance is but a name for Law not recognixed; there are many planes of causation, but nothing escapes the Law",
   fragment: causationFragment,
   baseSettings: causationBase,
   shaderMacros: [0.5, 0.4, 0.35, 0.4],
@@ -389,7 +392,7 @@ const genderBase: SynthSettings = {
 const genderPreset: ThemePreset = {
   id: "gender",
   label: "Gender",
-  blurb: "Gender is in everything; all things have two principles.",
+  blurb: "Gender is in everything; everything has its Masculine and Feminine Principles; Gender manifests on all planes.",
   fragment: genderFragment,
   baseSettings: genderBase,
   shaderMacros: [0.5, 0.5, 0.35, 0.4],

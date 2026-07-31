@@ -28,6 +28,10 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       // loop rather than the shader because the corner handoff is a jump in the
       // target and easing across it needs state a fragment shader can't keep.
       uSquareRot: { value: 0 },
+      // 0..1 camera elevation for Polarity: 0 is head-on, 1 is overhead. Eased
+      // here for the same reason — a note lands as a step, and a shader has no
+      // state to swing a camera with.
+      uViewTilt: { value: 0 },
       // One cycle of the synth's live output, 256×1, red channel, 0..1 with
       // 0.5 as silence. Repeat-wrapped so a shader can tile it directly.
       uWave: { value: null as THREE.Texture | null },

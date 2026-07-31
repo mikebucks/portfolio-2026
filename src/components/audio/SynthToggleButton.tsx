@@ -2,9 +2,25 @@
 
 import { useUIStore } from "@/lib/store";
 
+// The two glyphs share the seal's (10,10) center and cross-fade through a
+// quarter turn in opposite directions, so opening reads as the mark rotating
+// into a cross rather than two icons cutting. Written as inline style rather
+// than utility classes because `transform-box: view-box` has to be explicit —
+// without it, older engines resolve the rotation about the SVG's border box
+// and the glyph swings off-center.
+const glyph = (visible: boolean, hiddenDeg: number) => ({
+  transformBox: "view-box" as const,
+  transformOrigin: "10px 10px",
+  transform: `rotate(${visible ? 0 : hiddenDeg}deg)`,
+  opacity: visible ? 1 : 0,
+  transition:
+    "transform 320ms cubic-bezier(0.7, 0, 0.2, 1), opacity 200ms ease-out",
+});
+
 /**
- * Always-visible toggle in the lower-right corner. Uses the Lucide `music-2`
- * glyph inlined to avoid pulling in the whole icon package.
+ * The panel's only open/close control: a philosopher's seal that turns into a
+ * close cross while the panel is up. Drawn inline rather than pulled from an
+ * icon package.
  */
 export function SynthToggleButton() {
   const open = useUIStore((s) => s.synthPanelOpen);
@@ -22,7 +38,6 @@ export function SynthToggleButton() {
           : "cursor-zoom-in"
         }`}
     >
-      
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="20"
@@ -35,29 +50,23 @@ export function SynthToggleButton() {
         strokeLinejoin="round"
         aria-hidden="true"
       >
-        {/* Synth Icon */}
-        {/* <rect width="20" height="16" x="2" y="4" rx="2" />
-        <path d="M6 8h4" />
-        <path d="M14 8h.01" />
-        <path d="M18 8h.01" />
-        <path d="M2 12h20" />
-        <path d="M6 12v4" />
-        <path d="M10 12v4" />
-        <path d="M14 12v4" />
-        <path d="M18 12v4" /> */}
+        {/* Philosopher's Seal */}
+        <g
+          style={glyph(!open, 90)}
+          fill="none"
+          strokeWidth="1"
+          strokeLinejoin="miter"
+        >
+          <circle cx="10" cy="10" r="9.3" />
+          <polygon points="10,0.7 18.05,14.65 1.95,14.65" />
+          <rect x="6.25" y="7.15" width="7.5" height="7.5" />
+          <circle cx="10" cy="10.9" r="3.75" />
+        </g>
 
-        {/* Faders Icon */}
-        {/* <path d="M14 17H5"/>
-        <path d="M19 7h-9"/>
-        <circle cx="17" cy="17" r="3"/>
-        <circle cx="7" cy="7" r="3"/> */}
-
-        {/* Philosopher's Seal Icon */}
-        <g fill="none" strokeWidth="1" strokeLinejoin="miter">
-          <circle cx="10" cy="10" r="9.3"/>
-          <polygon points="10,0.7 18.05,14.65 1.95,14.65"/>
-          <rect x="6.25" y="7.15" width="7.5" height="7.5"/>
-          <circle cx="10" cy="10.9" r="3.75"/>
+        {/* Close */}
+        <g style={glyph(open, -90)} strokeWidth="1.5">
+          <path d="M5.4 5.4 14.6 14.6" />
+          <path d="M14.6 5.4 5.4 14.6" />
         </g>
       </svg>
     </button>
