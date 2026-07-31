@@ -15,8 +15,14 @@ export function ProjectMediaFigure({
   className?: string;
   captionClassName?: string;
 }) {
+  // Per-item classes from the data go on the <figure>, not the media element,
+  // so a frame (padding, background, border) encloses the caption too. They
+  // come last, after the caller's layout classes, so an item can override them.
+  // To reach the media itself, use a child variant: `[&_img]:rounded-none`.
+  const itemClassName = m.type === "grid" ? undefined : m.className;
+
   return (
-    <figure className={className}>
+    <figure className={cn(className, itemClassName)}>
       {m.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

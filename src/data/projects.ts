@@ -6,6 +6,21 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
+      /**
+       * Per-item Tailwind classes for this block, applied to its <figure> — so
+       * a frame (`bg-white p-3 border border-black/10`) encloses the caption
+       * along with the image, and layout utilities (`max-w-md mx-auto`) size
+       * the block as a whole. Merged with tailwind-merge, so these win over the
+       * renderer's own classes rather than fighting them.
+       *
+       * To reach the <img> itself, use a child variant: `[&_img]:rounded-none`.
+       *
+       * Note `border` alone draws nothing you can see here: Tailwind v4 gives
+       * it no color of its own, so it inherits the body's near-white text
+       * color onto a cream panel. Pair it with a color — `border
+       * border-black/10`.
+       */
+      className?: string;
     }
   | {
       type: "video";
@@ -15,6 +30,8 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
+      /** Per-item Tailwind classes on this block's <figure> — see above. */
+      className?: string;
       /**
        * GIF-style playback: autoplays muted, loops, and hides the controls bar.
        * Use for silent looping clips (a lighter, sharper GIF replacement).
@@ -94,21 +111,31 @@ export const projects: Project[] = [
       { 
         type: "image", 
         src: "/projects/chisel/chisel-process.png",
+        className: "bg-cream p-2 border border-black/10 rounded-sm",
         caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use." ,
         alt: "Chisel process then vs now" },
       {
         type: "text",
         html: "Chisel codifies all the context an agent needs to design and build production-ready features directly in Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
       },
-      { type: "image", src: "/projects/chisel/chisel-stack.png", alt: "Chisel stack" },
-
-      { type: "image", src: "/projects/chisel/chisel-workflow.png", alt: "Chisel workflow" },
-      
+      { 
+        type: "image", 
+        src: "/projects/chisel/chisel-stack.png",
+        className: "bg-cream p-2 border border-black/10 rounded-sm",
+        caption: "The Chisel stack",
+        alt: "Chisel stack",
+      },
       {
         type: "text",
-        html: "",
+        html: "The biggest challenge with Chisel isn't generating quality code, it's making the agent's work accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec standards. A PM who can't read a diff still needs to know exactly what changed and see it running in a browser. An engineer who reviews the PR needs to feel safe approving it.",
       },
-      
+      { 
+        type: "image", 
+        src: "/projects/chisel/chisel-workflow.png", 
+        className: "bg-cream p-2 border border-black/10 rounded-sm",
+        caption: "The Chisel workflow",
+        alt: "Chisel workflow"
+       },
       {
         type: "text",
         html: `
