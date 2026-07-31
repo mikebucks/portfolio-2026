@@ -70,7 +70,7 @@ const mindBase: SynthSettings = {
   delayWet: 0.18,
   reverbWet: 0.35,
 
-  masterVolume: -1,
+  masterVolume: -12,
   visualReactivity: 0.8,
 };
 

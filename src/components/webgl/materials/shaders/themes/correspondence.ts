@@ -1,11 +1,29 @@
 /**
- * Aurora — colorful warped fbm gradient with palette cycling.
+ * Correspondence — grayscale metaballs over a diagonal light/dark divide.
+ *
+ * "As above, so below." A single line runs corner to corner, bottom-left to
+ * top-right. Above it the field is light with dark blobs; below it the field is
+ * dark with light blobs — the same value read two ways. The blobs drift across
+ * the whole screen and flip tone the instant they cross the line.
+ *
+ * Structured after the reference metaball sketch: every ball rides one shared
+ * circle at one shared angular speed, the phase stepping per index, so the
+ * population moves as one. The field is their summed inverse-square falloff
+ * read through a wide soft band, which is what gives glowing cores and halos
+ * rather than a hard isosurface. The reference's near-1/d falloff is too flat
+ * once the balls are spread over a whole screen instead of its middle half —
+ * inverse-square keeps nearby balls dominant, so they stay legible.
+ *
+ * Input is split by kind. The cursor only steers: balls lean toward it and the
+ * drift never changes rate, so the ambient motion is constant. Clicks and notes
+ * answer almost entirely in size — the clock gains a hair of speed, the balls
+ * swell a lot.
  *
  * Macros:
- *   x  Air     — opens up brightness and softens contrast (sky-like)
- *   y  Shimmer — boosts palette saturation, adds high-freq sparkle
- *   z  Sway    — increases warp amount (more flowing)
- *   w  Tail    — lifts ripple amplitudes from cursor / clicks / notes
+ *   x  Mass     — ambient ball radius
+ *   y  Drift    — orbit speed
+ *   z  Contrast — separation between the two tones
+ *   w  Tail     — lifts the swell and ripples from clicks / notes
  */
 export const correspondenceFragment = /* glsl */ `
 precision highp float;
@@ -13,18 +31,19 @@ precision highp float;
 varying vec2 vUv;
 
 uniform float uTime;
+uniform float uShaderTime;
 uniform vec2  uResolution;
 uniform vec2  uPointer;
 uniform float uPointerImpulse;
 uniform vec2  uClickPos;
 uniform float uClickImpulse;
+uniform float uClickStrength;
 uniform float uNoteOn;
-uniform float uFrequency;
 uniform float uVelocity;
-uniform float uEnvelope;
-uniform float uScroll;
 uniform float uReactivity;
 uniform vec4  uMacros;
+
+const int BALLS = 150;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -32,131 +51,162 @@ float hash(vec2 p) {
   return fract(p.x * p.y);
 }
 
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
-}
-
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 5; i++) {
-    v += a * noise(p);
-    p = p * 2.02 + 17.0;
-    a *= 0.5;
-  }
-  return v;
-}
-
-vec3 palette(float t, float satBoost) {
-  t = clamp(t, 0.0, 1.0);
-  vec3 c0 = vec3(0.02, 0.02, 0.04);
-  vec3 c1 = vec3(0.10, 0.18, 0.95);
-  vec3 c2 = vec3(0.98, 0.90, 0.35);
-  vec3 c3 = vec3(1.00, 0.48, 0.22);
-  vec3 c4 = vec3(1.00, 0.38, 0.58);
-  vec3 c5 = vec3(0.35, 0.90, 0.98);
-  vec3 c6 = vec3(1.00, 1.00, 1.00);
-
-  float s = t * 6.0;
-  float i = floor(s);
-  float f = smoothstep(0.0, 1.0, fract(s));
-  vec3 a = c0, b = c1;
-  if (i < 0.5)       { a = c0; b = c1; }
-  else if (i < 1.5)  { a = c1; b = c2; }
-  else if (i < 2.5)  { a = c2; b = c3; }
-  else if (i < 3.5)  { a = c3; b = c4; }
-  else if (i < 4.5)  { a = c4; b = c5; }
-  else               { a = c5; b = c6; }
-  vec3 col = mix(a, b, f);
-  // Push saturation by stretching distance from the local mean.
-  float mean = (col.r + col.g + col.b) / 3.0;
-  return mean + (col - mean) * (1.0 + satBoost);
-}
-
 void main() {
-  float mAir     = uMacros.x;
-  float mShimmer = uMacros.y;
-  float mSway    = uMacros.z;
-  float mTail    = uMacros.w;
+  float mMass     = uMacros.x;
+  float mDrift    = uMacros.y;
+  float mContrast = uMacros.z;
+  float mTail     = uMacros.w;
 
   vec2 uv = vUv;
+  float aspect = uResolution.x / uResolution.y;
 
-  float pulse =
-      0.20 * uPointerImpulse +
-      0.55 * uClickImpulse +
-      1.00 * uNoteOn * max(uVelocity, 0.4);
-  pulse *= (0.5 + 0.5 * uReactivity);
+  // Work in y-normalised space: y spans 0..1, x spans 0..aspect. Blobs stay
+  // round and the field covers the full canvas at any viewport shape.
+  vec2 p = vec2(uv.x * aspect, uv.y);
 
-  float t = uTime * (0.045 + 0.12 * pulse);
+  // Clicks and notes pulse; the cursor deliberately does not. It steers the
+  // balls (below) and leaves the drift untouched, so the ambient motion runs at
+  // one constant rate no matter what the mouse is doing.
+  //
+  // A key press drives both channels — it bumps the note impulse and also fires
+  // a click, placed by pitch, at reduced strength (see InteractiveBackground).
+  // A mouse click drives only the click channel. Weighting that channel by
+  // uClickStrength, which is 1 for a real click and ~0.45 for a note's, lets a
+  // bare click land at the same magnitude as a key press instead of half of it.
+  float clickTerm = uClickImpulse * uClickStrength * 1.25;
+  float noteTerm  = uNoteOn * max(uVelocity, 0.4);
+  float pulse = (clickTerm + noteTerm) * (0.5 + 0.5 * uReactivity);
 
-  vec2 q = vec2(
-    fbm(uv * vec2(1.1, 2.2) + vec2(t * 1.7, -t * 0.9)),
-    fbm(uv * vec2(1.4, 2.6) + vec2(-t * 1.1, t * 1.5) + 9.3)
-  );
-  vec2 r = vec2(
-    fbm(uv * 2.0 + q + vec2(t, 0.0)),
-    fbm(uv * 2.0 + q + vec2(0.0, -t * 0.8) + 3.7)
-  );
-
-  vec2 pointerOffset = uPointer * (0.03 + 0.06 * uPointerImpulse);
+  // Impulses answer in size, not speed, so the drift runs off raw uTime at a
+  // fixed rate. uShaderTime cannot carry the ambient motion here: the render
+  // loop integrates it at 0.05 + 0.95 * pulse, which is a ~20x speed-up on a
+  // hit. It is still the right source for the small deliberate nudge, since it
+  // is integrated per frame and so ramps smoothly — scaling uTime by pulse
+  // instead would jump the phase by pulse * elapsed the moment a key lands.
+  // At full pulse this adds about a quarter to the rate; the rest is constant.
+  float t = uTime * (0.011 + 0.015 * mDrift) + uShaderTime * 0.0045;
 
   float tailScale = 1.0 + mTail * 1.4;
-  vec2 clickUv = uClickPos * 0.5 + 0.5;
-  float clickDist = distance(uv, clickUv);
-  float clickRipple =
-      sin(clickDist * 22.0 - uTime * 5.0) *
-      exp(-clickDist * 4.0) *
-      uClickImpulse * tailScale;
+  // Scaling every radius at once raises the whole field, so past a point the
+  // gaps close and the screen goes flat — blobs and gaps both vanish into one
+  // tone, which reads as the balls disappearing rather than growing. How much
+  // room there is depends entirely on how many giants are in the swarm, since
+  // their tails set the floor; the rare-giant draw below is what affords a
+  // doubling here. The ceiling is a hard guarantee against flooding, whatever
+  // the macros and velocity ask for.
+  float swell = min(1.0 + pulse * 0.55 * tailScale, 2.0);
 
-  float centerDist = distance(uv, vec2(0.5));
-  float noteRipple =
-      sin(centerDist * 14.0 - uTime * 3.5) *
-      exp(-centerDist * 2.2) *
-      uNoteOn * uVelocity * tailScale;
+  // Ambient radius, in y-units. Impulses scale it up from here.
+  float radius = mix(0.0058, 0.0092, mMass) * swell;
 
-  // Sway scales the global domain warp amount.
-  float warpAmt = (0.30 + 0.25 * pulse) * (0.55 + mSway * 1.2);
-  vec2 warped = uv + (r - 0.5) * warpAmt + pointerOffset;
-  warped.x += clickRipple * 0.09 + noteRipple * 0.14;
-  warped.y += noteRipple * 0.06;
+  // Every ball rides the same circle at the same angular speed; only the phase
+  // differs, stepping by one increment per index. The amplitude reaches past
+  // the edges so the population covers the whole canvas instead of sitting in a
+  // box in the middle — and it puts the sine's turning points, where balls bunch
+  // up, safely off-screen.
+  vec2 center = vec2(aspect * 0.5, 0.5);
+  vec2 amp = vec2(aspect * 0.64, 0.64);
 
-  float band = warped.x
-    + 0.08 * sin(warped.y * 6.2831 + uTime * 0.35)
-    + 0.05 * sin(uTime * 0.18);
+  // Phase steps per index — x by 1 radian, y by ~55, as in the reference. The
+  // slow wobble on the y step keeps the pattern from ever exactly repeating.
+  float stepX = 1.0;
+  float stepY = 55.0 + sin(uTime * 0.05) * 0.01;
 
-  float hueShift = 0.0;
-  if (uNoteOn > 0.001) {
-    float f = clamp((uFrequency - 120.0) / 1200.0, 0.0, 1.0);
-    hueShift = (f - 0.5) * 0.08 * uNoteOn;
+  // Rather than evaluating sin/cos per ball, carry the phase forward by
+  // rotating a unit vector — angle addition, two multiplies a step. The whole
+  // swarm then costs six transcendentals total instead of six per ball.
+  float caX = cos(stepX), saX = sin(stepX);
+  float caY = cos(stepY), saY = sin(stepY);
+  float sx = sin(t), cx = cos(t);
+  float sy = sin(t), cy = cos(t);
+
+  // Per-ball size draw. Stepping by the golden ratio and wrapping gives a
+  // low-discrepancy sequence: fixed per ball, no drift over time, and evenly
+  // spread, so the share of the swarm landing in any size range is exactly the
+  // width of that range. That last property is what makes the rare-giant tail
+  // below controllable — an arcsine or random draw bunches unpredictably.
+  float u = 0.137;
+
+  // Cursor attraction: each ball leans toward the pointer, strongly when close
+  // and negligibly far away. This is the pointer's only influence.
+  vec2 ptr = vec2((uPointer.x * 0.5 + 0.5) * aspect, uPointer.y * 0.5 + 0.5);
+  float pull = 0.22 + 0.18 * uPointerImpulse;
+
+  float sum = 0.0;
+  for (int i = 0; i < BALLS; i++) {
+    // sx == sin(t + i*stepX), cy == cos(t + i*stepY), u == fract(0.137 + i*phi)
+    vec2 c = center + vec2(sx, cy) * amp;
+    vec2 toPtr = ptr - c;
+    c += toPtr * (pull / (1.0 + dot(toPtr, toPtr) * 14.0));
+
+    // Each ball's radius, as a multiple of the base. The body of the swarm
+    // spreads evenly over 0.6-3.6x; only the top 6% of the draw picks up the
+    // giant tail on top, ramping quadratically to 18x — about five of them on
+    // screen. Giants have to stay this rare: an inverse-square tail scales with
+    // radius squared, so one big ball lifts the field a long way past its own
+    // rim. Doubling their number costs most of the swell headroom above; a swarm
+    // full of them floods every gap and fuses into a single solid mass. Weight
+    // is radius squared, since that is what the band below thresholds against.
+    float giant = clamp((u - 0.94) / 0.06, 0.0, 1.0);
+    float rf = 0.60 + 3.00 * u + 15.0 * giant * giant;
+    vec2 d = p - c;
+    sum += (rf * rf) / max(dot(d, d), 1e-6);
+
+    float nsx = sx * caX + cx * saX;
+    cx = cx * caX - sx * saX;
+    sx = nsx;
+    float nsy = sy * caY + cy * saY;
+    cy = cy * caY - sy * saY;
+    sy = nsy;
+    u = fract(u + 0.61803399);
   }
 
-  vec3 col = palette(fract(band + hueShift), mShimmer * 0.5);
+  // The band is set from the radius alone: a lone ball's field crosses lo
+  // exactly one radius from its centre, so size is independent of ball count
+  // and viewport shape. The shoulder up to 3x lo keeps the glowing core and halo.
+  float lo = 1.0 / (radius * radius);
+  float val = sum;
 
-  // Air macro lifts brightness and softens the dark side.
-  float bright = mix(0.55, 1.15, smoothstep(-0.1, 1.1, uv.x));
-  bright += mAir * 0.25;
-  col *= bright;
+  // One wavefront for both, thrown from the hit point — which for a note is its
+  // pitch position, since notes share this channel. Scaled against the band so
+  // it reads the same at any size setting.
+  vec2 clickP = vec2((uClickPos.x * 0.5 + 0.5) * aspect, uClickPos.y * 0.5 + 0.5);
+  float cd = distance(p, clickP);
+  // Driven by the same equalized pulse as the swell, so a click and a key press
+  // throw the same wavefront and fade on the same envelope.
+  val += sin(cd * 26.0 - uTime * 6.0) * exp(-cd * 3.2)
+       * pulse * 0.12 * lo * tailScale;
 
-  col += pulse * 0.10 * vec3(1.0);
+  float mask = smoothstep(lo, lo * 3.0, val);
 
-  // Shimmer adds high-frequency sparkle.
-  if (mShimmer > 0.001) {
-    float s = pow(noise(uv * 60.0 + uTime * 0.6), 6.0);
-    col += s * mShimmer * 0.8 * vec3(1.0, 0.95, 0.8);
-  }
+  // The divide: bottom-left corner to top-right corner in raw uv, so it hits
+  // the actual corners whatever the aspect ratio. Only the line itself is
+  // antialiased — a blob crossing it flips tone with no transition.
+  float sd = uv.y - uv.x;
+  float aa = 2.0 / uResolution.y;
+  float above = smoothstep(-aa, aa, sd);
 
-  float v = smoothstep(0.0, 0.85, distance(uv, vec2(0.25, 0.3)));
-  col *= mix(0.78, 1.0, v);
+  // Exactly two tones, swapped across the divide: a blob on the light side is
+  // the same value as the dark side's background, and vice versa. Contrast
+  // pushes the pair apart. One pigment, read two ways.
+  float light = mix(0.88, 0.97, mContrast);
+  float dark  = mix(0.16, 0.05, mContrast);
 
-  float g = hash(uv * uResolution + uTime) * 0.025;
-  col += g - 0.0125;
+  float lightSide = mix(light, dark, mask);
+  float darkSide  = mix(dark, light, mask);
+
+  float lum = mix(darkSide, lightSide, above);
+
+  // Impulses lift both sides toward their own extreme rather than toward white,
+  // so the inversion holds through a hit.
+  lum += pulse * 0.06 * mix(-1.0, 1.0, above);
+
+  lum = clamp(lum, 0.0, 1.0);
+
+  vec3 col = vec3(lum);
+
+  float g = hash(gl_FragCoord.xy + uTime) * 0.022;
+  col += g - 0.011;
 
   gl_FragColor = vec4(col, 1.0);
 }
