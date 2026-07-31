@@ -23,7 +23,7 @@
  *   x  Mass     — ambient ball radius
  *   y  Drift    — orbit speed
  *   z  Contrast — separation between the two tones
- *   w  Tail     — lifts the swell and ripples from clicks / notes
+ *   w  Tail     — lifts the wavefront thrown by clicks / notes
  */
 export const correspondenceFragment = /* glsl */ `
 precision highp float;
@@ -31,7 +31,6 @@ precision highp float;
 varying vec2 vUv;
 
 uniform float uTime;
-uniform float uShaderTime;
 uniform vec2  uResolution;
 uniform vec2  uPointer;
 uniform float uPointerImpulse;
@@ -43,7 +42,7 @@ uniform float uVelocity;
 uniform float uReactivity;
 uniform vec4  uMacros;
 
-const int BALLS = 150;
+const int BALLS = 220;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -77,27 +76,50 @@ void main() {
   float noteTerm  = uNoteOn * max(uVelocity, 0.4);
   float pulse = (clickTerm + noteTerm) * (0.5 + 0.5 * uReactivity);
 
-  // Impulses answer in size, not speed, so the drift runs off raw uTime at a
-  // fixed rate. uShaderTime cannot carry the ambient motion here: the render
-  // loop integrates it at 0.05 + 0.95 * pulse, which is a ~20x speed-up on a
-  // hit. It is still the right source for the small deliberate nudge, since it
-  // is integrated per frame and so ramps smoothly — scaling uTime by pulse
-  // instead would jump the phase by pulse * elapsed the moment a key lands.
-  // At full pulse this adds about a quarter to the rate; the rest is constant.
-  float t = uTime * (0.011 + 0.015 * mDrift) + uShaderTime * 0.0045;
+  // One constant rate, off raw uTime. Input never touches the clock: it answers
+  // in size alone (bodyGrow below), which can snap back the instant the impulse
+  // is spent. A speed-up cannot — uShaderTime, the only clock that reacts to
+  // input, is an integral of a decaying impulse, so the motion keeps running
+  // fast for the second-odd it takes that tail to fall away. That trailing drift
+  // is what reads as a delay after the event, and no weighting of it fixes that;
+  // the reaction has to leave the clock alone.
+  float t = uTime * (0.011 + 0.015 * mDrift);
 
   float tailScale = 1.0 + mTail * 1.4;
-  // Scaling every radius at once raises the whole field, so past a point the
-  // gaps close and the screen goes flat — blobs and gaps both vanish into one
-  // tone, which reads as the balls disappearing rather than growing. How much
-  // room there is depends entirely on how many giants are in the swarm, since
-  // their tails set the floor; the rare-giant draw below is what affords a
-  // doubling here. The ceiling is a hard guarantee against flooding, whatever
-  // the macros and velocity ask for.
-  float swell = min(1.0 + pulse * 0.55 * tailScale, 2.0);
 
-  // Ambient radius, in y-units. Impulses scale it up from here.
-  float radius = mix(0.0058, 0.0092, mMass) * swell;
+  // The impulse driving this snaps to full the instant an input lands, so the
+  // attack is already immediate whatever curve sits here — the exponent only
+  // shapes the way back down. Above 1 it falls away fast and gets out of the
+  // way; a fractional power did the opposite, holding the swarm open through
+  // the whole of the impulse's slow tail.
+  //
+  // Nothing may scale the drive up before the clamp. Anything that pushes the
+  // peak well past 1 flattens the top of the curve, and the swarm then sits
+  // pinned at full size, visibly frozen, for however long the impulse takes to
+  // decay back through the clipped part — a full second of dead time when this
+  // was multiplied by tailScale. Peak drive now lands just over 1, so the plateau
+  // is a tenth of a second and the swarm starts shrinking as soon as it is hit.
+  float drive = clamp(pulse, 0.0, 1.0);
+  float eased = drive * drive;
+
+  // Growth applies to the body of the swarm only; the giants below hold their
+  // ambient size. Scaling them too is what floods the field — a giant at 4x
+  // spans over half the screen on its own and its tail reaches far past that,
+  // so every gap closes and the screen goes flat.
+  //
+  // The body's ambient size is set at half of where it would otherwise sit, so
+  // quadrupling lands it at the size a doubling used to reach. That is the only
+  // way to widen the range: how big the swarm can get at full tilt is fixed by
+  // geometry — 150 balls can only grow so far before they are simply touching —
+  // so a bigger reaction has to come out of the ambient end, not the peak.
+  //
+  // Tail deliberately does not scale this: it would reintroduce the clipping
+  // above. It shapes the wavefront instead.
+  float bodyGrow = 1.0 + eased * 3.0;
+
+  // Ambient radius, in y-units. Fixed — growth rides on bodyGrow instead, so the
+  // band stays put and each ball's size is its own business.
+  float radius = mix(0.0058, 0.0092, mMass);
 
   // Every ball rides the same circle at the same angular speed; only the phase
   // differs, stepping by one increment per index. The amplitude reaches past
@@ -140,15 +162,15 @@ void main() {
     c += toPtr * (pull / (1.0 + dot(toPtr, toPtr) * 14.0));
 
     // Each ball's radius, as a multiple of the base. The body of the swarm
-    // spreads evenly over 0.6-3.6x; only the top 6% of the draw picks up the
+    // spreads evenly over 0.3-1.8x; only the top 4% of the draw picks up the
     // giant tail on top, ramping quadratically to 18x — about five of them on
-    // screen. Giants have to stay this rare: an inverse-square tail scales with
+    // screen, the share held steady as the ball count changes. Giants have to stay this rare: an inverse-square tail scales with
     // radius squared, so one big ball lifts the field a long way past its own
     // rim. Doubling their number costs most of the swell headroom above; a swarm
     // full of them floods every gap and fuses into a single solid mass. Weight
     // is radius squared, since that is what the band below thresholds against.
-    float giant = clamp((u - 0.94) / 0.06, 0.0, 1.0);
-    float rf = 0.60 + 3.00 * u + 15.0 * giant * giant;
+    float giant = clamp((u - 0.96) / 0.04, 0.0, 1.0);
+    float rf = (0.30 + 1.50 * u) * bodyGrow + 15.0 * giant * giant;
     vec2 d = p - c;
     sum += (rf * rf) / max(dot(d, d), 1e-6);
 
