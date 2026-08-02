@@ -31,11 +31,13 @@ export function useAudio() {
 }
 
 /**
- * Lazy audio provider: Tone.js is imported and the AudioContext started only
- * after the user's first gesture, so the initial JS stays small and the
- * browser's autoplay policy is satisfied. Browsers never prompt for audio —
- * they just keep the context suspended until a gesture — so we treat the first
- * pointer/key/touch anywhere as the opt-in (see the auto-unlock effect below).
+ * Lazy audio provider: Tone.js is imported and the AudioContext started only on
+ * explicit synth intent — a mapped synth key or opening the synth panel — not
+ * on the first gesture anywhere. The synth is an easter egg, so a casual visitor
+ * who only scrolls or clicks a link never pays the Tone bundle + audio-graph
+ * cost. `unlock` is called from `useSynthControls` (mapped keys and panel open);
+ * both paths run inside a real user gesture, so the browser's autoplay policy is
+ * still satisfied.
  */
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
@@ -73,33 +75,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       unlockingRef.current = null;
     }
   }, [settings, setAudioUnlocked]);
-
-  // Auto-unlock on the first user gesture anywhere on the page. `unlock` closes
-  // over the latest `settings`, so read it through a ref rather than baking a
-  // stale copy into the once-attached listeners.
-  const unlockRef = useRef(unlock);
-  useEffect(() => {
-    unlockRef.current = unlock;
-  });
-
-  useEffect(() => {
-    if (unlocked) return;
-    const onFirstGesture = () => {
-      void unlockRef.current();
-      detach();
-    };
-    // Idempotent: unlock() guards against a second engine, so racing with a
-    // mapped keypress (which also unlocks) is harmless.
-    const detach = () => {
-      window.removeEventListener("pointerdown", onFirstGesture);
-      window.removeEventListener("keydown", onFirstGesture);
-      window.removeEventListener("touchstart", onFirstGesture);
-    };
-    window.addEventListener("pointerdown", onFirstGesture);
-    window.addEventListener("keydown", onFirstGesture);
-    window.addEventListener("touchstart", onFirstGesture);
-    return detach;
-  }, [unlocked]);
 
   // Keep engine in sync with settings as user tweaks the panel.
   useEffect(() => {

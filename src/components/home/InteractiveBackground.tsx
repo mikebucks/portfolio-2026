@@ -177,27 +177,31 @@ function WebGLCanvas({
         });
         renderer.setClearColor(0x08080a);
 
-        // Adaptive DPR ladder: start from the device-clamped ceiling and step
-        // down toward a floor when the GPU can't hold frame rate (see the
-        // adaptive-quality controller below). Weak devices (isLowPower) begin one
-        // rung down so they don't have to tank a second of frames to get there.
-        const baseDpr = device.getClampedDpr();
-        const dprLevels = [baseDpr, baseDpr * 0.85, baseDpr * 0.7, baseDpr * 0.6];
+        // Resolution is controlled on ONE axis: the output canvas is pinned at
+        // the device-clamped DPR, and the shader is drawn into a lower-resolution
+        // render target that gets upscaled to fill it (see the render-target
+        // block below). This keeps the compositor happy with a full-DPR canvas
+        // while the expensive fragment work runs at a fraction of the pixels.
+        const outputDpr = device.getClampedDpr();
+        renderer.setPixelRatio(outputDpr);
         const lowPower = device.isLowPower();
-        // Two themes cost far more per pixel than the flat ones and render at a
-        // lower DPR. Causation is a ray-marched terrain, and its soft grayscale
-        // hides the drop. Polarity walks twenty-eight rings of particles over a
-        // figure that fills the frame, so unlike the other themes there is no
-        // cheap empty space to cull against; its particles are round gaussian
-        // falloffs with no hard edge to alias, which is what makes them survive
-        // being drawn at three quarters scale.
-        // Effective DPR = adaptive quality level × this per-theme scale.
-        const dprScaleForTheme = (t: ThemeId) =>
-          t === "causation" ? 0.72 : t === "polarity" ? 0.76 : 1;
-        let qualityDpr = dprLevels[lowPower ? 1 : 0];
-        let themeDprScale = dprScaleForTheme(themeRef.current);
-        let currentDpr = qualityDpr * themeDprScale;
-        renderer.setPixelRatio(currentDpr);
+
+        // Internal render scale = per-theme base × adaptive quality. The two
+        // heavy themes cost far more per pixel than the flat ones, so they draw
+        // at a fraction of the internal buffer. Causation is a ray-marched
+        // terrain whose soft grayscale hides the drop; polarity is ~840 gaussian
+        // particles with no hard edge to alias. 0.60 / 0.65 reproduce the
+        // effective resolution these themes already settled at under the old
+        // adaptive-DPR path, now with a stable full-DPR canvas underneath.
+        const renderScaleForTheme = (t: ThemeId) =>
+          t === "causation" ? 0.6 : t === "polarity" ? 0.65 : 1;
+        // Adaptive quality now nudges the internal render scale, never the canvas
+        // DPR — dropping the canvas would soften the whole compositing layer, and
+        // capping resolution here is invisible over the upscale.
+        const scaleLevels = [1, 0.85, 0.7, 0.6];
+        let qualityScale = scaleLevels[lowPower ? 1 : 0];
+        let baseRenderScale = renderScaleForTheme(themeRef.current);
+        let renderScale = baseRenderScale * qualityScale;
 
         // Measure our own element rather than the window, so the same code path
         // serves both the full-bleed background and a bounded header banner.
@@ -218,6 +222,48 @@ function WebGLCanvas({
         // `new PlaneGeometry` would leak its GPU buffer on every remount.
         const planeGeo = new THREE.PlaneGeometry(2, 2);
         scene.add(new THREE.Mesh(planeGeo, material));
+
+        // ── Render target + upscale pass ──────────────────────────────────
+        // The shader renders into this lower-resolution target; a second full-
+        // screen pass then samples it onto the canvas, scaling up. Sized to 1×1
+        // here and resized to (canvas px × renderScale) in resizeRenderTarget.
+        const rt = new THREE.WebGLRenderTarget(1, 1, {
+          depthBuffer: false,
+          stencilBuffer: false,
+        });
+        // Linear filtering gives the smooth upscale the heavy themes already
+        // lean on; no mipmaps for a single-sample blit.
+        rt.texture.minFilter = THREE.LinearFilter;
+        rt.texture.magFilter = THREE.LinearFilter;
+        rt.texture.generateMipmaps = false;
+        let rtW = 0;
+        let rtH = 0;
+
+        // A raw passthrough — samples the target and writes it out verbatim, no
+        // colour-space encode or tone-mapping, exactly as the theme shaders
+        // wrote straight to the canvas before. That keeps the blit pixel-for-
+        // pixel identical to direct rendering at renderScale 1.0.
+        const screenScene = new THREE.Scene();
+        const screenMat = new THREE.ShaderMaterial({
+          depthTest: false,
+          depthWrite: false,
+          uniforms: { uScene: { value: rt.texture } },
+          vertexShader: /* glsl */ `
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = vec4(position.xy, 0.0, 1.0);
+            }
+          `,
+          fragmentShader: /* glsl */ `
+            precision highp float;
+            varying vec2 vUv;
+            uniform sampler2D uScene;
+            void main() { gl_FragColor = texture2D(uScene, vUv); }
+          `,
+        });
+        const screenGeo = new THREE.PlaneGeometry(2, 2);
+        screenScene.add(new THREE.Mesh(screenGeo, screenMat));
 
         // ── Sizing ────────────────────────────────────────────────────────
         // Resize events only RECORD a target; the drawing buffer is resized
@@ -262,41 +308,49 @@ function WebGLCanvas({
           pendingH = h;
         };
 
+        // Size the internal render target to (canvas physical px × renderScale)
+        // and point uResolution at it — gl_FragCoord now spans the target, not
+        // the canvas. The upscale is uniform, so aspect ratio (and every
+        // resolution-relative calc in the loop) is preserved.
+        const resizeRenderTarget = () => {
+          const cw = renderer.domElement.width;
+          const ch = renderer.domElement.height;
+          const rw = Math.max(1, Math.round(cw * renderScale));
+          const rh = Math.max(1, Math.round(ch * renderScale));
+          if (rw === rtW && rh === rtH) return;
+          rtW = rw;
+          rtH = rh;
+          rt.setSize(rw, rh);
+          material.uniforms.uResolution.value.set(rw, rh);
+        };
+
         const applyPendingResize = () => {
           if (pendingW === appliedW && pendingH === appliedH) return;
           appliedW = pendingW;
           appliedH = pendingH;
+          // Canvas stays at the fixed output DPR; only the target scales.
           renderer.setSize(appliedW, appliedH, false);
-          // uResolution must be in physical (buffer) pixels — gl_FragCoord is
-          // also physical. Logical CSS pixels would be off by devicePixelRatio.
-          material.uniforms.uResolution.value.set(
-            renderer.domElement.width,
-            renderer.domElement.height,
-          );
+          resizeRenderTarget();
         };
 
         requestResize();
         applyPendingResize();
 
-        // Change the render DPR and force a buffer realloc at the new ratio —
-        // setPixelRatio alone doesn't resize, so clear the applied cache and
-        // re-run the sizing that also refreshes uResolution.
-        const applyEffectiveDpr = () => {
-          const next = qualityDpr * themeDprScale;
-          if (next === currentDpr) return;
-          currentDpr = next;
-          renderer.setPixelRatio(next);
-          appliedW = -1;
-          appliedH = -1;
-          applyPendingResize();
+        // Recompute the internal render scale and resize the target to match.
+        // The canvas DPR is untouched — resolution moves on one axis only.
+        const applyRenderScale = () => {
+          const next = baseRenderScale * qualityScale;
+          if (next === renderScale) return;
+          renderScale = next;
+          resizeRenderTarget();
         };
 
         const quality = perf.createAdaptiveQuality({
-          dprLevels,
+          dprLevels: scaleLevels,
           startLevel: lowPower ? 1 : 0,
-          onChange: (dpr) => {
-            qualityDpr = dpr;
-            applyEffectiveDpr();
+          onChange: (scale) => {
+            qualityScale = scale;
+            applyRenderScale();
           },
         });
 
@@ -307,8 +361,8 @@ function WebGLCanvas({
           if (next === activeTheme) return;
           applyTheme(material, next);
           activeTheme = next;
-          themeDprScale = dprScaleForTheme(next);
-          applyEffectiveDpr();
+          baseRenderScale = renderScaleForTheme(next);
+          applyRenderScale();
         };
         if (themeRef.current !== activeTheme) {
           swapThemeRef.current(themeRef.current);
@@ -340,7 +394,10 @@ function WebGLCanvas({
             blending: THREE.AdditiveBlending,
           });
           particleMesh = new THREE.Points(geo, particleMat);
-          scene.add(particleMesh);
+          // Added to the screen pass, not the shader scene, so they stay crisp
+          // at full canvas resolution instead of being upscaled with the heavy
+          // themes' reduced-resolution target.
+          screenScene.add(particleMesh);
         }
 
         // ── Pointer / click / scroll ──────────────────────────────────────
@@ -644,7 +701,12 @@ function WebGLCanvas({
             particleMat.opacity = 0.18 + visualState.envelope * 0.3;
           }
 
+          // Draw the shader into the reduced-resolution target, then upscale it
+          // (plus the full-resolution particles) onto the canvas.
+          renderer.setRenderTarget(rt);
           renderer.render(scene, camera);
+          renderer.setRenderTarget(null);
+          renderer.render(screenScene, camera);
 
           // Reveal the canvas the moment the first real frame is on screen.
           if (!firstFramePainted) {
@@ -669,6 +731,9 @@ function WebGLCanvas({
           material.dispose();
           waveTex.dispose();
           planeGeo.dispose();
+          rt.dispose();
+          screenMat.dispose();
+          screenGeo.dispose();
           particleMesh?.geometry.dispose();
           particleMat?.dispose();
           renderer.dispose();

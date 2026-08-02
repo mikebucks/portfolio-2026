@@ -24,12 +24,39 @@ export function AllProjects() {
   useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
-    if (prefersReducedMotion()) return; // CSS handles a plain hover fallback.
+
+    // Reduced-motion users skip the GSAP reveal (CSS group-hover handles it),
+    // but they still need the lazy image loader below, so this no longer
+    // early-returns — the reveal wiring is what's gated, not the whole effect.
+    const reduced = prefersReducedMotion();
 
     const cleanups: Array<() => void> = [];
     const ctx = gsap.context(() => {
       root.querySelectorAll<HTMLElement>("[data-row]").forEach((row) => {
         const imgs = row.querySelectorAll<HTMLElement>("[data-img]");
+
+        // Lazy-load the preview thumbnails on first hover or keyboard focus.
+        // The URLs live in data-src until then, so a cold visit never fetches
+        // previews for rows the user never engages. Assigned once, then the
+        // listeners detach themselves.
+        const loadImages = () => {
+          imgs.forEach((el) => {
+            const src = el.dataset.src;
+            if (src) el.style.backgroundImage = `url(${src})`;
+          });
+          row.removeEventListener("mouseenter", loadImages);
+          row.removeEventListener("focusin", loadImages);
+        };
+        row.addEventListener("mouseenter", loadImages);
+        row.addEventListener("focusin", loadImages);
+        cleanups.push(() => {
+          row.removeEventListener("mouseenter", loadImages);
+          row.removeEventListener("focusin", loadImages);
+        });
+
+        // Reduced-motion users get the CSS group-hover fallback; the sliding
+        // GSAP reveal (and its rest-state set) is motion-users only.
+        if (reduced) return;
 
         // Committed rest state: strip hidden + nudged right.
         gsap.set(imgs, { opacity: 0, scale: 0.8, xPercent: 20 });
@@ -156,8 +183,8 @@ export function AllProjects() {
                     <span
                       key={i}
                       data-img
+                      data-src={src}
                       className="block aspect-square w-11 shrink-0 rounded bg-black/5 bg-cover bg-center opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100 md:w-14"
-                      style={{ backgroundImage: `url(${src})` }}
                     />
                   ))}
                 </span>
