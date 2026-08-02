@@ -98,30 +98,36 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Every org I've worked in restricts access to design, product, and code systems to a select few. Something as simple as a copy change becomes a Linear ticket, a Figma update, an engineering sprint, and a week or more of latency.",
+        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to creative material and design operating principles. Time gets wasted by administrative overhead and highly async workflows.",
       },
       {
         type: "text",
-        html: "Advanced design and user experience capability shouldn't be limited to specialists or gated tools; it should be something most people can participate in, learn from, and build on. Chisel is a product design assistant combining Figment's component library, design system, analytics, customer interviews, and issue tracking with a lofty mission...",
+        html: `Chisel connects these formerly siloed systems to make
+          <ol>
+            <li>High-quality craft more accessible, collaborative, and scalable across Figment.</strong></li>
+            <li>Rapid prototyping consistent and useful for PMs, Engineers, and Designers.</li>
+            <li>Faster product iteration for simple edits like copy changes and styling.</li>
+          </ol>
+        `,
       },
       {
         type: "text",
-        html: "<strong>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong>",
+        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools. These systems should be available to participate in, learn from, and build on.</strong>",
       },
       { 
         type: "image", 
         src: "/projects/chisel/chisel-process.png",
-        className: "bg-cream p-2 border border-black/10 rounded-sm",
-        caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone in the org can use." ,
+        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
+        caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone can use." ,
         alt: "Chisel process then vs now" },
       {
         type: "text",
-        html: "Chisel codifies all the context an agent needs to design and build production-ready features directly in Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does.",
+        html: "Chisel codifies all the context an agent needs to design and build production-ready features directly in Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does, keeping a human in the loop throughout.",
       },
       { 
         type: "image", 
         src: "/projects/chisel/chisel-stack.png",
-        className: "bg-cream p-2 border border-black/10 rounded-sm",
+        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
         caption: "The Chisel stack",
         alt: "Chisel stack",
       },
@@ -132,7 +138,7 @@ export const projects: Project[] = [
       { 
         type: "image", 
         src: "/projects/chisel/chisel-workflow.png", 
-        className: "bg-cream p-2 border border-black/10 rounded-sm",
+        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
         caption: "The Chisel workflow",
         alt: "Chisel workflow"
        },
