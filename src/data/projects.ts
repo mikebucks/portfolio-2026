@@ -122,10 +122,10 @@ export const projects: Project[] = [
         alt: "Chisel process then vs now" },
       {
         type: "text",
-        html: "Chisel codifies all the context an agent needs to design and build production-ready features directly in Figment's frontend mono-repo. Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does, keeping a human in the loop throughout.",
+        html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec and code quality standards. A PM who can't read a diff still needs to know exactly what changed and see it running in a browser. An engineer who reviews the PR needs to feel safe approving it.",
       },
       { 
-        type: "image", 
+        type: "image",
         src: "/projects/chisel/chisel-stack.png",
         className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
         caption: "The Chisel stack",
@@ -133,11 +133,11 @@ export const projects: Project[] = [
       },
       {
         type: "text",
-        html: "The biggest challenge with Chisel isn't generating quality code, it's making the agent's work accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec standards. A PM who can't read a diff still needs to know exactly what changed and see it running in a browser. An engineer who reviews the PR needs to feel safe approving it.",
+        html: "Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does, keeping a human in the loop throughout.",
       },
-      { 
-        type: "image", 
-        src: "/projects/chisel/chisel-workflow.png", 
+      {
+        type: "image",
+        src: "/projects/chisel/chisel-workflow.png",
         className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
         caption: "The Chisel workflow",
         alt: "Chisel workflow"
@@ -147,7 +147,7 @@ export const projects: Project[] = [
         html: `
         <strong>Outcomes</strong>
           <ol>
-            <li>A single source of truth for all UI components and patterns. Improvement in overall quality and consistency of UIs by eliminating the need to translate static designs to code.</li>
+            <li>A single source of truth. Improvement in overall quality and consistency of UIs by eliminating the need to translate static designs to code.</li>
             <li>Rapid prototyping for PMs, Engineers, and Designers. We can express design intents directly to the front end codebase instead of creating approximations in Figma that don't map 1:1 with code.</li>
             <li>Faster product iteration. Simple edits like copy changes and layout adjustments can be handled by PMs without the unnecessary overhead of Linear tickets, Figma updates, and engineering pipelines.</li>
           </ol>
@@ -161,7 +161,7 @@ export const projects: Project[] = [
     role: "Product Design & Growth",
     thumbnail: "projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
-    summary: "A self-serve swing for an institutional infra provider",
+    summary: "A consumer swing for a B2B crypto infrastructure company",
     content: [
       {
         type: "text",
