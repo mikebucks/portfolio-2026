@@ -27,6 +27,7 @@ export function useSynthControls() {
   const audio = useAudio();
   const { unlock, unlocked } = audio;
   const toggleSynthPanel = useUIStore((s) => s.toggleSynthPanel);
+  const synthPanelOpen = useUIStore((s) => s.synthPanelOpen);
 
   const held = useRef(new Set<string>());
   const chordTimer = useRef<number | null>(null);
@@ -45,6 +46,15 @@ export function useSynthControls() {
     unlockedRef.current = unlocked;
     toggleRef.current = toggleSynthPanel;
   });
+
+  // Opening the synth panel is explicit synth intent, so unlock the audio graph
+  // then — this covers every path into the panel (the seal button, the A+S+D
+  // chord, and Cmd/Ctrl+Shift+S). Mapped note keys still unlock on their own in
+  // `handleDown` below, so the keyboard easter egg works without the panel. A
+  // casual visitor who never does either never loads Tone.
+  useEffect(() => {
+    if (synthPanelOpen && !unlockedRef.current) void unlockRef.current();
+  }, [synthPanelOpen]);
 
   useEffect(() => {
     // Release every sounding note and clear all input state. Shared by keyup
