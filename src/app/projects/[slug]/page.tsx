@@ -1,11 +1,44 @@
+import type { Metadata } from "next";
 import { HomeClient } from "@/components/home/HomeClient";
-import { projects } from "@/data/projects";
+import { getProject, projects } from "@/data/projects";
+import { SITE } from "@/lib/siteMeta";
 
 // The output is the same for every slug (the modal resolves it on the client),
 // but listing them prerenders the shareable ones instead of server-rendering
 // each on demand. Unknown slugs still render on request.
 export async function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
+}
+
+// The page component ignores the slug, but the preview card must not: this is
+// what makes a pasted case-study link read as that project instead of as the
+// homepage. The matching image lives in ./opengraph-image.tsx. Returning {} for
+// an unreadable project inherits the site-wide metadata from the root layout.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const project = getProject(slug);
+  if (!project || project.comingSoon) return {};
+
+  return {
+    title: project.title,
+    description: project.summary,
+    alternates: { canonical: `/projects/${slug}` },
+    openGraph: {
+      type: "article",
+      title: `${project.title} — ${SITE.name}`,
+      description: project.summary,
+      url: `${SITE.url}/projects/${slug}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${project.title} — ${SITE.name}`,
+      description: project.summary,
+    },
+  };
 }
 
 // A project case study is a modal over the homepage, not a page of its own —

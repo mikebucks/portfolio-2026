@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { SynthKeyboard } from "@/components/audio/SynthKeyboard";
 import { SmoothScroll } from "@/components/animation/SmoothScroll";
+import { SITE } from "@/lib/siteMeta";
 
 // Variable font: one file covers 400–700, which is the full range the UI uses
 // (normal / medium / semibold / bold). Exposed as a CSS variable rather than a
@@ -18,17 +19,48 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+// `metadataBase` is what every relative URL below (and every generated OG
+// image) is resolved against — get it wrong and share previews point at the
+// wrong host. `title.template` lets each route export just its own title;
+// `default` is what the homepage and any route without one falls back to.
 export const metadata: Metadata = {
-  title: "Mike Bucks Portfolio 2026",
-  description:
-    "Design-engineering portfolio. Interfaces, systems, and the occasional audiovisual instrument.",
-  metadataBase: new URL("https://example.com"),
+  metadataBase: new URL(SITE.url),
+  title: {
+    default: SITE.title,
+    template: `%s — ${SITE.name}`,
+  },
+  description: SITE.description,
+  applicationName: SITE.title,
+  authors: [{ name: SITE.author, url: SITE.url }],
+  creator: SITE.author,
+  publisher: SITE.author,
+  alternates: { canonical: "/" },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  manifest: "/manifest.webmanifest",
+  // The `images` key is deliberately absent: the opengraph-image.tsx route
+  // convention supplies it (and the per-project override in
+  // app/projects/[slug]/opengraph-image.tsx supplies theirs).
+  openGraph: {
+    type: "website",
+    siteName: SITE.name,
+    title: SITE.title,
+    description: SITE.description,
+    url: SITE.url,
+    locale: "en_US",
+  },
+  // Without `summary_large_image` X renders a small square crop even when a
+  // 1200x630 og:image is present. Platforms that find no twitter:image fall
+  // back to og:image, so the OG routes cover both.
+  twitter: {
+    card: "summary_large_image",
+    title: SITE.title,
+    description: SITE.description,
   },
 };
 

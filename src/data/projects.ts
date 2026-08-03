@@ -72,7 +72,7 @@ export type Project = {
   thumbnail?: string;
   /**
    * Case study isn't written yet: the index row shows a "Coming soon" badge
-   * instead of linking, and `#projects/<slug>` won't open the modal.
+   * instead of linking, and `/projects/<slug>` won't open the modal.
    */
   comingSoon?: boolean;
   /**
