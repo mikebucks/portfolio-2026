@@ -51,13 +51,37 @@ export function initAnalytics(): boolean {
     // Loud in dev, quiet in prod.
     debug: process.env.NODE_ENV !== "production",
     // Batch events and flush on a short interval instead of one XHR per event.
-    // Essential here: the mouse/scroll firehose below would otherwise open a
-    // request per sample.
+    // Essential here: the scroll firehose below would otherwise open a request
+    // per sample.
     batch_requests: true,
     // Mixpanel's built-in autocapture is left OFF on purpose — this app does
-    // its own, richer capture (element descriptors, mouse paths) in
-    // Analytics.tsx. Turning both on would double every click.
+    // its own, richer capture (element descriptors) in Analytics.tsx. Turning
+    // both on would double every click.
     autocapture: false,
+
+    // --- Session Replay ----------------------------------------------------
+    // Record the full session — DOM, cursor, clicks, scroll — as a replayable
+    // video, so you see exactly what a visitor did without reconstructing it
+    // from events. This replaces the old sampled "Mouse Path" event. Events we
+    // track (clicks, page views) are auto-stamped with $mp_replay_id, so each
+    // one deep-links to the moment in the replay.
+    //
+    // 100 = record every session. Dial down (e.g. 25) if you approach the
+    // replay quota on your plan.
+    record_sessions_percent: 100,
+    // Privacy: form inputs are masked by the SDK default (record_mask_all_inputs),
+    // so nothing typed into the contact form is ever captured — consistent with
+    // the keystroke policy below. Visible page text, on the other hand, is all
+    // public portfolio copy, so we scope masking to an explicit opt-in class:
+    // add `class="mp-mask"` to any element whose text should be blocked out in
+    // replays. Everything else renders normally, which is what makes the replay
+    // actually readable.
+    record_mask_text_selector: ".mp-mask",
+    // The WebGL/shader background and audio canvas are NOT recorded (record_canvas
+    // defaults off): capturing canvas at up to 15fps would tax the very
+    // animation this site is built around, and the background is decorative. It
+    // shows as blank in replays; all the meaningful content and interaction is
+    // still captured.
   });
 
   // Super properties ride along on every event automatically, so each event

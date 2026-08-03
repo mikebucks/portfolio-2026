@@ -9,11 +9,13 @@
  *   1. Page views      — initial load + every History-API route change.
  *   2. Discrete input  — clicks, double-clicks, right-clicks, mousedown/up,
  *                        key presses, form submits, copy, visibility changes.
- *   3. The firehose    — pointer movement and scrolling, SAMPLED and BATCHED
- *                        (see MOUSE_* / SCROLL_* constants) so "capture
- *                        everything" doesn't mean "one Mixpanel event per
- *                        pixel". Read the note on MOUSE_SAMPLE_MS before you
- *                        turn the rate up.
+ *   3. Scroll          — SAMPLED and BATCHED into one event per stretch (see
+ *                        SCROLL_* constants), for scroll-depth reporting.
+ *
+ * Continuous cursor movement is intentionally NOT tracked as events anymore —
+ * Mixpanel Session Replay (configured in lib/analytics) captures the full
+ * cursor path, DOM and scroll as a replayable video instead, which is both
+ * richer and far cheaper than one event per sample.
  *
  * All listeners use the capture phase so nothing the app does (stopPropagation
  * on a button, say) can hide an interaction from tracking. When the token is
@@ -28,28 +30,12 @@ import { onRouteChange } from "@/lib/appRoute";
 // Tuning
 // ---------------------------------------------------------------------------
 
-/**
- * How often a single mousemove sample is *recorded* (ms). This is NOT how often
- * we send to Mixpanel — samples accumulate into a buffer that flushes as ONE
- * event (see MOUSE_FLUSH_*). At 50ms you get ~20 points/sec of the cursor path.
- *
- * ⚠️ Mixpanel bills and rate-limits per event. Recording the path is cheap
- * because it's batched; if you ever switch to one-event-per-move, a single
- * engaged visitor can emit thousands of events a minute. For true frame-by-
- * frame replay of the cursor, a session-replay product (Mixpanel Session
- * Replay, PostHog, Hotjar) is the right tool — this gives you the shape of the
- * movement without the per-event cost.
- */
-const MOUSE_SAMPLE_MS = 50;
-/** Flush the mouse-path buffer when it hits this many samples… */
-const MOUSE_FLUSH_COUNT = 50;
-/** …or after this long, whichever comes first (keeps short bursts from lingering). */
-const MOUSE_FLUSH_MS = 5000;
-
 /** Minimum gap between recorded scroll samples (ms). */
 const SCROLL_SAMPLE_MS = 200;
-/** Flush the scroll buffer at this many samples or on the same MOUSE_FLUSH_MS timer. */
+/** Flush the scroll buffer at this many samples… */
 const SCROLL_FLUSH_COUNT = 40;
+/** …or on this timer, whichever comes first (keeps short bursts from lingering). */
+const SCROLL_FLUSH_MS = 5000;
 
 /** Text/attribute values are truncated to this many chars before sending. */
 const MAX_STR = 120;
@@ -66,7 +52,6 @@ const EV = {
   doubleClick: "Double Click",
   mouseDown: "Mouse Down",
   mouseUp: "Mouse Up",
-  mousePath: "Mouse Path", // batched movement
   scroll: "Scroll", // batched
   keyPress: "Key Press",
   formSubmit: "Form Submit",
@@ -234,30 +219,9 @@ export function Analytics() {
     const onVisibility = () =>
       track(EV.visibility, { state: document.visibilityState });
 
-    // --- 3. The firehose: movement + scroll, sampled and batched -----------
-
-    // Mouse path buffer. Each entry is a compact [x, y, dt-since-page-load].
-    let mouseBuf: Array<[number, number, number]> = [];
-    let lastMouseSample = 0;
-
-    const flushMouse = () => {
-      if (mouseBuf.length === 0) return;
-      track(EV.mousePath, {
-        path: window.location.pathname,
-        count: mouseBuf.length,
-        // Array of samples → one event describes a whole stretch of movement.
-        points: mouseBuf,
-      });
-      mouseBuf = [];
-    };
-
-    const onMouseMove = (e: MouseEvent) => {
-      const now = Date.now();
-      if (now - lastMouseSample < MOUSE_SAMPLE_MS) return; // sample, don't record every frame
-      lastMouseSample = now;
-      mouseBuf.push([Math.round(e.clientX), Math.round(e.clientY), now - pageEnteredAt]);
-      if (mouseBuf.length >= MOUSE_FLUSH_COUNT) flushMouse();
-    };
+    // --- 3. Scroll depth, sampled and batched ------------------------------
+    // (Cursor movement is captured by Session Replay, not as events — see the
+    // file header.)
 
     // Scroll buffer. Depth is normalised so it's comparable across page heights.
     let scrollBuf: Array<[number, number]> = [];
@@ -286,17 +250,13 @@ export function Analytics() {
       if (scrollBuf.length >= SCROLL_FLUSH_COUNT) flushScroll();
     };
 
-    // Time-based flush so a visitor who moves a little then stops still gets
+    // Time-based flush so a visitor who scrolls a little then stops still gets
     // their buffer sent, and so buffers don't cross a page-leave boundary.
-    const flushTimer = window.setInterval(() => {
-      flushMouse();
-      flushScroll();
-    }, MOUSE_FLUSH_MS);
+    const flushTimer = window.setInterval(flushScroll, SCROLL_FLUSH_MS);
 
     // Final flush + session length on the way out. `pagehide` is more reliable
     // than `beforeunload` on mobile Safari; both are harmless if double-fired.
     const onPageLeave = () => {
-      flushMouse();
       flushScroll();
       track(EV.pageLeave, {
         path: window.location.pathname,
@@ -313,7 +273,6 @@ export function Analytics() {
     document.addEventListener("dblclick", onDblClick, opts);
     document.addEventListener("mousedown", onMouseDown, opts);
     document.addEventListener("mouseup", onMouseUp, opts);
-    document.addEventListener("mousemove", onMouseMove, opts);
     document.addEventListener("keydown", onKeyDown, opts);
     document.addEventListener("submit", onSubmit, opts);
     document.addEventListener("change", onChange, opts);
@@ -327,7 +286,6 @@ export function Analytics() {
     return () => {
       stopRouteWatch();
       window.clearInterval(flushTimer);
-      flushMouse();
       flushScroll();
       document.removeEventListener("click", onClick, opts);
       document.removeEventListener("auxclick", onAuxClick, opts);
@@ -335,7 +293,6 @@ export function Analytics() {
       document.removeEventListener("dblclick", onDblClick, opts);
       document.removeEventListener("mousedown", onMouseDown, opts);
       document.removeEventListener("mouseup", onMouseUp, opts);
-      document.removeEventListener("mousemove", onMouseMove, opts);
       document.removeEventListener("keydown", onKeyDown, opts);
       document.removeEventListener("submit", onSubmit, opts);
       document.removeEventListener("change", onChange, opts);
