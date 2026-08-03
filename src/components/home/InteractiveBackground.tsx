@@ -434,8 +434,20 @@ function WebGLCanvas({
           return (NOTE_SEMITONES[m[1]] ?? 0) / 11;
         };
 
+        // Correspondence's divide steps 45° clockwise on every synth note. The
+        // target holds the stepped angle (ever-decreasing so repeated notes keep
+        // sweeping the same way around); the render loop eases the live angle
+        // toward it. Rest is 3π/4 — the bottom-left→top-right diagonal.
+        let divideAngleTarget = (3 * Math.PI) / 4;
+        let divideAngle = divideAngleTarget;
+
         const offBus = visualBus.on((e) => {
           if (e.type !== "note_on") return;
+
+          // Turn the Correspondence divide one 45° step clockwise. Fires for
+          // every note (keyboard/synth); mouse clicks go through onDown and do
+          // not rotate it. Themes that ignore uDivideAngle are unaffected.
+          divideAngleTarget -= Math.PI / 4;
           // Find a free (silent) slot, or steal the quietest active voice.
           let target = 0;
           let lowestEnv = Infinity;
@@ -663,6 +675,13 @@ function WebGLCanvas({
             (tiltTarget - viewTilt) *
             (1 - Math.exp(-dt / (tiltTarget > viewTilt ? 0.20 : 0.90)));
           u.uViewTilt.value = viewTilt;
+
+          // Ease the Correspondence divide toward its stepped target so a note
+          // turns the line with a visible sweep rather than a snap. ~0.20s time
+          // constant settles the 45° turn in roughly half a second.
+          divideAngle +=
+            (divideAngleTarget - divideAngle) * (1 - Math.exp(-dt / 0.2));
+          u.uDivideAngle.value = divideAngle;
 
           u.uPointerImpulse.value = visualState.pointerImpulse;
           u.uClickPos.value.set(visualState.clickPos[0], visualState.clickPos[1]);

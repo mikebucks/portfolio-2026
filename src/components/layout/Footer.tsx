@@ -1,5 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
-import { SOCIALS, CONTACT_EMAIL } from "@/data/socials";
+import { SOCIALS } from "@/data/socials";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -17,14 +17,6 @@ export function Footer() {
     >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-8">
         <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs">
-          <li>
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="group inline-flex items-center gap-1 text-black/90 underline decoration-black/20 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
-            >
-              {CONTACT_EMAIL}
-            </a>
-          </li>
           {SOCIALS.map((s) => (
             <li key={s.label}>
               <a
@@ -47,7 +39,6 @@ export function Footer() {
         <div className="flex flex-col items-start justify-between gap-4 font-mono text-xs text-black/60 md:flex-row md:items-center">
           <span>&copy; {year} · built with humanity</span>
           <span>
-            Press{" "}
             <kbd className="rounded border border-black/15 px-1.5 py-0.5">
               A
             </kbd>{" "}

@@ -41,6 +41,7 @@ uniform float uNoteOn;
 uniform float uVelocity;
 uniform float uReactivity;
 uniform vec4  uMacros;
+uniform float uDivideAngle;   // normal angle of the divide, stepped 45° per note
 
 const int BALLS = 220;
 
@@ -104,15 +105,15 @@ void main() {
 
   // Growth is graded by size in the loop below. Scaling every ball alike is what
   // floods the field: 220 balls can only grow so far before they are simply
-  // touching, and a flat trebling puts geometric coverage over 100% — one solid
+  // touching, and a flat multiplier puts geometric coverage over 100% — one solid
   // sheet. Weighting it toward the balls that are already large spends the same
-  // area budget on far fewer, bigger blobs, so the top of the range reaches
-  // three times its old peak while the gaps stay open.
+  // area budget on far fewer, bigger blobs, so the biggest swell while the gaps
+  // stay open. Kept gentle — the swell on a hit is a nudge, not a lunge.
   //
   // Tail deliberately does not scale these: it would reintroduce the clipping
   // above. It shapes the wavefront instead.
-  float growSmall = 1.0 + eased * 0.60;
-  float growBig   = 1.0 + eased * 3.85;
+  float growSmall = 1.0 + eased * 0.28;
+  float growBig   = 1.0 + eased * 1.7;
 
   // Ambient radius, in y-units. Fixed — growth rides on bodyGrow instead, so the
   // band stays put and each ball's size is its own business.
@@ -151,7 +152,29 @@ void main() {
   vec2 ptr = vec2((uPointer.x * 0.5 + 0.5) * aspect, uPointer.y * 0.5 + 0.5);
   float pull = 0.22 + 0.18 * uPointerImpulse;
 
-  float sum = 0.0;
+  // Radius scale from y-units to the sphere sizes we actually draw. The ambient
+  // radius above is tiny (it once only set a field threshold); as real geometry
+  // the balls need to read as bodies, so scale them up here.
+  float rScale = mix(1.5, 1.95, mMass);
+
+  // Merge softness for the smooth-minimum union, in y-units. Larger k lets two
+  // balls fuse from further apart and fattens the neck between them — this single
+  // number is what turns a field of separate spheres into flowing metal. Kept
+  // small so balls stay distinct and only fuse when they genuinely touch, rather
+  // than pooling the whole swarm into one sheet.
+  float k = 0.045 + 0.03 * mMass;
+
+  // Smooth-minimum DISTANCE field of the swarm. The old field summed an inverse-
+  // square falloff per ball, so overlapping balls stacked into independent domes
+  // that merely crossed each other. This instead unions true 2D sphere distances
+  // with smin: within k of one another two balls become ONE surface with a neck,
+  // exactly like the reference's 3D metaballs. Carried alongside the distance are
+  // the blended radius R — which sets how tall the surface domes at each point —
+  // and the outward surface direction G — the in-plane half of its normal — so a
+  // full 3D surface is reconstructed from this one screen-space pass (see Relief).
+  float sdf = 1e5;
+  float R   = 0.0;
+  vec2  G   = vec2(0.0);
   for (int i = 0; i < BALLS; i++) {
     // sx == sin(t + i*stepX), cy == cos(t + i*stepY), u == fract(0.137 + i*phi)
     vec2 c = center + vec2(sx, cy) * amp;
@@ -168,9 +191,22 @@ void main() {
     float sz = u * sqrt(u);
     float rf = mix(1.0, 3.4, sz)
              * mix(growSmall, growBig, smoothstep(0.55, 1.0, sz));
+    float ri = radius * rScale * rf;
 
-    vec2 d = p - c;
-    sum += (rf * rf) / max(dot(d, d), 1e-6);
+    // This ball's 2D signed distance, and the unit direction pointing out of it —
+    // which is the in-plane part of the surface normal for the sphere it caps.
+    vec2  pc  = p - c;
+    float len = sqrt(dot(pc, pc)) + 1e-6;
+    vec2  dir = pc / len;
+    float di  = len - ri;
+
+    // Polynomial smooth union. h is the blend weight: 1 keeps the running field,
+    // 0 takes this ball, and in between the two fuse. Radius and direction ride
+    // the SAME h, so height and normal stay continuous straight through the neck.
+    float h = clamp(0.5 + 0.5 * (di - sdf) / k, 0.0, 1.0);
+    sdf = mix(di, sdf, h) - k * h * (1.0 - h);
+    R   = mix(ri,  R, h);
+    G   = mix(dir, G, h);
 
     float nsx = sx * caX + cx * saX;
     cx = cx * caX - sx * saX;
@@ -181,29 +217,59 @@ void main() {
     u = fract(u + 0.61803399);
   }
 
-  // The band is set from the radius alone: a lone ball's field crosses lo
-  // exactly one radius from its centre, so size is independent of ball count
-  // and viewport shape. The shoulder up to 3x lo keeps the glowing core and halo.
-  float lo = 1.0 / (radius * radius);
-  float val = sum;
-
-  // One wavefront for both, thrown from the hit point — which for a note is its
-  // pitch position, since notes share this channel. Scaled against the band so
-  // it reads the same at any size setting.
+  // Click / note wavefront — a ring pushed out from the hit point (a note's is
+  // its pitch position). It dents the distance surface so a press reads as a
+  // pulse rippling across the metal, on the same equalized envelope as the swell.
   vec2 clickP = vec2((uClickPos.x * 0.5 + 0.5) * aspect, uClickPos.y * 0.5 + 0.5);
   float cd = distance(p, clickP);
-  // Driven by the same equalized pulse as the swell, so a click and a key press
-  // throw the same wavefront and fade on the same envelope.
-  val += sin(cd * 26.0 - uTime * 6.0) * exp(-cd * 3.2)
-       * pulse * 0.12 * lo * tailScale;
+  sdf -= sin(cd * 26.0 - uTime * 6.0) * exp(-cd * 3.2) * pulse * 0.03 * tailScale;
 
-  float mask = smoothstep(lo, lo * 3.0, val);
+  // ── Relief ────────────────────────────────────────────────────────────────
+  // Lift the flat distance field into 3D. Inside the body the surface stands z
+  // above the plane exactly as a sphere cap would — z = √(R²−ρ²), with ρ the
+  // in-plane distance from the local centre recovered as R minus how far inside
+  // we are — so the unioned field reads as real fused spheres: doming at each
+  // core, sinking into a neck where two meet. The surface normal is that cap's:
+  // the outward direction G scaled by ρ gives the in-plane tilt, z the part that
+  // faces the viewer. At a core (ρ→0) it looks straight out; at a rim (z→0) it
+  // lies flat — a true spherical normal, which is what the old field never had.
+  float inside = max(-sdf, 0.0);
+  float z    = sqrt(max(inside * (2.0 * R - inside), 0.0));   // = √(R²−ρ²)
+  float rho  = max(R - inside, 0.0);
+  vec3 nrm = normalize(vec3(normalize(G + 1e-6) * rho, z + 1e-4));
 
-  // The divide: bottom-left corner to top-right corner in raw uv, so it hits
-  // the actual corners whatever the aspect ratio. Only the line itself is
-  // antialiased — a blob crossing it flips tone with no transition.
-  float sd = uv.y - uv.x;
-  float aa = 2.0 / uResolution.y;
+  // Coverage straight off the distance field: 1 inside the body, 0 outside, a
+  // pixel-wide antialiased edge at the surface. No soft halo — these are solid
+  // bodies with a defined silhouette, as in the reference. aaw is one render
+  // pixel in the shader's y-normalised units (|∇sdf| ≈ 1 for a distance field).
+  float aaw = 1.5 / uResolution.y;
+  float mask = 1.0 - smoothstep(-aaw, aaw, sdf);
+
+  // One key light from the upper-left, viewer head-on. Half-Lambert (the 0.5/0.5
+  // remap) keeps the shaded flank reading as rounded form instead of falling to
+  // black; the Blinn term adds the tight liquid-metal highlight the reference
+  // gets from its chrome, kept soft so the blobs stay beads, not mirrors.
+  vec3 V = vec3(0.0, 0.0, 1.0);
+  vec3 L = normalize(vec3(-0.35, 0.55, 0.75));
+  vec3 H = normalize(L + V);
+  float diff = dot(nrm, L) * 0.5 + 0.5;              // half-Lambert, 0..1
+  float spec = pow(max(dot(nrm, H), 0.0), 42.0);     // sheen
+
+  // The divide is a line through the centre whose normal rotates with input:
+  // every synth note turns it 45° clockwise, so it sweeps diagonal → horizontal
+  // → opposite diagonal → vertical and on around, the light and dark sides
+  // trading places each half-turn. uDivideAngle is that normal's angle, eased in
+  // the render loop so the line sweeps to its new orientation rather than
+  // snapping. At rest (3π/4) the normal is (-1,1) and sd reduces exactly to the
+  // old uv.y − uv.x, so the resting frame is unchanged.
+  vec2 dc = uv - 0.5;
+  vec2 dn = vec2(cos(uDivideAngle), sin(uDivideAngle));
+  float sd = dot(dc, dn);
+  // Antialias the line alone. Its screen-space slope changes with both the angle
+  // and the aspect, so scale the edge width by that slope to hold it a constant
+  // ~1.5 px wide at every orientation — a blob crossing still flips with no
+  // transition of its own.
+  float aa = 1.5 * length(vec2(dn.x / aspect, dn.y)) / uResolution.y;
   float above = smoothstep(-aa, aa, sd);
 
   // Exactly two tones, swapped across the divide: a blob on the light side is
@@ -212,8 +278,26 @@ void main() {
   float light = mix(0.88, 0.97, mContrast);
   float dark  = mix(0.16, 0.05, mContrast);
 
-  float lightSide = mix(light, dark, mask);
-  float darkSide  = mix(dark, light, mask);
+  // The figure — the blob — is a lit bead standing off the ground, while the
+  // background behind it stays the clean single tone the divide depends on. The
+  // two beads are exact tonal opposites, one pigment read two ways: a near-white
+  // sphere on the dark side, a near-black sphere on the light side, both lit from
+  // the same upper-left key and both capped with the same white glint. diff (the
+  // lit fraction) walks each from its shadow to its lit crown.
+  float mid = (light + dark) * 0.5;   // mid grey — the white bead's shadow floor
+  float hi  = spec * 0.85;            // white glint, added over the body
+
+  // White bead (dark side): a lit sphere rising to the light tone.
+  float darkFig = mix(mid, light, diff) + hi;
+
+  // Dark bead (light side): the opposite — a near-black glossy sphere. Its body
+  // stays down near the dark tone, doming only a little from shadow to crown so
+  // it never greys out; the white glint and the round silhouette carry the 3D,
+  // so it reads as the exact negative of the white beads rather than a grey disc.
+  float lightFig = mix(dark * 0.35, dark + 0.05, diff) + hi;
+
+  float lightSide = mix(light, lightFig, mask);
+  float darkSide  = mix(dark,  darkFig,  mask);
 
   float lum = mix(darkSide, lightSide, above);
 

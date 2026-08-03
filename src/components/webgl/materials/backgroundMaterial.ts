@@ -32,6 +32,12 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       // here for the same reason — a note lands as a step, and a shader has no
       // state to swing a camera with.
       uViewTilt: { value: 0 },
+      // Angle (radians) of the Correspondence divide's normal. Each synth note
+      // steps it −45° (clockwise); the render loop eases the live value toward
+      // that target so the dividing line sweeps to its new orientation instead
+      // of snapping. Rest is 3π/4, where the divide is the original
+      // bottom-left→top-right diagonal.
+      uDivideAngle: { value: (3 * Math.PI) / 4 },
       // One cycle of the synth's live output, 256×1, red channel, 0..1 with
       // 0.5 as silence. Repeat-wrapped so a shader can tile it directly.
       uWave: { value: null as THREE.Texture | null },
