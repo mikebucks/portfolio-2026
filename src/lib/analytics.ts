@@ -40,6 +40,16 @@ export function initAnalytics(): boolean {
   if (initialized) return true;
   if (!TOKEN || typeof window === "undefined") return false;
 
+  // Keep local/dev traffic out of Mixpanel. Guarding on the hostname (rather
+  // than NODE_ENV) also catches a local `next build && next start`, which runs
+  // as production but is still just you on your machine. Deployed hosts fall
+  // through and record normally. Returning false means Analytics.tsx attaches
+  // no listeners and Session Replay never starts.
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+    return false;
+  }
+
   mixpanel.init(TOKEN, {
     // We drive SPA pageviews by hand off the History-API router
     // (see appRoute.onRouteChange), so Mixpanel's own auto-pageview — which
