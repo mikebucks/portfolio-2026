@@ -165,7 +165,7 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "While leading Product Design at Figment, an institutional proof-of-stake crypto infrastructure company, I redesigned a nascent and neglected dApp inside the Ledger Wallet marketplace with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
+        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent and neglected consumer dApp that had been hiding in the Ledger Wallet marketplace. with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
       },
       { 
         type: "video", 
@@ -180,6 +180,15 @@ export const projects: Project[] = [
       {
         type: "image",
         src: "/projects/figment-dapp/dashboard.png"
+      },
+      {
+        type: "grid",
+        items: [
+          { src: "/projects/figment-dapp/widget/sol.png", alt: "Solana staking widget" },
+          { src: "/projects/figment-dapp/widget/avax.png", alt: "Avalanche staking widget" },
+          { src: "/projects/figment-dapp/widget/near.png", alt: "NEAR staking widget" },
+          { src: "/projects/figment-dapp/widget/eth.png", alt: "ETH staking widget" },
+        ],
       },
       { 
         type: "text",
@@ -196,13 +205,17 @@ export const projects: Project[] = [
           </ol>
         `,
       },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/sol.png"
-      },
+      // {
+      //   type: "image",
+      //   src: "/projects/figment-dapp/sol.png"
+      // },
       {
         type: "image",
         src: "/projects/figment-dapp/eth-stake.png"
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/eth-why-stake.png"
       },
     ],
   },

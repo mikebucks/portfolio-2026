@@ -53,7 +53,7 @@ export function ProjectDetail({ project }: { project: Project }) {
             <ProjectMediaFigure
               key={i}
               media={block}
-              className="mt-12"
+              className="mt-4"
               captionClassName="text-black/50"
             />
           ),
