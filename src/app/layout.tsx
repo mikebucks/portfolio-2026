@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { AudioProvider } from "@/components/audio/AudioProvider";
 import { SynthKeyboard } from "@/components/audio/SynthKeyboard";
 import { SmoothScroll } from "@/components/animation/SmoothScroll";
+import { Analytics } from "@/components/analytics/Analytics";
 import { SITE } from "@/lib/siteMeta";
 
 // Variable font: one file covers 400–700, which is the full range the UI uses
@@ -90,6 +91,9 @@ export default function RootLayout({
           layer is being composited. svh is the static small-viewport height. */}
       <body className="min-h-svh antialiased relative">
         <SmoothScroll />
+        {/* Global Mixpanel wiring. Renders nothing; no-op until
+            NEXT_PUBLIC_MIXPANEL_TOKEN is set. See src/components/analytics. */}
+        <Analytics />
         {/* Cream frame. On iOS 26 each edge must be its own OPAQUE
             position:fixed element for Safari to sample its background-color and
             tint the chrome cream (Safari ignores absolute children of a fixed
