@@ -6,17 +6,17 @@ import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
 import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
+import { currentRoute, navigate, onRouteChange } from "@/lib/appRoute";
 import { ProjectDetail } from "./ProjectDetail";
 
 /**
- * Parse `#projects/<slug>` → a valid project slug, or null. Projects flagged
+ * Resolve `/projects/<slug>` → a valid project slug, or null. Projects flagged
  * `comingSoon` have no case study to show, so they don't open even via a
- * hand-typed or shared hash.
+ * hand-typed or shared URL.
  */
-function slugFromHash(): string | null {
-  const m = window.location.hash.match(/^#projects\/(.+)$/);
-  if (!m) return null;
-  const slug = decodeURIComponent(m[1]);
+function slugFromUrl(): string | null {
+  const { slug } = currentRoute();
+  if (!slug) return null;
   const project = getProject(slug);
   return project && !project.comingSoon ? slug : null;
 }
@@ -38,7 +38,7 @@ const PANEL = "rgba(244, 241, 234, 0.85)";
 const PANEL_BLUR = (open: boolean) => `blur(${open ? 10 : 0}px)`;
 
 /**
- * Hash-routed project lightbox. `#projects/<slug>` opens a full-viewport cream
+ * URL-routed project lightbox. `/projects/<slug>` opens a full-viewport cream
  * panel; the intro reads as the page's 10px cream frame thickening inward to
  * fill the screen, then the detail content rises into place. Driven by CSS
  * transitions (not a rAF ticker) so it plays reliably regardless of tab state.
@@ -53,21 +53,20 @@ export function ProjectModal() {
   // (and collapses back into on close). Null for deep links / featured cards.
   const [origin, setOrigin] = useState<OriginRect | null>(null);
 
-  const sync = useCallback(() => setTarget(slugFromHash()), []);
+  const sync = useCallback(() => setTarget(slugFromUrl()), []);
 
   useEffect(() => {
     sync();
-    window.addEventListener("hashchange", sync);
-    return () => window.removeEventListener("hashchange", sync);
+    return onRouteChange(sync);
   }, [sync]);
 
   const close = useCallback(() => {
     // Return to the projects section without stacking a history entry.
-    history.replaceState(null, "", "#projects");
+    navigate("/projects", { replace: true });
     sync();
   }, [sync]);
 
-  // Drive mount / unmount from the hash target.
+  // Drive mount / unmount from the URL target.
   useEffect(() => {
     if (target && target !== slug) {
       setSlug(target);

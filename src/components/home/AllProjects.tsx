@@ -5,6 +5,7 @@ import gsap from "gsap";
 import { otherProjects, projectImages } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { captureProjectOrigin } from "@/lib/projectTransition";
+import { navigate, projectPath } from "@/lib/appRoute";
 
 // Menu-to-grid hover, adapted from the Codrops "Menu to Grid" interaction:
 // hovering a row slides a strip of preview thumbnails in from the right
@@ -16,7 +17,7 @@ const REVEAL = { duration: 0.4 } as const;
 /**
  * Full project index, rendered on the light "Recently shipped" panel below the
  * featured cards. Excludes the featured projects (they live in the cards above)
- * and deep-links each row into the hash-routed project modal.
+ * and deep-links each row into the project modal at /projects/<slug>.
  */
 export function AllProjects() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -100,7 +101,8 @@ export function AllProjects() {
 
   function onRowClick(e: MouseEvent<HTMLAnchorElement>, slug: string) {
     // Let modified clicks (new tab, etc.) and reduced-motion users use the
-    // plain anchor; the modal still opens via the hash, just without the grow.
+    // plain anchor; /projects/<slug> serves the same page with the modal open,
+    // just without the grow.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (prefersReducedMotion()) return;
 
@@ -119,7 +121,7 @@ export function AllProjects() {
 
     // Let the bloom read for a beat, then open the modal (its cover grows from `rect`).
     window.setTimeout(() => {
-      window.location.hash = `projects/${slug}`;
+      navigate(projectPath(slug));
     }, 150);
   }
 
@@ -158,7 +160,7 @@ export function AllProjects() {
             <li key={p.slug}>
               <a
                 data-row
-                href={`/#projects/${p.slug}`}
+                href={projectPath(p.slug)}
                 onClick={(e) => onRowClick(e, p.slug)}
                 className="group flex items-center gap-6 py-6 transition-colors hover:bg-black/[0.02]"
               >

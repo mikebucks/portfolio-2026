@@ -3,6 +3,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { prefersReducedMotion } from "@/lib/device";
 import { captureProjectOrigin } from "@/lib/projectTransition";
+import { navigate, projectPath } from "@/lib/appRoute";
 
 /**
  * Inline prose link into a project case study. Same hand-off the project cards
@@ -21,17 +22,18 @@ export function ProjectLink({
 }) {
   function onClick(e: MouseEvent<HTMLAnchorElement>) {
     // Modified clicks (new tab, etc.) and reduced-motion users keep the plain
-    // anchor — the modal still opens via the hash, just without the grow.
+    // anchor — /projects/<slug> serves the same page with the modal open, just
+    // without the grow.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (prefersReducedMotion()) return;
 
     e.preventDefault();
     captureProjectOrigin(e.currentTarget);
-    window.location.hash = `projects/${slug}`;
+    navigate(projectPath(slug));
   }
 
   return (
-    <a href={`/#projects/${slug}`} onClick={onClick} className={className}>
+    <a href={projectPath(slug)} onClick={onClick} className={className}>
       {children}
     </a>
   );

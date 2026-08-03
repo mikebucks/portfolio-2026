@@ -20,7 +20,7 @@ export function smoothScrollTo(target: number | string | HTMLElement) {
 
   // Fallback path (no Lenis — e.g. reduced-motion users). Resolve string
   // selectors and elements to a scroll offset rather than defaulting to the top,
-  // so direct loads of /#about land on the right section.
+  // so direct loads of /about land on the right section.
   const el =
     typeof target === "string"
       ? document.querySelector<HTMLElement>(target)

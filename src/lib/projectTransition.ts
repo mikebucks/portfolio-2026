@@ -1,8 +1,8 @@
 /**
  * One-shot hand-off between the "All projects" menu and the project modal.
  *
- * When a menu row is clicked we stash its on-screen rectangle here, then set the
- * `#projects/<slug>` hash. `ProjectModal` consumes the rect on open and grows
+ * When a menu row is clicked we stash its on-screen rectangle here, then
+ * navigate to `/projects/<slug>`. `ProjectModal` consumes the rect on open and grows
  * its cream cover from that exact box (instead of the default frame expand), so
  * the click reads as the row itself expanding into the detail view. Kept as a
  * module singleton rather than in a store so reading it never triggers a

@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { HomeClient } from "@/components/home/HomeClient";
 
-// Projects now live as a section on the homepage. Preserve the old URL by
-// redirecting to the section anchor, which smooth-scrolls into view on load.
+// Projects are a section of the homepage. See src/app/about/page.tsx.
 export default function ProjectsIndexPage() {
-  redirect("/#projects");
+  return <HomeClient />;
 }

@@ -7,10 +7,10 @@ import { IntroSequence } from "./IntroSequence";
 import { AboutSection } from "@/components/about/AboutSection";
 import { ContactSection } from "@/components/contact/ContactSection";
 import { ProjectModal } from "@/components/projects/ProjectModal";
-import { useHashScroll } from "@/components/animation/useHashScroll";
+import { useRouteScroll } from "@/components/animation/useRouteScroll";
 
 export function HomeClient() {
-  useHashScroll();
+  useRouteScroll();
 
   return (
     <div className="">

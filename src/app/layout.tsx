@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Portfolio — 2026",
+  title: "Mike Bucks Portfolio 2026",
   description:
     "Design-engineering portfolio. Interfaces, systems, and the occasional audiovisual instrument.",
   metadataBase: new URL("https://example.com"),
@@ -30,7 +30,6 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
-  themeColor: "#f4f1ea",
 };
 
 // Make Safari's translucent UI chrome read as part of the cream frame.

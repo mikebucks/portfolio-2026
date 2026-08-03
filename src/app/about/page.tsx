@@ -1,7 +1,8 @@
-import { redirect } from "next/navigation";
+import { HomeClient } from "@/components/home/HomeClient";
 
-// About now lives as a section on the homepage. Preserve the old URL by
-// redirecting to the section anchor, which smooth-scrolls into view on load.
+// About is a section of the homepage, not a page of its own — but it keeps a
+// real URL so it can be linked and reloaded. The homepage tree is what renders
+// here; `useRouteScroll` reads the path on mount and scrolls to #about.
 export default function AboutPage() {
-  redirect("/#about");
+  return <HomeClient />;
 }

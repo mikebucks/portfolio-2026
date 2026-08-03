@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { featuredProjects } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { captureProjectOrigin } from "@/lib/projectTransition";
+import { navigate, projectPath } from "@/lib/appRoute";
 import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
@@ -15,13 +16,14 @@ export function FeaturedProjects() {
   // default frame-expand. See projectTransition + ProjectModal.
   function onCardClick(e: MouseEvent<HTMLAnchorElement>, slug: string) {
     // Modified clicks (new tab, etc.) and reduced-motion users keep the plain
-    // anchor — the modal still opens via the hash, just without the grow.
+    // anchor — /projects/<slug> serves the same page with the modal open, just
+    // without the grow.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (prefersReducedMotion()) return;
 
     e.preventDefault();
     captureProjectOrigin(e.currentTarget);
-    window.location.hash = `projects/${slug}`;
+    navigate(projectPath(slug));
   }
 
   return (
@@ -56,7 +58,7 @@ export function FeaturedProjects() {
                 {...(p.comingSoon
                   ? {}
                   : {
-                      href: `/#projects/${p.slug}`,
+                      href: projectPath(p.slug),
                       onClick: (e: MouseEvent<HTMLAnchorElement>) =>
                         onCardClick(e, p.slug),
                     })}

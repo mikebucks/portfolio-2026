@@ -2,10 +2,10 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
+import { isHomeUrl, navigate } from "@/lib/appRoute";
 import { SynthToggleButton } from "../audio/SynthToggleButton";
 
 const NAV_LINKS = [
@@ -28,7 +28,10 @@ export function Header() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
-  const onHome = pathname === "/";
+  // Every homepage URL (`/`, `/projects`, `/about`, `/contact`,
+  // `/projects/<slug>`) renders this same tree, so the in-page behaviours below
+  // stay live as the path changes underneath them.
+  const onHome = isHomeUrl(pathname);
 
   // Publish the bar's rendered height as --header-h so fixed overlays (the
   // synth panel) can start below the nav instead of on top of it. It isn't a
@@ -90,22 +93,26 @@ export function Header() {
     return () => observer.disconnect();
   }, [onHome]);
 
-  // On the homepage, intercept the section links to smooth-scroll in-page and
-  // keep the hash shareable. On other routes, fall through to a normal
-  // navigation to /#section — the homepage then scrolls to it on load.
+  // Intercept the section links to smooth-scroll in-page and push the matching
+  // path, so the URL stays shareable without a route change. Modified clicks
+  // (new tab / window) and any future non-homepage route fall through to a real
+  // navigation — /projects and friends serve the homepage and scroll to the
+  // section on load.
   const handleSectionClick =
     (id: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
       if (!onHome) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       e.preventDefault();
       smoothScrollTo(`#${id}`);
-      history.pushState(null, "", `#${id}`);
+      navigate(`/${id}`);
     };
 
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (!onHome) return;
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     e.preventDefault();
     smoothScrollTo(0);
-    history.pushState(null, "", "/");
+    navigate("/");
   };
 
   return (
@@ -130,20 +137,25 @@ export function Header() {
           "flex items-center justify-between inset-x-0 w-full max-w-[1600px]"
         }>
           <section className="flex justify-between w-full">
-            <Link
+            {/* Plain anchors, not next/link: each of these paths is its own
+                Next route serving the whole homepage, so Link would prefetch a
+                duplicate page payload per nav item for a navigation we always
+                intercept. The href still carries the real URL for middle-click
+                and "copy link address". */}
+            <a
               href="/"
               onClick={handleLogoClick}
               className="font-mono text-sm tracking-tight text-black hover:text-accent"
             >
               Mike<span className="font-bold">Bucks</span>
-            </Link>
+            </a>
             <div className="flex justify-between gap-6 items-center">
               <nav aria-label="Primary">
                 <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-black/80">
                   {NAV_LINKS.map((link) => (
                     <li key={link.id}>
-                      <Link
-                        href={`/#${link.id}`}
+                      <a
+                        href={`/${link.id}`}
                         onClick={handleSectionClick(link.id)}
                         aria-current={activeId === link.id ? "true" : undefined}
                         className={cn(
@@ -152,7 +164,7 @@ export function Header() {
                         )}
                       >
                         {link.label}
-                      </Link>
+                      </a>
                     </li>
                   ))}
                   <li>
