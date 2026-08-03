@@ -536,6 +536,14 @@ function WebGLCanvas({
         // and ramps up to source-shader pace at peak click/note input.
         // Always monotonic so the noise field never reverses on input decay.
         let shaderTime = 0;
+        // Rhythm mandala formation: a spring-eased 0..1 amount with a hold timer.
+        // A note refreshes the hold; while it's up the spring pulls toward 1,
+        // and once it lapses the spring relaxes back to 0 — both moves slightly
+        // underdamped so they overshoot (the "spring" feel). formHold outlasts a
+        // very quick note so its form-and-return is always visible.
+        let formMorph = 0;
+        let formVel = 0;
+        let formHold = 0;
         // ── Synth waveform ───────────────────────────────────────────────
         // One cycle of the live voice, uploaded as a 256×1 texture. RGBA/byte
         // rather than a float format so it needs no extension and no WebGL2
@@ -699,6 +707,21 @@ function WebGLCanvas({
           // re-rendering on theme changes; the store update fires synchronously.
           const sm = THEME_PRESETS[useThemeStore.getState().theme].shaderMacros;
           u.uMacros.value.set(sm[0], sm[1], sm[2], sm[3]);
+
+          // Rhythm's mandala formation amount: a spring with a hold. Each note
+          // refreshes an 0.9s hold (so even a very quick note keeps the figure
+          // up long enough to see it form and return); the spring is slightly
+          // underdamped (stiffness 130, damping 14 → ζ≈0.61) so both the move in
+          // and the move out overshoot a little. Frame-time clamped for stability.
+          if (visualState.noteImpulse > 0.5) formHold = 0.9;
+          formHold = Math.max(0, formHold - dt);
+          {
+            const sdt = Math.min(dt, 0.05);
+            const target = formHold > 0 ? 1 : 0;
+            formVel += (130 * (target - formMorph) - 14 * formVel) * sdt;
+            formMorph += formVel * sdt;
+          }
+          u.uFormMorph.value = formMorph;
 
           // Per-voice color uniforms.
           const rScale = 0.5 + 0.5 * visualState.reactivity;

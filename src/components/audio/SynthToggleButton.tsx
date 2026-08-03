@@ -30,6 +30,9 @@ export function SynthToggleButton() {
     <button
       type="button"
       onClick={toggle}
+      // Marks the seal as the panel's own control, so the panel's
+      // press-outside-to-dismiss handler leaves this button to toggle.
+      data-synth-toggle
       aria-pressed={open}
       aria-label={open ? "Close synth panel" : "Open synth panel"}
       title={open ? "Close synth" : "Open synth"}

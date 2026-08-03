@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useThemeStore, useUIStore } from "@/lib/store";
 import {
@@ -25,6 +25,41 @@ export function SynthPanel() {
   const theme = useThemeStore((s) => s.theme);
 
   const preset = THEME_PRESETS[theme];
+  const panelRef = useRef<HTMLElement>(null);
+
+  // The panel outlives `open` by one transition so it can slide back out:
+  // `mounted` keeps it in the tree, `entered` is the class flip that drives the
+  // slide in either direction. Unmount happens on the closing transitionend.
+  const [mounted, setMounted] = useState(open);
+  const [entered, setEntered] = useState(false);
+  const enteredRef = useRef(false);
+
+  useEffect(() => {
+    if (!open) {
+      // Closed before the panel ever slid in (a double-click on the seal beats
+      // the two frames below): nothing will transition, so no transitionend is
+      // coming to unmount it. Drop it here instead.
+      if (!enteredRef.current) setMounted(false);
+      enteredRef.current = false;
+      setEntered(false);
+      return;
+    }
+    setMounted(true);
+    // Two frames, not one: the first paints the panel in its off-screen state,
+    // the second flips the class. Flipping in the same frame as the mount gives
+    // the browser no start value to transition from, and the panel just appears.
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => {
+        enteredRef.current = true;
+        setEntered(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -38,17 +73,43 @@ export function SynthPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
 
-  if (!open) return null;
+  // Light-dismiss: a press anywhere outside closes the panel. No backdrop
+  // element — one would have to cover the page to catch the press, and that
+  // would swallow the clicks the header nav and the page below still accept.
+  // The seal is exempt: it dismisses on its own, and letting this handler close
+  // first would leave its toggle re-opening the panel on the following click.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return;
+      if (target.closest("[data-synth-toggle]")) return;
+      setOpen(false);
+    };
+    // Capture phase: handlers that stop propagation on their own presses
+    // shouldn't be able to keep the panel open.
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open, setOpen]);
+
+  if (!mounted) return null;
 
   // Portalled to <body>. The panel renders from inside the <header>, and the
   // header's backdrop-filter makes it the containing block for fixed-position
   // descendants — so `bottom` would resolve against the ~5rem-tall bar instead
   // of the viewport. `data-modal-hide` is carried over by hand so the panel
   // still fades out behind the project modal from its new home.
+  //
+  // Two elements, not one: [data-modal-hide] owns this element's transform and
+  // transition (globals.css scales it away behind the project modal), so the
+  // slide lives on the <aside> inside it rather than colliding there.
+  // pointer-events-none keeps this empty box — which stays parked over the
+  // right rail whether or not the panel is out — from eating clicks meant for
+  // the page.
   return createPortal(
-    <aside
-      role="dialog"
-      aria-label="Synth controls"
+    <div
       data-modal-hide
       // Spans the full height of the frame's inner opening: it starts below the
       // header bar (--header-h, published by Header) so the nav stays visible
@@ -59,23 +120,49 @@ export function SynthPanel() {
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
-      className="fixed z-40 flex w-[min(420px,calc(100vw-2rem-20px))] flex-col rounded-xl border border-white/10 bg-black/85 p-4 font-mono text-xs text-white shadow-2xl backdrop-blur-md"
+      className="pointer-events-none fixed z-40 w-[min(420px,calc(100vw-2rem-20px))]"
     >
-      {/* The panel is now viewport-tall, so the controls take the slack and
-          scroll on their own — data-lenis-prevent keeps the smooth-scroll
-          instance from stealing the wheel and scrolling the page instead. */}
-      <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto">
-        <ThemePicker />
+      <aside
+        ref={panelRef}
+        role="dialog"
+        aria-label="Synth controls"
+        // Closing is done when the slide is: unmount on the slide's end rather
+        // than a timer, so the two can't drift apart. `translate`, not
+        // `transform` — see the class list below. Guarded on the element itself,
+        // since the theme buttons transition too and their events bubble here.
+        onTransitionEnd={(e) => {
+          if (!open && e.target === e.currentTarget && e.propertyName === "translate")
+            setMounted(false);
+        }}
+        // Slides past its own right offset and shadow so nothing peeks off the
+        // edge. Opacity trails along to soften the arrival at the rail.
+        //
+        // The transition names `translate`, not `transform`: Tailwind v4 builds
+        // translate-x-* on the independent `translate` property, so a
+        // transform transition here would list a property that never changes
+        // and the panel would just pop in.
+        className={`flex h-full flex-col rounded-xl border border-white/10 bg-black/85 p-4 font-mono text-xs text-white shadow-2xl backdrop-blur-md transition-[translate,opacity] duration-[320ms] ease-[cubic-bezier(0.7,0,0.2,1)] ${
+          entered
+            ? "pointer-events-auto translate-x-0 opacity-100"
+            : "pointer-events-none translate-x-[calc(100%+2rem)] opacity-0"
+        }`}
+      >
+        {/* The panel is now viewport-tall, so the controls take the slack and
+            scroll on their own — data-lenis-prevent keeps the smooth-scroll
+            instance from stealing the wheel and scrolling the page instead. */}
+        <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto">
+          <ThemePicker />
 
-        <p className="mt-2 text-[10px] leading-snug text-white/45">
-          {preset.blurb}
-        </p>
-      </div>
+          <p className="mt-2 text-[10px] leading-snug text-white/45">
+            {preset.blurb}
+          </p>
+        </div>
 
-      <footer className="mt-4 shrink-0 text-[10px] leading-tight text-white/40">
-        Home row plays notes · Shift = +1 oct · Alt = −1 oct · Esc closes
-      </footer>
-    </aside>,
+        <footer className="mt-4 shrink-0 text-[10px] leading-tight text-white/40">
+          Home row plays notes · Shift = +1 oct · Alt = −1 oct · Esc closes
+        </footer>
+      </aside>
+    </div>,
     document.body,
   );
 }

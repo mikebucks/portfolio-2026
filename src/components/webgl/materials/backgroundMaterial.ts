@@ -57,6 +57,10 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       // in its own way to shape its look. Set each frame from the active
       // theme's fixed `shaderMacros`.
       uMacros: { value: new THREE.Vector4(0.5, 0.5, 0.5, 0.5) },
+      // Rhythm only: spring-eased amount the bobs are gathered into the mandala
+      // formation (0 resting wave … 1 full). Computed in the render loop with a
+      // hold + spring; ignored by every other theme.
+      uFormMorph: { value: 0 },
       // Per-voice color data for polyphonic audio reactivity (up to 4 notes).
       // FreqNorms: 0..1 log-scale normalized frequency, computed in JS.
       // Amts: envelope × velocity × reactivity strength per voice.

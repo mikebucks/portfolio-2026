@@ -46,8 +46,13 @@ export function Header() {
         `${el.offsetHeight}px`,
       );
     publish();
+    // border-box, not the default content-box: the scroll state only swaps the
+    // bar's padding, so a content-box observation never fires and --header-h
+    // stays frozen at the expanded height (leaving a gap under the collapsed
+    // bar). Observing the border box also ticks through the padding transition,
+    // so overlays track the animation frame by frame.
     const observer = new ResizeObserver(publish);
-    observer.observe(el);
+    observer.observe(el, { box: "border-box" });
     return () => observer.disconnect();
   }, []);
 

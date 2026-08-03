@@ -260,7 +260,9 @@ const polarityPreset: ThemePreset = {
 };
 
 // ── Rhythm ───────────────────────────────────────────────────────────────────
-// "All things rise and fall." Plucked Karplus strings — long tail, watery delay.
+// "All things rise and fall." A rack of pendulum bobs swings in perfect unison
+// while a wave travels up and down the row. Plucked Karplus strings — long tail,
+// watery delay — so each key reads as a bob struck. Notes drive the swing.
 const rhythmBase: SynthSettings = {
   oscEngine: "karplus",
   oscWave: 0.7,
@@ -301,7 +303,8 @@ const rhythmPreset: ThemePreset = {
   blurb: "Everything flows, out and in; everything has its tides; all things rise and fall; the pendulum-swing manifests in everything; the measure of the swing to the right is the measure of the swing to the left; rhythm compensates.",
   fragment: rhythmFragment,
   baseSettings: rhythmBase,
-  shaderMacros: [0.45, 0.4, 0.35, 0.4],
+  // x Swing · y Wave · z Tempo · w Glow — see rhythm.ts header.
+  shaderMacros: [0.5, 0.55, 0.45, 0.55],
 };
 
 // ── Causation · Cause & Effect ───────────────────────────────────────────────
