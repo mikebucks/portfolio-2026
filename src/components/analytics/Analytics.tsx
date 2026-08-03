@@ -4,38 +4,33 @@
  * Global analytics wiring — mount once, near the root of the tree.
  *
  * Renders nothing. On mount it boots Mixpanel (via lib/analytics) and attaches
- * a single set of document/window listeners that capture, in order of volume:
+ * a deliberately small set of document listeners. The rule: an event only
+ * exists when it's an INTENTIONAL interaction with an INTERACTIVE element —
+ * a link, a button, a form control. Clicking the WebGL background, the cream
+ * frame, or a paragraph of copy produces nothing.
  *
- *   1. Page views      — initial load + every History-API route change.
- *   2. Discrete input  — clicks, double-clicks, right-clicks, mousedown/up,
- *                        key presses, form submits, copy, visibility changes.
- *   3. Scroll          — SAMPLED and BATCHED into one event per stretch (see
- *                        SCROLL_* constants), for scroll-depth reporting.
+ * What we capture:
+ *   • Page View    — initial load + every History-API route change.
+ *   • Click        — only when the target resolves to an interactive element
+ *                    (see INTERACTIVE_SELECTOR). Background/chrome clicks are
+ *                    dropped.
+ *   • Key Press    — which control keys, where (never the characters typed).
+ *   • Form Submit / Input Change — on the interactive form controls themselves.
  *
- * Continuous cursor movement is intentionally NOT tracked as events anymore —
- * Mixpanel Session Replay (configured in lib/analytics) captures the full
- * cursor path, DOM and scroll as a replayable video instead, which is both
- * richer and far cheaper than one event per sample.
+ * Everything continuous or ambient — cursor path, scroll, mouse up/down, page
+ * visibility — is intentionally NOT tracked as events. Mixpanel Session Replay
+ * (configured in lib/analytics) records the full session as video, which is
+ * where that fidelity lives now.
  *
  * All listeners use the capture phase so nothing the app does (stopPropagation
  * on a button, say) can hide an interaction from tracking. When the token is
- * absent, `initAnalytics()` returns false and we attach nothing at all.
+ * absent (or on localhost), `initAnalytics()` returns false and we attach
+ * nothing at all.
  */
 
 import { useEffect } from "react";
 import { initAnalytics, track } from "@/lib/analytics";
 import { onRouteChange } from "@/lib/appRoute";
-
-// ---------------------------------------------------------------------------
-// Tuning
-// ---------------------------------------------------------------------------
-
-/** Minimum gap between recorded scroll samples (ms). */
-const SCROLL_SAMPLE_MS = 200;
-/** Flush the scroll buffer at this many samples… */
-const SCROLL_FLUSH_COUNT = 40;
-/** …or on this timer, whichever comes first (keeps short bursts from lingering). */
-const SCROLL_FLUSH_MS = 5000;
 
 /** Text/attribute values are truncated to this many chars before sending. */
 const MAX_STR = 120;
@@ -47,19 +42,37 @@ const MAX_STR = 120;
 const EV = {
   pageView: "Page View",
   click: "Click",
-  auxClick: "Aux Click", // middle button
-  contextMenu: "Context Menu", // right click
-  doubleClick: "Double Click",
-  mouseDown: "Mouse Down",
-  mouseUp: "Mouse Up",
-  scroll: "Scroll", // batched
   keyPress: "Key Press",
   formSubmit: "Form Submit",
   inputChange: "Input Change",
-  copy: "Copy",
-  visibility: "Visibility Change",
-  pageLeave: "Page Leave",
 } as const;
+
+// ---------------------------------------------------------------------------
+// What counts as "interactive".
+// ---------------------------------------------------------------------------
+
+/**
+ * A click is only tracked if it lands on — or inside — an element matching this.
+ * `[data-track]` is the escape hatch: put it on any custom control that isn't a
+ * native button/link and it becomes trackable (and gets a clean label). Adding
+ * `tabindex="-1"` is excluded because that's the "focusable by script, not by
+ * the user" marker — not a real interactive target.
+ */
+const INTERACTIVE_SELECTOR =
+  "a[href], button, [role='button'], [role='link'], [role='menuitem'], " +
+  "input, select, textarea, summary, label, [data-track], " +
+  "[tabindex]:not([tabindex='-1'])";
+
+/**
+ * The interactive element an event landed on, or null if it hit something
+ * non-interactive (the shader background, the cream frame, plain body copy).
+ * A click on the <span> inside a <button> resolves to the button.
+ */
+function interactiveTarget(raw: EventTarget | null): HTMLElement | null {
+  if (!(raw instanceof Element)) return null;
+  const el = raw.closest(INTERACTIVE_SELECTOR);
+  return el instanceof HTMLElement ? el : null;
+}
 
 // ---------------------------------------------------------------------------
 // Element description — turn a DOM node into readable, queryable props.
@@ -90,22 +103,9 @@ function selectorPath(el: Element): string {
   return parts.join(" > ");
 }
 
-/**
- * Describe the element an interaction landed on. Walks up to the nearest
- * meaningful target (a link/button/[data-track] wrapping the exact node), so a
- * click on the <span> inside a <button> is reported as the button.
- */
-function describeTarget(raw: EventTarget | null): Record<string, unknown> {
-  if (!(raw instanceof Element)) return { target_kind: "non-element" };
-
-  // Prefer the closest actionable ancestor — that's what the user meant to hit.
-  const actionable =
-    raw.closest("a, button, [role='button'], [data-track], input, select, textarea, summary") ??
-    raw;
-  const el = actionable as HTMLElement;
-
+/** Describe a known element (identity only — never input values). */
+function describeElement(el: HTMLElement): Record<string, unknown> {
   const anchor = el.closest("a") as HTMLAnchorElement | null;
-
   return {
     tag: el.tagName.toLowerCase(),
     id: el.id || undefined,
@@ -113,8 +113,8 @@ function describeTarget(raw: EventTarget | null): Record<string, unknown> {
     text: truncate(el.textContent),
     role: el.getAttribute("role") || undefined,
     aria_label: truncate(el.getAttribute("aria-label")),
-    // A `data-track="…"` anywhere in the app becomes a clean, stable event
-    // label without editing this file — the escape hatch for naming things.
+    // A `data-track="…"` becomes a clean, stable event label without editing
+    // this file — the escape hatch for naming custom controls.
     track_id: el.getAttribute("data-track") || undefined,
     href: anchor?.href || undefined,
     // Off-site links are worth splitting out in reports.
@@ -125,20 +125,20 @@ function describeTarget(raw: EventTarget | null): Record<string, unknown> {
   };
 }
 
-/** Common props on every event: where the pointer was + where we are. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Where the pointer was + where we are, added to click events. */
 function pointerProps(e: MouseEvent): Record<string, unknown> {
   return {
     x: Math.round(e.clientX),
     y: Math.round(e.clientY),
-    // Normalised 0–1 so heatmaps survive different viewport sizes.
+    // Normalised 0–1 so reports survive different viewport sizes.
     xr: round2(e.clientX / window.innerWidth),
     yr: round2(e.clientY / window.innerHeight),
     path: window.location.pathname,
   };
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,12 +147,10 @@ function round2(n: number): number {
 
 export function Analytics() {
   useEffect(() => {
-    // No token → initAnalytics returns false → we wire up nothing and leave.
+    // No token / on localhost → initAnalytics returns false → wire up nothing.
     if (!initAnalytics()) return;
 
-    const pageEnteredAt = Date.now();
-
-    // --- 1. Page views -----------------------------------------------------
+    // --- Page views --------------------------------------------------------
 
     const trackPageView = () =>
       track(EV.pageView, {
@@ -165,102 +163,54 @@ export function Analytics() {
     trackPageView(); // first load
     const stopRouteWatch = onRouteChange(trackPageView); // SPA navigations
 
-    // --- 2. Discrete pointer & input events --------------------------------
+    // --- Click, scoped to interactive elements -----------------------------
 
-    const onClick = (e: MouseEvent) =>
-      track(EV.click, { ...pointerProps(e), ...describeTarget(e.target), button: e.button });
-    const onAuxClick = (e: MouseEvent) =>
-      track(EV.auxClick, { ...pointerProps(e), ...describeTarget(e.target), button: e.button });
-    const onContextMenu = (e: MouseEvent) =>
-      track(EV.contextMenu, { ...pointerProps(e), ...describeTarget(e.target) });
-    const onDblClick = (e: MouseEvent) =>
-      track(EV.doubleClick, { ...pointerProps(e), ...describeTarget(e.target) });
-    const onMouseDown = (e: MouseEvent) =>
-      track(EV.mouseDown, { ...pointerProps(e), ...describeTarget(e.target), button: e.button });
-    const onMouseUp = (e: MouseEvent) =>
-      track(EV.mouseUp, { ...pointerProps(e), ...describeTarget(e.target), button: e.button });
+    const onClick = (e: MouseEvent) => {
+      const el = interactiveTarget(e.target);
+      if (!el) return; // background / chrome / plain text → no event
+      track(EV.click, { ...pointerProps(e), ...describeElement(el) });
+    };
+
+    // --- Key press ---------------------------------------------------------
 
     const onKeyDown = (e: KeyboardEvent) => {
-      // Never log the character typed — only which control key, and where.
-      // Capturing key *content* would record anything entered in the contact
-      // form (a privacy problem and, for the message field, useless noise).
+      // Never log the character typed — only which control key, and (when it's
+      // an interactive element) where. Capturing key *content* would record
+      // anything entered in the contact form.
+      const el = interactiveTarget(e.target);
       track(EV.keyPress, {
         key: e.metaKey || e.ctrlKey || e.altKey || e.key.length > 1 ? e.key : "(char)",
         meta: e.metaKey || undefined,
         ctrl: e.ctrlKey || undefined,
         alt: e.altKey || undefined,
         shift: e.shiftKey || undefined,
-        ...describeTarget(e.target),
+        ...(el ? describeElement(el) : {}),
       });
     };
 
-    const onSubmit = (e: SubmitEvent) =>
-      track(EV.formSubmit, describeTarget(e.target));
+    // --- Form controls (interactive by definition) -------------------------
+
+    const onSubmit = (e: SubmitEvent) => {
+      if (e.target instanceof HTMLElement) track(EV.formSubmit, describeElement(e.target));
+    };
 
     const onChange = (e: Event) => {
       // Field was edited — record THAT it changed and its identity, never the
       // value entered (same privacy line as keydown above).
       const el = e.target;
-      if (!(el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement))
+      if (
+        !(
+          el instanceof HTMLInputElement ||
+          el instanceof HTMLSelectElement ||
+          el instanceof HTMLTextAreaElement
+        )
+      )
         return;
       track(EV.inputChange, {
-        ...describeTarget(el),
-        // Checkboxes/radios/selects have non-sensitive, useful state.
+        ...describeElement(el),
+        // Checkboxes/radios have non-sensitive, useful state.
         checked: el instanceof HTMLInputElement && el.type === "checkbox" ? el.checked : undefined,
         filled: el.value.length > 0,
-      });
-    };
-
-    const onCopy = () => {
-      const selection = window.getSelection()?.toString() ?? "";
-      track(EV.copy, { chars: selection.length, sample: truncate(selection) });
-    };
-
-    const onVisibility = () =>
-      track(EV.visibility, { state: document.visibilityState });
-
-    // --- 3. Scroll depth, sampled and batched ------------------------------
-    // (Cursor movement is captured by Session Replay, not as events — see the
-    // file header.)
-
-    // Scroll buffer. Depth is normalised so it's comparable across page heights.
-    let scrollBuf: Array<[number, number]> = [];
-    let lastScrollSample = 0;
-
-    const flushScroll = () => {
-      if (scrollBuf.length === 0) return;
-      track(EV.scroll, {
-        path: window.location.pathname,
-        count: scrollBuf.length,
-        // [depth 0–1, dt] pairs.
-        points: scrollBuf,
-        max_depth: Math.max(...scrollBuf.map(([d]) => d)),
-      });
-      scrollBuf = [];
-    };
-
-    const onScroll = () => {
-      const now = Date.now();
-      if (now - lastScrollSample < SCROLL_SAMPLE_MS) return;
-      lastScrollSample = now;
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      const depth = max > 0 ? round2(window.scrollY / max) : 0;
-      scrollBuf.push([depth, now - pageEnteredAt]);
-      if (scrollBuf.length >= SCROLL_FLUSH_COUNT) flushScroll();
-    };
-
-    // Time-based flush so a visitor who scrolls a little then stops still gets
-    // their buffer sent, and so buffers don't cross a page-leave boundary.
-    const flushTimer = window.setInterval(flushScroll, SCROLL_FLUSH_MS);
-
-    // Final flush + session length on the way out. `pagehide` is more reliable
-    // than `beforeunload` on mobile Safari; both are harmless if double-fired.
-    const onPageLeave = () => {
-      flushScroll();
-      track(EV.pageLeave, {
-        path: window.location.pathname,
-        seconds_on_page: Math.round((Date.now() - pageEnteredAt) / 1000),
       });
     };
 
@@ -268,38 +218,18 @@ export function Analytics() {
 
     const opts = { capture: true, passive: true } as const;
     document.addEventListener("click", onClick, opts);
-    document.addEventListener("auxclick", onAuxClick, opts);
-    document.addEventListener("contextmenu", onContextMenu, opts);
-    document.addEventListener("dblclick", onDblClick, opts);
-    document.addEventListener("mousedown", onMouseDown, opts);
-    document.addEventListener("mouseup", onMouseUp, opts);
     document.addEventListener("keydown", onKeyDown, opts);
     document.addEventListener("submit", onSubmit, opts);
     document.addEventListener("change", onChange, opts);
-    document.addEventListener("copy", onCopy, opts);
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("scroll", onScroll, opts);
-    window.addEventListener("pagehide", onPageLeave);
 
     // --- Cleanup -----------------------------------------------------------
 
     return () => {
       stopRouteWatch();
-      window.clearInterval(flushTimer);
-      flushScroll();
       document.removeEventListener("click", onClick, opts);
-      document.removeEventListener("auxclick", onAuxClick, opts);
-      document.removeEventListener("contextmenu", onContextMenu, opts);
-      document.removeEventListener("dblclick", onDblClick, opts);
-      document.removeEventListener("mousedown", onMouseDown, opts);
-      document.removeEventListener("mouseup", onMouseUp, opts);
       document.removeEventListener("keydown", onKeyDown, opts);
       document.removeEventListener("submit", onSubmit, opts);
       document.removeEventListener("change", onChange, opts);
-      document.removeEventListener("copy", onCopy, opts);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("scroll", onScroll, opts);
-      window.removeEventListener("pagehide", onPageLeave);
     };
   }, []);
 
