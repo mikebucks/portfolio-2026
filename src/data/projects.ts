@@ -98,28 +98,33 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to creative material and design operating principles. Time gets wasted by administrative overhead and highly async workflows.",
+        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to design and product material such as research findings, design operating principles, and review feedback. Time gets wasted by administrative overhead and highly async workflows.",
       },
       {
         type: "text",
-        html: `Chisel connects these formerly siloed systems to make
+        html: `Chisel connects these formerly siloed systems and unlocks new capabilities for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
+      },
+      {
+        type: "text",
+        html: `<strong>Project goals</strong>
           <ol>
-            <li>High-quality craft more accessible, collaborative, and scalable across Figment.</strong></li>
-            <li>Rapid prototyping consistent and useful for PMs, Engineers, and Designers.</li>
-            <li>Faster product iteration for simple edits like copy changes and styling.</li>
+            <li>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong></li>
+            <li>Rapid prototyping consistency and usability for PMs, Engineers, and Designers.</li>
+            <li>Faster product iteration for simple edits like copy and layout/styling changes.</li>
           </ol>
         `,
-      },
-      {
-        type: "text",
-        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools. These systems should be available to participate in, learn from, and build on.</strong>",
       },
       { 
         type: "image", 
         src: "/projects/chisel/chisel-process.png",
         className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
         caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone can use." ,
-        alt: "Chisel process then vs now" },
+        alt: "Chisel process then vs now" 
+      },
+      {
+        type: "text",
+        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools. These systems should be available to participate in, learn from, and build on.</strong>",
+      },
       {
         type: "text",
         html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec and code quality standards. A PM who can't read a diff still needs to know exactly what changed and see it running in a browser. An engineer who reviews the PR needs to feel safe approving it.",
