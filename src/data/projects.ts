@@ -92,7 +92,7 @@ export const projects: Project[] = [
     slug: "chisel",
     title: "Chisel",
     role: "Design & Engineering",
-    thumbnail: "projects/chisel/thumbnail.png",
+    thumbnail: "projects/chisel/thumbnail-light.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
     summary: "The agentic design system",
     content: [

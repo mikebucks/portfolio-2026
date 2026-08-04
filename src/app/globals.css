@@ -17,11 +17,18 @@
    so the mobile value is a single knob. 1.25rem is the widest that still lets
    the header nav and the hero headline fit a 400px-wide viewport. */
 @utility gutter-x {
-  padding-inline: 1.25rem;
+  /* Published as a variable, not just applied: a child that breaks out of the
+     gutter has to undo exactly this much, and inheriting the value is what
+     keeps the two from drifting at the breakpoint. See the featured-projects
+     row, which cancels it with a negative margin and adds it back to its own
+     max-width so its cap still measures the same column as the text above it. */
+  --gutter: 1.25rem;
 
   @media (width >= 40rem) {
-    padding-inline: 2rem;
+    --gutter: 2rem;
   }
+
+  padding-inline: var(--gutter);
 }
 
 /* Marks the surface a `full-bleed` block measures itself against — the project
