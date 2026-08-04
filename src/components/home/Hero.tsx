@@ -8,6 +8,10 @@ export function Hero() {
   // them after the cream wipe and the header, so the animation can't live here.
   return (
     <section
+      // Picked up by the header's scroll-spy, which lights the wordmark while
+      // the hero holds the viewport's center — the same rule the section links
+      // follow. Not an `id`, because this isn't a routable section.
+      data-hero
       // 100svh, not 100dvh: dvh re-resolves throughout iOS Safari's toolbar
       // animation, so the hero (and with it the document height and this
       // mix-blend-difference group) relayouts on every frame of the scroll.
@@ -17,7 +21,7 @@ export function Hero() {
       <div className="max-w-200">
         <div
           data-intro="eyebrow"
-          className="font-mono text-xs uppercase tracking-[0.3em] text-white/80"
+          className="inline-block font-mono text-xs uppercase tracking-[0.3em] text-white/80"
         >
           Portfolio 2026
         </div>

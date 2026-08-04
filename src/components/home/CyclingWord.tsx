@@ -32,7 +32,7 @@ export function CyclingWord() {
     }
 
     const ROLL = 0.35; // duration of each upward roll
-    const LINGER = 1.15; // pause between rolls so each word can be read
+    const LINGER = 1.5; // pause between rolls so each word can be read
 
     // Fire a shader "click" at the on-screen center of the word slot — same
     // signal a real pointer-down sends (normalized -1..1, y flipped). The
@@ -50,16 +50,23 @@ export function CyclingWord() {
       );
     };
 
+    // Offset from the intro's headlinePlay cue to the headline being settled
+    // and readable — the H1's fly-up starts 0.45s after the cue and runs 0.9s
+    // (see IntroSequence). Rolling before this lands would move the word while
+    // it's still arriving.
+    const REVEAL = 1.15;
+    // ...then hold "Designer" this long before the roll starts, so it reads as
+    // the headline's own word rather than the first frame of an animation.
+    const HOLD = 1.5;
+
     let tl: gsap.core.Timeline | null = null;
-    // The very first roll is timed to reveal "Designer" out of the hero intro
-    // (~1.1s) and linger; replays after scrolling back to the hero start sooner.
-    let firstPlay = true;
 
+    // Runs exactly once per mount, on load. Scrolling back up to the hero does
+    // NOT replay it: the roll is part of the page's arrival, and re-running it
+    // every time the hero re-enters the viewport turned a one-time flourish
+    // into a loop you couldn't scroll past. "Builder" is the resting headline,
+    // so leaving it there is the correct end state anyway.
     const play = () => {
-      // Kill any in-flight roll and restart from "Designer".
-      tl?.kill();
-      gsap.set(track, { yPercent: 0 });
-
       // The roll pulses the background itself on every word landing, so a
       // pointer click during it stacks a second wavefront onto the headline's
       // own. Mute pointer clicks for the duration; onComplete releases them,
@@ -67,7 +74,7 @@ export function CyclingWord() {
       setPointerClicksLocked(true);
 
       tl = gsap.timeline({
-        delay: firstPlay ? 1.15 : 0.4,
+        delay: REVEAL + HOLD,
         onComplete: () => setPointerClicksLocked(false),
       });
 
@@ -85,19 +92,11 @@ export function CyclingWord() {
         // word, which just rests as the headline.
         at += ROLL + (i < WORDS.length - 1 ? LINGER : 0);
       }
-      firstPlay = false;
     };
 
-    // Play once now (hero is visible on load), then replay on every genuine
-    // re-entry. The `wasOut` latch means we only retrigger after the hero has
-    // actually left the viewport — not on the intersection jitter Lenis's
-    // momentum scroll produces as the section settles at the top.
-    const section = track.closest("section") ?? track;
-    let wasOut = false;
-
-    // Hold the first roll until the intro reveals the headline, so "Designer"
-    // rolls out of the H1 as it flies up rather than under the cream cover. On
-    // a re-entry to the home route the flag is already set, so this fires now.
+    // Hold the roll until the intro reveals the headline, so "Designer" rolls
+    // out of the H1 as it flies up rather than under the cream cover. On a
+    // re-entry to the home route the flag is already set, so this fires now.
     let unsubIntro = () => {};
     if (useIntroStore.getState().headlinePlay) {
       play();
@@ -110,22 +109,8 @@ export function CyclingWord() {
       });
     }
 
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) {
-          wasOut = true;
-        } else if (wasOut) {
-          wasOut = false;
-          play();
-        }
-      },
-      { threshold: 0.3 },
-    );
-    io.observe(section);
-
     return () => {
       unsubIntro();
-      io.disconnect();
       tl?.kill();
       // kill() skips onComplete — without this the lock outlives the component
       // and clicks stay dead for the rest of the session.

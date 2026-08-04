@@ -14,6 +14,15 @@ const NAV_LINKS = [
   { id: "contact", label: "Contact" },
 ];
 
+// The hero rides the same scroll-spy as the sections so the wordmark can be
+// "active" in the top of the page. It has no id (it isn't a routable section),
+// so it gets a key that can't collide with one.
+const HERO_KEY = "__hero";
+
+// Document order — the spy resolves ties by taking the first match, so the
+// highest thing on the page wins.
+const SPY_ORDER = [HERO_KEY, ...NAV_LINKS.map((link) => link.id)];
+
 // SynthPanel still deferred (it pulls in Zustand + panel state), but defined at
 // module scope: creating it inside the component re-created the lazy identity on
 // every Header render (scroll + active-nav changes), remounting the panel each
@@ -71,9 +80,10 @@ export function Header() {
       return;
     }
 
-    const sections = NAV_LINKS.map((link) =>
-      document.getElementById(link.id),
-    ).filter((el): el is HTMLElement => el !== null);
+    const sections = [
+      document.querySelector<HTMLElement>("[data-hero]"),
+      ...NAV_LINKS.map((link) => document.getElementById(link.id)),
+    ].filter((el): el is HTMLElement => el !== null);
     if (sections.length === 0) return;
 
     // A section counts as "active" only while it intersects the horizontal
@@ -85,12 +95,12 @@ export function Header() {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) intersecting.add(entry.target.id);
-          else intersecting.delete(entry.target.id);
+          const key = entry.target.id || HERO_KEY;
+          if (entry.isIntersecting) intersecting.add(key);
+          else intersecting.delete(key);
         }
         // Preserve document order so the highest visible section wins.
-        const next = NAV_LINKS.find((link) => intersecting.has(link.id));
-        setActiveId(next?.id ?? null);
+        setActiveId(SPY_ORDER.find((key) => intersecting.has(key)) ?? null);
       },
       { rootMargin: "-50% 0px -50% 0px" },
     );
@@ -150,13 +160,23 @@ export function Header() {
             <a
               href="/"
               onClick={handleLogoClick}
-              className="font-mono text-sm tracking-tight text-black hover:text-accent"
+              // -ml-2.5 cancels nav-link's own inline padding on the left, so
+              // the wordmark stays flush to the page gutter while the hover
+              // fill still gets a box to sweep through.
+              aria-current={activeId === HERO_KEY ? "true" : undefined}
+              className={cn(
+                "nav-link -ml-2.5 font-mono text-sm tracking-tight text-black",
+                activeId === HERO_KEY && "is-active",
+              )}
             >
               Mike<span className="font-bold">Bucks</span>
             </a>
             <div className="flex justify-between gap-6 items-center">
               <nav aria-label="Primary">
-                <ul className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest text-black/80">
+                {/* gap-2, not gap-6: the links carry their own inline padding
+                    now (it's the hover fill's box), so the visual spacing
+                    between labels stays where it was. */}
+                <ul className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-black/80">
                   {NAV_LINKS.map((link) => (
                     <li key={link.id}>
                       <a
@@ -164,15 +184,17 @@ export function Header() {
                         onClick={handleSectionClick(link.id)}
                         aria-current={activeId === link.id ? "true" : undefined}
                         className={cn(
-                          "hover:text-accent transition-colors",
-                          activeId === link.id && "active text-accent",
+                          "nav-link",
+                          activeId === link.id && "is-active",
                         )}
                       >
                         {link.label}
                       </a>
                     </li>
                   ))}
-                  <li>
+                  {/* Buys back the gap the padded links gave up, so the seal
+                      doesn't crowd the last label. */}
+                  <li className="ml-2">
                     <SynthToggleButton />
                   </li>
                 </ul>

@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-accent: #ff5f15;
+  /* --color-accent: #ff5f15; */
+  --color-accent: #FD7220;
   --color-cream: #f4f1ea;
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -171,6 +172,52 @@ html.lenis body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Primary nav item. Active reads as white-on-accent; hover animates *into* that
+   same state, so the two are one visual language rather than two effects.
+
+   The fill is a pseudo-element scaled on X rather than an animated width — width
+   relayouts the bar on every frame, transform doesn't. Swapping the origin
+   between the hover and rest rules is what makes the wipe directional: it grows
+   from the left edge on the way in, and on mouse-out the rest rule's `right`
+   origin takes over so it retracts toward the right edge instead of rewinding.
+
+   The label's colour flip is delayed to roughly the wipe's midpoint — flipped
+   immediately it would be white on cream (invisible) while the fill is still
+   crossing. */
+@utility nav-link {
+  position: relative;
+  isolation: isolate;
+  padding-inline: 0.625rem;
+  padding-block: 0.3rem;
+  border-radius: 2px;
+  transition: color 140ms linear 50ms;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--color-accent);
+    transform: scaleX(0);
+    transform-origin: right center;
+    /* Aggressive in/out: near-flat at both ends, near-vertical through the
+       middle, so the fill snaps across and settles hard. */
+    transition: transform 320ms cubic-bezier(0.85, 0, 0.15, 1);
+  }
+
+  &:hover,
+  &.is-active {
+    color: #fff;
+  }
+
+  &:hover::before,
+  &.is-active::before {
+    transform: scaleX(1);
+    transform-origin: left center;
   }
 }
 
