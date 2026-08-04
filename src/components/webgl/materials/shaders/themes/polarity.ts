@@ -1,3 +1,5 @@
+import { NOTE_HUE_GLSL } from "./palette";
+
 /**
  * Polarity — a horn torus drawn by two mirrored streams of particles.
  *
@@ -68,6 +70,10 @@ uniform float uVelocity;
 uniform float uReactivity;
 uniform float uViewTilt;
 uniform vec4  uMacros;
+uniform vec4  uNoteFreqNorms;
+uniform vec4  uNoteAmts;
+
+${NOTE_HUE_GLSL}
 
 // Poloidal circles around the tube. Head-on, rings at u and −u project to the
 // same curve — the front and back of the surface land on top of each other, as
@@ -370,9 +376,31 @@ void main() {
   // Where the streams coincide, at the centre and again at the outer equator,
   // only the overlap term is lit, so the moment of union stays white whatever
   // the rest is doing.
-  float chroma = clamp(note * 1.35, 0.0, 1.0);
-  vec3 cool = mix(vec3(1.0), vec3(0.24, 0.62, 1.00), chroma);
-  vec3 warm = mix(vec3(1.0), vec3(1.00, 0.50, 0.18), chroma);
+  //
+  // The pair is the played key's colour and the palette's opposite pole — the
+  // note that lights a cap sends its own colour up one stream and its opposite
+  // down the other, so polarity is carried by the colour itself and every key
+  // gives the figure a different pair. Held white while nothing sounds, and the
+  // chroma is gated on the voices as well as the swing so the hue fades out
+  // with the sound instead of jumping when the last one goes.
+  vec3 hueAcc = vec3(0.0);
+  vec3 oppAcc = vec3(0.0);
+  float playW = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float a = uNoteAmts[i];
+    if (a < 0.004) continue;
+    float n = uNoteFreqNorms[i];
+    hueAcc += noteHue(n) * a;
+    oppAcc += noteHue(fract(n + 0.5)) * a;
+    playW += a;
+  }
+  vec3 hueUp = playW > 0.001 ? hueAcc / playW : vec3(1.0);
+  vec3 hueDn = playW > 0.001 ? oppAcc / playW : vec3(1.0);
+
+  float chroma = clamp(note * 1.35, 0.0, 1.0)
+               * clamp(playW * 2.5, 0.0, 1.0);
+  vec3 cool = mix(vec3(1.0), hueUp, chroma);
+  vec3 warm = mix(vec3(1.0), hueDn, chroma);
 
   vec3 col = cool * accUp + warm * accDn;
   col += vec3(1.0) * min(accUp, accDn) * 0.75;
@@ -384,7 +412,7 @@ void main() {
                 smoothstep(0.10, 0.90, uv.y));
   // The centre keeps a faint glow, and flares on input — the one place on the
   // figure that is always both streams at once.
-  bg += mix(vec3(0.66), vec3(0.62, 0.56, 0.74), chroma)
+  bg += mix(vec3(0.66), (hueUp + hueDn) * 0.5, chroma)
       * exp(-length(q) * 6.0) * (0.014 + hit * 0.09);
 
   col += bg;

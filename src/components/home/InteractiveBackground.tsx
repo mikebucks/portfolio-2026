@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
 import { useThemeStore, useIntroStore } from "@/lib/store";
+import { noteColorNorm } from "@/lib/notePalette";
 import {
   THEME_PRESETS,
   type ThemeId,
@@ -420,19 +421,6 @@ function WebGLCanvas({
           colorNorm: 0, vel: 0, env: 0,
         }));
 
-        // Map a note string ("C4", "F#3", …) to 0..1 by semitone position.
-        // Spreads all 12 chromatic notes evenly across the full color palette
-        // so every key gets a distinct hue regardless of octave or frequency.
-        const NOTE_SEMITONES: Record<string, number> = {
-          C: 0, "C#": 1, Db: 1, D: 2, "D#": 3, Eb: 3,
-          E: 4, F: 5, "F#": 6, Gb: 6, G: 7, "G#": 8,
-          Ab: 8, A: 9, "A#": 10, Bb: 10, B: 11,
-        };
-        const noteToColorNorm = (noteStr: string) => {
-          const m = noteStr.match(/^([A-G][b#]?)/);
-          if (!m) return 0;
-          return (NOTE_SEMITONES[m[1]] ?? 0) / 11;
-        };
 
         // Correspondence's divide steps 45° clockwise on every synth note. The
         // target holds the stepped angle (ever-decreasing so repeated notes keep
@@ -456,7 +444,9 @@ function WebGLCanvas({
             if (voices[i].env < lowestEnv) { lowestEnv = voices[i].env; target = i; }
           }
           // Store colorNorm at note-on time — stable for the life of the voice.
-          const colorNorm = noteToColorNorm(e.note);
+          // One stop on the shared note palette per key, so the voice lights the
+          // background in the exact colour of the cap that was struck.
+          const colorNorm = noteColorNorm(e.note);
           voices[target] = {
             colorNorm,
             vel: e.velocity,

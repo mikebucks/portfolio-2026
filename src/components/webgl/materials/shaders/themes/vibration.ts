@@ -274,10 +274,13 @@ void main() {
     // Each band keeps its own hue, pulled part of the way toward the pitch
     // being played — all the way and the two would converge, losing the
     // secondary that makes their crossing legible.
+    // Each band's own hue is an exact palette stop (index/10), not a point part
+    // way along the ramp — so the three bands are three of the keys' colours
+    // rather than blends of neighbouring ones.
     vec3 played = primary(acc / wsum);
-    vec3 colA = mix(primary(noteHue(0.02)), played, 0.35);
-    vec3 colC = mix(primary(noteHue(0.78)), played, 0.35);
-    vec3 colD = mix(primary(noteHue(0.50)), played, 0.35);
+    vec3 colA = mix(primary(noteHue(0.0)), played, 0.35);
+    vec3 colC = mix(primary(noteHue(0.7)), played, 0.35);
+    vec3 colD = mix(primary(noteHue(0.5)), played, 0.35);
     hueA = mix(greyA, colA, chroma);
     hueC = mix(greyC, colC, chroma);
     hueD = mix(greyD, colD, chroma);

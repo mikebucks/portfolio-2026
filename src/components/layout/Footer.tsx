@@ -1,5 +1,6 @@
 import { ArrowUpRight } from "lucide-react";
 import { SOCIALS } from "@/data/socials";
+import { SynthKeyCap } from "@/components/audio/SynthKeyCap";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -38,20 +39,12 @@ export function Footer() {
 
         <div className="flex flex-col items-start justify-between gap-4 font-mono text-xs text-black/60 md:flex-row md:items-center">
           <span>&copy; {year} · built with humanity</span>
-          <span>
-            <kbd className="rounded border border-black/15 px-1.5 py-0.5">
-              A
-            </kbd>{" "}
-            <kbd className="rounded border border-black/15 px-1.5 py-0.5">
-              S
-            </kbd>{" "}
-            <kbd className="rounded border border-black/15 px-1.5 py-0.5">
-              D
-            </kbd>{" "}
-            <kbd className="rounded border border-black/15 px-1.5 py-0.5">
-              F
-            </kbd>{" "}
-            make me dance
+          {/* Not decoration — the caps play their notes, same as the keys. */}
+          <span className="inline-flex items-center gap-1">
+            {["a", "s", "d", "f"].map((k) => (
+              <SynthKeyCap key={k} keyName={k} />
+            ))}
+            <span className="ml-1">make me dance</span>
           </span>
         </div>
       </div>

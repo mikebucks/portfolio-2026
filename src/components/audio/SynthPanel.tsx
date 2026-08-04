@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useThemeStore, useUIStore } from "@/lib/store";
+import { SynthKeyCapRow } from "./SynthKeyCap";
 import {
   THEME_IDS,
   THEME_PRESETS,
@@ -119,10 +120,10 @@ export function SynthPanel() {
       // 10px rail), plus 12px of air, or the panel would cover its own control.
       style={{
         top: "calc(env(safe-area-inset-top, 0px) + var(--header-h, 5rem))",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 62px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
-      className="pointer-events-none fixed z-40 w-[min(420px,calc(100vw-2rem-20px))]"
+      className="pointer-events-none fixed z-40 w-[min(400px,calc(100vw-2rem-60px))]"
     >
       <aside
         ref={panelRef}
@@ -143,7 +144,7 @@ export function SynthPanel() {
         // translate-x-* on the independent `translate` property, so a
         // transform transition here would list a property that never changes
         // and the panel would just pop in.
-        className={`flex h-full flex-col rounded-xl border border-white/10 bg-black/85 p-4 font-mono text-xs text-white shadow-2xl backdrop-blur-md transition-[translate,opacity] duration-[320ms] ease-[cubic-bezier(0.7,0,0.2,1)] ${
+        className={`flex h-full flex-col m-2 rounded-lg bg-black/50 p-2 font-mono text-xs text-white shadow-2xl backdrop-blur-md transition-[translate,opacity] duration-[320ms] ease-[cubic-bezier(0.7,0,0.2,1)] ${
           entered
             ? "pointer-events-auto translate-x-0 opacity-100"
             : "pointer-events-none translate-x-[calc(100%+2rem)] opacity-0"
@@ -155,13 +156,19 @@ export function SynthPanel() {
         <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto">
           <ThemePicker />
 
-          <p className="mt-2 text-[10px] leading-snug text-white/45">
+          {/* <p className="mt-4 text-xs leading-snug text-white/60">
             {preset.blurb}
-          </p>
+          </p> */}
+
+          {/* The same caps the footer shows, at playing size — a mouse or a
+              touch screen gets the whole mapping, not just the letters. */}
+          <div className="mt-4">
+            <SynthKeyCapRow />
+          </div>
         </div>
 
-        <footer className="mt-4 shrink-0 text-[10px] leading-tight text-white/40">
-          Home row plays notes · Shift = +1 oct · Alt = −1 oct · Esc closes
+        <footer className="mt-4 shrink-0 text-xs leading-snug text-white/60">
+          {preset.blurb}
         </footer>
       </aside>
     </div>,
@@ -189,7 +196,7 @@ function ThemePicker() {
     <div
       role="radiogroup"
       aria-label="Principle"
-      className="grid grid-cols-2 gap-1 rounded border border-white/10 bg-black/40 p-1"
+      className="grid grid-cols-2 gap-1 p-1 rounded bg-black/40"
     >
       {THEME_IDS.map((id) => {
         const active = id === theme;
@@ -199,9 +206,9 @@ function ThemePicker() {
             role="radio"
             aria-checked={active}
             onClick={() => setTheme(id as ThemeId)}
-            className={`rounded px-2 py-1.5 text-center text-[10px] uppercase tracking-wider transition ${
+            className={`rounded-xs px-2 py-1.5 text-center text-xs uppercase tracking-wider transition ${
               active
-                ? "bg-white/15 text-white shadow-[0_0_10px_rgba(255,255,255,0.08)]"
+                ? "bg-accent text-white shadow-[0_0_10px_rgba(255,255,255,0.08)]"
                 : "text-white/55 hover:bg-white/5 hover:text-white/85"
             }`}
             title={THEME_PRESETS[id].blurb}
@@ -217,7 +224,7 @@ function ThemePicker() {
         type="button"
         onClick={roll}
         title="Pick a principle at random"
-        className="rounded px-2 py-1.5 text-center text-[10px] uppercase tracking-wider text-white/55 transition hover:bg-white/5 hover:text-white/85"
+        className="rounded-xs px-2 py-1.5 text-center text-xs uppercase tracking-wider transition text-white/55 hover:bg-white/5 hover:text-white/85"
       >
         Chance
       </button>

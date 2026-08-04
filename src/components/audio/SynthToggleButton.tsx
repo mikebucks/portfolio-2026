@@ -61,13 +61,13 @@ export function SynthToggleButton() {
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         right: "calc(env(safe-area-inset-right, 0px) + 16px)",
       }}
-      className={`fixed z-50 ${open ? "cursor-zoom-out" : "cursor-zoom-in"}`}
+      className={`fixed z-50 cursor-pointer`}
     >
       <span
-        className={`flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-md transition-[background-color,color,border-color] duration-300 ${
+        className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg backdrop-blur-md transition-[background-color,color,border-color] duration-300 ${
           open
-            ? "border-white/10 bg-black/85 text-white hover:text-accent"
-            : "border-black/5 bg-white/60 text-black hover:text-accent"
+            ? "bg-black/85 text-white hover:text-accent"
+            : "bg-white/80 text-black hover:text-accent"
         }`}
       >
         <svg

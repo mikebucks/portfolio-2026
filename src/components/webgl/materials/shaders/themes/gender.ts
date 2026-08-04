@@ -1,3 +1,5 @@
+import { NOTE_HUE_GLSL } from "./palette";
+
 /**
  * Gender — a dark square on white that leans and smears as a wave passes
  * through it. Two principles in one frame: a hard geometric form and the
@@ -40,6 +42,10 @@ uniform float uNoteOn;
 uniform float uVelocity;
 uniform float uReactivity;
 uniform vec4  uMacros;
+uniform vec4  uNoteFreqNorms;
+uniform vec4  uNoteAmts;
+
+${NOTE_HUE_GLSL}
 
 float rand(vec3 co) {
   return fract(sin(dot(co.xyz, vec3(12.9898, 78.233, 91.1743))) * 43758.5453);
@@ -231,8 +237,25 @@ void main() {
   // White ground, dark shape.
   vec3 col = vec3(color);
 
-  // Input tints the shape so a keypress reads as a flash.
-  col += vec3(0.10, 0.02, 0.16) * hit * (1.0 - color);
+  // Input tints the shape so a keypress reads as a flash. The flash takes the
+  // colour of the key that caused it — the same palette entry its cap lights up
+  // in — and keeps the theme's own violet for input with no note behind it, so
+  // a mouse click still flashes without borrowing a pitch it didn't play.
+  // Scaled well down: these are full-strength colours and the ground is white,
+  // so at the violet's own weight they would read as a wash rather than a hit.
+  vec3 flash = vec3(0.10, 0.02, 0.16);
+  vec3 playAcc = vec3(0.0);
+  float playW = 0.0;
+  for (int i = 0; i < 4; i++) {
+    float a = uNoteAmts[i];
+    if (a < 0.004) continue;
+    playAcc += noteHue(uNoteFreqNorms[i]) * a;
+    playW += a;
+  }
+  if (playW > 0.001) {
+    flash = mix(flash, (playAcc / playW) * 0.20, clamp(playW, 0.0, 1.0));
+  }
+  col += flash * hit * (1.0 - color);
 
   // Vignette — kept light, it only has white to work against.
   vec2 v = c - 0.5;

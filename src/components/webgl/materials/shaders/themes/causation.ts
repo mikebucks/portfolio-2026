@@ -1,3 +1,5 @@
+import { NOTE_HUE_GLSL } from "./palette";
+
 /**
  * Causation theme — a slowly scrolling, terraced landscape ray-marched from a
  * layered cosine-noise field. Adapted from a classic Mr. Doob terrain sketch,
@@ -255,22 +257,10 @@ float calcShadow(in vec3 ro, in vec3 rd, in float t, in vec2 clickC, in float lo
   return clamp(res, 0.0, 1.0);
 }
 
-// Same 5-stop accent palette as Mind so the audio color reads identically. The
-// base field stays grayscale; these only tint where notes land.
-vec3 noteHue(float freqNorm) {
-  vec3 c0 = vec3(0.38, 0.32, 0.72);
-  vec3 c1 = vec3(0.28, 0.50, 0.82);
-  vec3 c2 = vec3(0.22, 0.66, 0.62);
-  vec3 c3 = vec3(0.72, 0.56, 0.28);
-  vec3 c4 = vec3(0.70, 0.38, 0.52);
-  float tt = clamp(freqNorm, 0.0, 1.0) * 4.0;
-  float i = floor(tt);
-  float f = smoothstep(0.0, 1.0, fract(tt));
-  if (i < 0.5)      return mix(c0, c1, f);
-  else if (i < 1.5) return mix(c1, c2, f);
-  else if (i < 2.5) return mix(c2, c3, f);
-  else              return mix(c3, c4, f);
-}
+// The shared note palette, same as Mind, so the audio color reads identically.
+// The base field stays grayscale; these only tint where notes land. Was a
+// hand-copied duplicate of the ramp until the palette became a generated chunk.
+${NOTE_HUE_GLSL}
 
 void main() {
   float mGlow  = uMacros.x;
