@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUIStore } from "@/lib/store";
+import { primeAudioContext } from "./primeAudioContext";
 
 // The two glyphs share the seal's (10,10) center and cross-fade through a
 // quarter turn in opposite directions, so opening reads as the mark rotating
@@ -41,7 +42,13 @@ export function SynthToggleButton() {
   return createPortal(
     <button
       type="button"
-      onClick={toggle}
+      // Priming here, not just in `unlock`, because the panel-open path runs
+      // unlock from a passive effect — after this tap's activation is gone on
+      // iOS. Start the context inside the tap; unlock then reuses it.
+      onClick={() => {
+        primeAudioContext();
+        toggle();
+      }}
       // Marks the seal as the panel's own control, so the panel's
       // press-outside-to-dismiss handler leaves this button to toggle.
       data-synth-toggle

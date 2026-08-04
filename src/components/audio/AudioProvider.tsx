@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { SynthEngine } from "./createSynthEngine";
+import { primeAudioContext } from "./primeAudioContext";
 import {
   rehydrateThemeStore,
   useResolvedSynthSettings,
@@ -57,11 +58,19 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     if (engineRef.current) return;
     if (unlockingRef.current) return unlockingRef.current;
 
+    // Before the first await, while the caller's user gesture is still live:
+    // create and resume the raw AudioContext. iOS Safari refuses a resume()
+    // issued from the far side of the dynamic import below — the gesture's
+    // activation has expired by then — so the context has to start here and
+    // be handed to Tone once it loads.
+    const rawContext = primeAudioContext();
+
     const run = (async () => {
       const [Tone, { createSynthEngine }] = await Promise.all([
         import("tone"),
         import("./createSynthEngine"),
       ]);
+      Tone.setContext(rawContext);
       await Tone.start();
       engineRef.current = createSynthEngine(Tone, settings);
       setUnlocked(true);

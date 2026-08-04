@@ -7,6 +7,7 @@ import {
   shiftOctave,
   shouldIgnoreTarget,
 } from "./keyboardMapping";
+import { primeAudioContext } from "./primeAudioContext";
 import { useUIStore } from "@/lib/store";
 
 /**
@@ -112,7 +113,14 @@ export function useSynthControls() {
       if (!baseNote) return;
 
       e.preventDefault();
-      if (!unlockedRef.current) await unlockRef.current();
+      if (!unlockedRef.current) {
+        await unlockRef.current();
+      } else {
+        // iOS suspends the context on interruptions (phone call, Siri,
+        // backgrounding) and only lets a gesture bring it back — this keydown
+        // is one, so resume synchronously before playing into a dead graph.
+        primeAudioContext();
+      }
 
       // The unlock above is async (Tone import + start). If the key was
       // released during that gap, its keyup already ran — don't strand a note
