@@ -36,6 +36,9 @@ export function hasWebGL(): boolean {
 
 export function getClampedDpr() {
   if (!isClient()) return 1;
-  const cap = isCoarsePointer() ? 1.25 : 1.75;
+  // Canvas-only cap (DOM text is unaffected). 1.5 on fine pointers: the shader
+  // content is soft enough that the last quarter-DPR is invisible, but it costs
+  // ~27% of the blit pass and compositor bandwidth.
+  const cap = isCoarsePointer() ? 1.25 : 1.5;
   return Math.min(window.devicePixelRatio || 1, cap);
 }

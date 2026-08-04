@@ -66,7 +66,16 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 10);
+    // Only call into React when the threshold actually flips — Lenis fires
+    // scroll every frame of a smooth scroll, and even a bailed-out setState
+    // still enters the React dispatch each time.
+    let prev: boolean | null = null;
+    const onScroll = () => {
+      const next = window.scrollY > 10;
+      if (next === prev) return;
+      prev = next;
+      setScrolled(next);
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -141,7 +150,7 @@ export function Header() {
       // `all`: the intro flies the header in with a GSAP transform, and a CSS
       // transition on `transform` would fight GSAP's per-frame writes.
       className={cn("fixed z-30 w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
-      scrolled ? "py-2 bg-cream" : "pt-6 pb-4 bg-white/80")}>
+      scrolled ? "py-[10px] bg-cream" : "pt-6 pb-4 bg-white/80")}>
       {/* Contents fade out behind the translucent project modal; the bar's own
           background is cleared by the same rules. Kept off the <header>
           element so GSAP's intro autoAlpha tween owns its opacity alone.

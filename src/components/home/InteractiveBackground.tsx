@@ -187,15 +187,24 @@ function WebGLCanvas({
         renderer.setPixelRatio(outputDpr);
         const lowPower = device.isLowPower();
 
-        // Internal render scale = per-theme base × adaptive quality. The two
-        // heavy themes cost far more per pixel than the flat ones, so they draw
-        // at a fraction of the internal buffer. Causation is a ray-marched
-        // terrain whose soft grayscale hides the drop; polarity is ~840 gaussian
-        // particles with no hard edge to alias. 0.60 / 0.65 reproduce the
-        // effective resolution these themes already settled at under the old
-        // adaptive-DPR path, now with a stable full-DPR canvas underneath.
+        // Internal render scale = per-theme base × adaptive quality. Every
+        // theme draws at a fraction of the internal buffer sized to what its
+        // content actually resolves: causation's ray-marched terrain and
+        // polarity's gaussian splats have no hard edges; gender's output IS a
+        // 32-tap blur, so the upscale just adds another smoothing stage; mind
+        // is soft cellular noise; correspondence is soft metaballs but keeps
+        // more pixels for its crisp divide line; rhythm's thin pendulum
+        // strands need the most. Vibration is cheap AND has a hard-edged
+        // square — full resolution. Fragment cost scales with the square of
+        // these, so 0.6 ≈ one-third the pixels.
         const renderScaleForTheme = (t: ThemeId) =>
-          t === "causation" ? 0.6 : t === "polarity" ? 0.65 : 1;
+          t === "causation" ? 0.6
+          : t === "polarity" ? 0.65
+          : t === "gender" ? 0.5
+          : t === "mind" ? 0.6
+          : t === "correspondence" ? 0.7
+          : t === "rhythm" ? 0.8
+          : 1;
         // Adaptive quality now nudges the internal render scale, never the canvas
         // DPR — dropping the canvas would soften the whole compositing layer, and
         // capping resolution here is invisible over the upscale.
@@ -295,9 +304,27 @@ function WebGLCanvas({
         // slow-moving 0..1 ratio, so a stale range between resizes is harmless.
         let scrollRange = 0;
 
+        // Cached canvas rect for the pointer handlers. The canvas is a fixed
+        // full-viewport layer, so the rect only changes on resize — refreshing
+        // it there beats a forced layout read on every pointermove.
+        let canvasRect: Pick<DOMRect, "left" | "top" | "width" | "height"> = {
+          left: 0,
+          top: 0,
+          width: 1,
+          height: 1,
+        };
+        // Timestamp of the last user input, for the idle frame governor in the
+        // render loop. Seeded to "now" so the page always loads at full rate.
+        let lastActivityAt = performance.now();
+
         const requestResize = () => {
           scrollRange =
             document.documentElement.scrollHeight - window.innerHeight;
+          // The canvas is a fixed full-viewport layer, so its rect only moves
+          // on resize — cache it here rather than forcing a layout read on
+          // every pointermove (input rate, on a DOM GSAP/Lenis keep dirty).
+          canvasRect = canvas.getBoundingClientRect();
+          lastActivityAt = performance.now();
           const { w, h } = measure();
           // .bg-layer-full pins the full-bleed layer to 100lvh so chrome can't
           // resize it, but in-app browsers vary and lvh has been reported short
@@ -364,6 +391,8 @@ function WebGLCanvas({
           activeTheme = next;
           baseRenderScale = renderScaleForTheme(next);
           applyRenderScale();
+          // A theme swap is user input — show the new theme at full rate.
+          lastActivityAt = performance.now();
         };
         if (themeRef.current !== activeTheme) {
           swapThemeRef.current(themeRef.current);
@@ -431,6 +460,7 @@ function WebGLCanvas({
 
         const offBus = visualBus.on((e) => {
           if (e.type !== "note_on") return;
+          lastActivityAt = performance.now();
 
           // Turn the Correspondence divide one 45° step clockwise. Fires for
           // every note (keyboard/synth); mouse clicks go through onDown and do
@@ -474,7 +504,7 @@ function WebGLCanvas({
         });
 
         const onMove = (e: PointerEvent) => {
-          const rect = canvas.getBoundingClientRect();
+          const rect = canvasRect;
           const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
           const y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
           if (primed) {
@@ -487,14 +517,16 @@ function WebGLCanvas({
           visualState.pointer[0] = x;
           visualState.pointer[1] = y;
           pointerHasMoved = true;
+          lastActivityAt = performance.now();
           lastX = x; lastY = y;
         };
 
         const onDown = (e: PointerEvent) => {
+          lastActivityAt = performance.now();
           // Muted while the hero headline is rolling — it fires its own pulses
           // per word, and a click on top of those stacks wavefronts.
           if (arePointerClicksLocked()) return;
-          const rect = canvas.getBoundingClientRect();
+          const rect = canvasRect;
           triggerClick(
             ((e.clientX - rect.left) / rect.width) * 2 - 1,
             -(((e.clientY - rect.top) / rect.height) * 2 - 1),
@@ -504,6 +536,7 @@ function WebGLCanvas({
         const onScroll = () => {
           visualState.scroll =
             scrollRange > 0 ? window.scrollY / scrollRange : 0;
+          lastActivityAt = performance.now();
         };
 
         window.addEventListener("pointermove", onMove, { passive: true });
@@ -571,6 +604,19 @@ function WebGLCanvas({
         // Latches on the first painted frame so we reveal the canvas once.
         let firstFramePainted = false;
 
+        // ── Idle frame governor ──────────────────────────────────────────
+        // Full display rate while anything input-coupled is live (pointer,
+        // clicks, notes, decaying envelopes), then every other frame once the
+        // page has sat still. The content at rest is slow-drifting noise, so
+        // 30fps is imperceptible — but it halves GPU work AND stops producing
+        // canvas frames the compositor would re-blur every backdrop-filter
+        // section for. rAF keeps running and all state keeps integrating with
+        // real dt (33ms is still under the 50ms clamp), so motion speed is
+        // unchanged and ramp-back to 60 on input is instant with no seam.
+        const ACTIVE_WINDOW_MS = 3000;
+        const IDLE_FRAME_MS = 1000 / 30 - 2; // -2ms of vsync jitter tolerance
+        let lastDrawAt = 0;
+
         const tick = () => {
           animId = requestAnimationFrame(tick);
           // Skip the draw when the tab is hidden. `last` is intentionally not
@@ -579,13 +625,6 @@ function WebGLCanvas({
           const now = performance.now();
           const dt = Math.min((now - last) / 1000, 0.05);
           last = now;
-
-          // Sample frame rate and adapt DPR before drawing. Only reached on real
-          // (non-paused) frames, so a hidden tab never pollutes the average.
-          quality.tick();
-
-          // Clear-and-repaint in the same frame — see the Sizing block above.
-          applyPendingResize();
 
           tickVisualState(dt);
 
@@ -732,6 +771,37 @@ function WebGLCanvas({
             particleMesh.rotation.z += dt * 0.018;
             particleMat.opacity = 0.18 + visualState.envelope * 0.3;
           }
+
+          // Idle governor (see above). Everything input-coupled that could
+          // still be visibly easing holds the full rate; only a genuinely
+          // settled scene drops to every other frame. Uniform writes above are
+          // plain JS property sets — nothing reaches the GPU until the draws
+          // below, so skipping here skips the whole GPU frame.
+          const active =
+            now - lastActivityAt < ACTIVE_WINDOW_MS ||
+            visualState.pointerImpulse > 0.001 ||
+            visualState.clickImpulse > 0.001 ||
+            visualState.noteImpulse > 0.001 ||
+            visualState.envelope > 0.001 ||
+            formHold > 0 ||
+            Math.abs(formVel) > 0.01 ||
+            viewTilt > 0.01 ||
+            !firstFramePainted;
+          if (active) {
+            // Sample the frame rate for adaptive quality only at full rate —
+            // governed 30fps frames would read as a struggling GPU and step
+            // the render scale down. Its >100ms stall rejection absorbs the
+            // gap left by an idle span.
+            quality.tick();
+          } else if (now - lastDrawAt < IDLE_FRAME_MS) {
+            return;
+          }
+          lastDrawAt = now;
+
+          // Clear-and-repaint in the same frame — see the Sizing block above.
+          // Deliberately inside the draw gate: resizing the buffer clears it,
+          // so it must only happen on a frame that repaints.
+          applyPendingResize();
 
           // Draw the shader into the reduced-resolution target, then upscale it
           // (plus the full-resolution particles) onto the canvas.

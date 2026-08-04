@@ -48,17 +48,38 @@ export function useRouteScroll() {
   useEffect(() => {
     let ticking = false;
 
+    // Document-space section tops, measured on layout changes rather than per
+    // scroll frame — getBoundingClientRect inside the scroll handler forces a
+    // layout flush on every frame of a Lenis smooth scroll.
+    let tops: { id: SectionId; top: number }[] = [];
+
+    const measureTops = () => {
+      // Never measure while the project modal is open: the page wrapper is
+      // scale-transformed (globals.css [data-modal-hide]), which skews rects.
+      if (currentRoute().slug) return;
+      const next: { id: SectionId; top: number }[] = [];
+      for (const id of SECTION_IDS) {
+        const el = document.getElementById(id);
+        if (el) {
+          next.push({
+            id,
+            top: el.getBoundingClientRect().top + window.scrollY,
+          });
+        }
+      }
+      tops = next;
+    };
+
     const syncUrl = () => {
       ticking = false;
 
       // Never clobber an open project modal.
       if (currentRoute().slug) return;
 
-      const line = window.innerHeight * ACTIVE_LINE;
+      const line = window.scrollY + window.innerHeight * ACTIVE_LINE;
       let activeId: SectionId | null = null;
-      for (const id of SECTION_IDS) {
-        const el = document.getElementById(id);
-        if (el && el.getBoundingClientRect().top <= line) activeId = id;
+      for (const s of tops) {
+        if (s.top <= line) activeId = s.id;
       }
 
       // Silent: this only reflects the scroll into the URL. Emitting the route
@@ -73,7 +94,27 @@ export function useRouteScroll() {
       requestAnimationFrame(syncUrl);
     };
 
+    // Measure after first layout, then again whenever the document reflows
+    // (images loading, content changes) or the window resizes. The body
+    // observer sees border-box size only, so the modal's transform never
+    // triggers a (skewed) re-measure on its own.
+    const raf = requestAnimationFrame(measureTops);
+    const reflowObserver = new ResizeObserver(measureTops);
+    reflowObserver.observe(document.body);
+    window.addEventListener("resize", measureTops, { passive: true });
+    // Re-measure once the modal route closes — measurements were suspended
+    // while it was open.
+    const unsubscribeRoute = onRouteChange(() => {
+      requestAnimationFrame(measureTops);
+    });
+
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      reflowObserver.disconnect();
+      window.removeEventListener("resize", measureTops);
+      unsubscribeRoute();
+      window.removeEventListener("scroll", onScroll);
+    };
   }, []);
 }
