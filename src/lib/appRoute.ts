@@ -68,13 +68,21 @@ const ROUTE_EVENT = "app:routechange";
  * entry instead of stacking a new one — used for URL changes the user didn't
  * ask for (scroll position mirroring, closing a modal), so Back still means
  * "the last thing I clicked".
+ *
+ * `notify` (default true) emits the route event so `onRouteChange` subscribers
+ * react — scroll to the section, track the pageview, sync the modal. Pass
+ * `notify: false` when the URL is only *reflecting* the current scroll position
+ * (see `useRouteScroll`'s scroll → URL mirror): waking the URL → scroll
+ * subscriber there feeds straight back into a scroll, trapping every in-page
+ * navigation on the first section it passes. `usePathname` still updates either
+ * way — Next tracks the bare `replaceState`, it doesn't need this event.
  */
-export function navigate(path: string, { replace = false } = {}) {
+export function navigate(path: string, { replace = false, notify = true } = {}) {
   const current = window.location.pathname + window.location.hash;
   if (path === current) return;
   if (replace) history.replaceState(null, "", path);
   else history.pushState(null, "", path);
-  window.dispatchEvent(new Event(ROUTE_EVENT));
+  if (notify) window.dispatchEvent(new Event(ROUTE_EVENT));
 }
 
 /** Path for a section, or the hero when `section` is null. */

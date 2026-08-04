@@ -61,7 +61,10 @@ export function useRouteScroll() {
         if (el && el.getBoundingClientRect().top <= line) activeId = id;
       }
 
-      navigate(sectionPath(activeId), { replace: true });
+      // Silent: this only reflects the scroll into the URL. Emitting the route
+      // event would wake the URL → scroll effect above and scroll to `activeId`,
+      // which fights (and traps) the very scroll that triggered this sync.
+      navigate(sectionPath(activeId), { replace: true, notify: false });
     };
 
     const onScroll = () => {

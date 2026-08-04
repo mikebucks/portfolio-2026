@@ -103,12 +103,19 @@ export function ProjectModal() {
 
     const lenis = getLenisInstance();
     lenis?.stop();
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Lock <html>, not <body>. globals.css gives <html> `overflow-y: scroll` so
+    // it owns the viewport scrollbar; hiding <body>'s overflow leaves that track
+    // painted but dead, right beside the panel's own scroll surface — two
+    // scrollbars. `scrollbar-gutter: stable` still reserves the gutter while the
+    // overflow is hidden, so this keeps the no-sideways-jump the gutter is there
+    // for.
+    const root = document.documentElement;
+    const prevOverflow = root.style.overflow;
+    root.style.overflow = "hidden";
 
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
+      root.style.overflow = prevOverflow;
       lenis?.start();
     };
   }, [slug, close]);

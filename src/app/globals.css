@@ -28,6 +28,16 @@
    children — hiding the WebGL canvas and CSS gradient entirely. */
 html {
   background: var(--ink);
+  /* Always reserve the scrollbar's space so the page never jumps sideways when
+     ProjectModal locks scroll with `body { overflow: hidden }` (the scrollbar
+     vanishes and, without a reserved gutter, content + fixed header widen to
+     fill the freed space). `overflow-y: scroll` is required alongside the
+     gutter: by default <html> is `overflow: visible`, so the viewport scrollbar
+     is governed by <body> and this gutter would be ignored. Making <html> own
+     the scrollbar lets `scrollbar-gutter` take effect and stay put when <body>
+     goes `overflow: hidden`. */
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 body {
