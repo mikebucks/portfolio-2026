@@ -147,7 +147,12 @@ export function Header() {
           element so GSAP's intro autoAlpha tween owns its opacity alone.
           See globals.css. */}
       <div data-modal-hide>
+        {/* Both portal themselves to <body> and pin to the bottom-right rail —
+            they render from here only because this is where the panel's state
+            already lived. The header's backdrop-filter would otherwise be
+            their containing block, so neither can be positioned in place. */}
         <SynthPanel />
+        <SynthToggleButton />
         <div className={
           "flex items-center justify-between inset-x-0 w-full max-w-[1600px]"
         }>
@@ -192,11 +197,6 @@ export function Header() {
                       </a>
                     </li>
                   ))}
-                  {/* Buys back the gap the padded links gave up, so the seal
-                      doesn't crowd the last label. */}
-                  <li className="ml-2">
-                    <SynthToggleButton />
-                  </li>
                 </ul>
               </nav>
             </div>

@@ -111,13 +111,15 @@ export function SynthPanel() {
   return createPortal(
     <div
       data-modal-hide
-      // Spans the full height of the frame's inner opening: it starts below the
+      // Spans the height of the frame's inner opening: it starts below the
       // header bar (--header-h, published by Header) so the nav stays visible
       // and clickable, and stops on the cream frame's 10px rails — which the
       // safe-area insets extend on notched devices, matching layout.tsx.
+      // The bottom rail also has to clear the toggle parked on it (40px chip +
+      // 10px rail), plus 12px of air, or the panel would cover its own control.
       style={{
         top: "calc(env(safe-area-inset-top, 0px) + var(--header-h, 5rem))",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 62px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
       className="pointer-events-none fixed z-40 w-[min(420px,calc(100vw-2rem-20px))]"
