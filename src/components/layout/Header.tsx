@@ -141,7 +141,7 @@ export function Header() {
       // `all`: the intro flies the header in with a GSAP transform, and a CSS
       // transition on `transform` would fight GSAP's per-frame writes.
       className={cn("fixed z-30 w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
-      scrolled ? "py-2 bg-cream" : "pt-8 pb-6 bg-white/80")}>
+      scrolled ? "py-2 bg-cream" : "pt-6 pb-4 bg-white/80")}>
       {/* Contents fade out behind the translucent project modal; the bar's own
           background is cleared by the same rules. Kept off the <header>
           element so GSAP's intro autoAlpha tween owns its opacity alone.
