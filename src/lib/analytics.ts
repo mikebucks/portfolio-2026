@@ -32,6 +32,18 @@ export function isAnalyticsEnabled(): boolean {
 }
 
 /**
+ * The one hostname that may send events, taken from SITE.url so the domain
+ * can't drift from the rest of the site's identity. `www.` is accepted too,
+ * since that's the same site under a redirect-or-alias.
+ */
+const PROD_HOST = new URL(SITE.url).hostname;
+
+/** Is this the real, deployed site — as opposed to any dev/preview host? */
+export function isProductionHost(host: string): boolean {
+  return host === PROD_HOST || host === `www.${PROD_HOST}`;
+}
+
+/**
  * Boot Mixpanel. Safe to call more than once (subsequent calls are ignored)
  * and safe to call with no token (returns immediately). Returns whether
  * analytics is live, so callers can skip attaching listeners when it isn't.
@@ -40,15 +52,16 @@ export function initAnalytics(): boolean {
   if (initialized) return true;
   if (!TOKEN || typeof window === "undefined") return false;
 
-  // Keep local/dev traffic out of Mixpanel. Guarding on the hostname (rather
-  // than NODE_ENV) also catches a local `next build && next start`, which runs
-  // as production but is still just you on your machine. Deployed hosts fall
-  // through and record normally. Returning false means Analytics.tsx attaches
-  // no listeners and Session Replay never starts.
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
-    return false;
-  }
+  // Only the live site is allowed to record. This is an ALLOWLIST, not a
+  // blocklist of dev hosts: a blocklist misses anything you didn't think to
+  // list — `localhost` is easy, but testing a phone against the dev server hits
+  // a LAN IP (10.0.0.x), a tunnel domain (ngrok/Tailscale) or a Vercel preview
+  // URL, all of which would otherwise sail through and pollute the project with
+  // your own testing. Guarding on hostname rather than NODE_ENV also catches a
+  // local `next build && next start`, which runs as production but is still
+  // just you on your machine. Returning false means Analytics.tsx attaches no
+  // listeners and Session Replay never starts.
+  if (!isProductionHost(window.location.hostname)) return false;
 
   mixpanel.init(TOKEN, {
     // We drive SPA pageviews by hand off the History-API router

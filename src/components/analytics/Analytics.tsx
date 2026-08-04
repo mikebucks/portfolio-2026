@@ -24,8 +24,8 @@
  *
  * All listeners use the capture phase so nothing the app does (stopPropagation
  * on a button, say) can hide an interaction from tracking. When the token is
- * absent (or on localhost), `initAnalytics()` returns false and we attach
- * nothing at all.
+ * absent (or we're on any host other than the live site), `initAnalytics()`
+ * returns false and we attach nothing at all.
  */
 
 import { useEffect } from "react";
@@ -147,7 +147,7 @@ function pointerProps(e: MouseEvent): Record<string, unknown> {
 
 export function Analytics() {
   useEffect(() => {
-    // No token / on localhost → initAnalytics returns false → wire up nothing.
+    // No token / not the live site → initAnalytics returns false → wire up nothing.
     if (!initAnalytics()) return;
 
     // --- Page views --------------------------------------------------------
