@@ -222,7 +222,10 @@ export function ProjectModal() {
 
       <div
         data-lenis-prevent
-        className="absolute inset-0 overflow-y-auto"
+        // `bleed-root`: the width a `full-bleed` figure measures against. This
+        // box excludes both scrollbars, so a bled image lands flush instead of
+        // overflowing sideways the way 100vw would.
+        className="absolute inset-0 overflow-y-auto bleed-root"
         style={{
           opacity: isOpen ? 1 : 0,
           transition: reduce

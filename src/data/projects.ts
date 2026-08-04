@@ -117,8 +117,7 @@ export const projects: Project[] = [
       { 
         type: "image", 
         src: "/projects/chisel/chisel-process.png",
-        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
-        caption: "Chisel moves design from a step in the process available to a select few, to an infrastructure layer anyone can use." ,
+        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
         alt: "Chisel process then vs now" 
       },
       {
@@ -132,8 +131,7 @@ export const projects: Project[] = [
       { 
         type: "image",
         src: "/projects/chisel/chisel-stack.png",
-        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
-        caption: "The Chisel stack",
+        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
         alt: "Chisel stack",
       },
       {
@@ -143,8 +141,7 @@ export const projects: Project[] = [
       {
         type: "image",
         src: "/projects/chisel/chisel-workflow.png",
-        className: "bg-cream p-2 pb-4 border border-black/10 rounded-sm",
-        caption: "The Chisel workflow",
+        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
         alt: "Chisel workflow"
        },
       {

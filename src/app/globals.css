@@ -23,6 +23,33 @@
   }
 }
 
+/* Marks the surface a `full-bleed` block measures itself against — the project
+   modal's scroll area, whose content box already excludes both the page's
+   reserved scrollbar gutter and the panel's own scrollbar. Measuring against
+   this instead of 100vw is what keeps a bled image from pushing the panel
+   sideways. */
+@utility bleed-root {
+  container-type: inline-size;
+}
+
+/* Escapes the case-study column's gutters so a block spans the full panel
+   width. The negative margin is half the column minus half the container, so
+   the block grows symmetrically out of the centered flow. Needs a `bleed-root`
+   ancestor; without one the container units fall back to the viewport and the
+   scrollbars reappear as horizontal overflow.
+
+   Mobile only: the bleed is there to buy back the narrow screen's gutters. Past
+   this width the column is comfortably inside the panel and an edge-to-edge
+   image reads as a banner instead, so it stays in the text column. The cutoff
+   matches the `md:px-10` the column picks up in ProjectDetail. */
+@utility full-bleed {
+  @media (width < 48rem) {
+    width: 100cqw;
+    max-width: none;
+    margin-inline: calc(50% - 50cqw);
+  }
+}
+
 /* Only the root element gets the background.
    If body also has a background it paints OVER position:fixed z-index:-10
    children — hiding the WebGL canvas and CSS gradient entirely. */
