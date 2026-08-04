@@ -89,6 +89,70 @@ export type Project = {
 
 export const projects: Project[] = [
   {
+    slug: "figment-dapp",
+    title: "Figment dApp",
+    role: "Product Design & Growth",
+    thumbnail: "projects/figment-dapp/thumbnail.png",
+    tags: ["react", "web3", "design"],
+    summary: "A consumer swing for a B2B crypto infrastructure company",
+    content: [
+      {
+        type: "text",
+        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent and neglected consumer dApp that had been hiding in the Ledger Wallet marketplace. with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
+      },
+      { 
+        type: "video", 
+        src: "/projects/figment-dapp/eth-flow.mp4", 
+        alt: "Ethereum staking flow in Ledger dApp", 
+        autoplay: true, 
+      },
+      { 
+        type: "text",
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/dashboard.png"
+      },
+      {
+        type: "grid",
+        items: [
+          { src: "/projects/figment-dapp/widget/sol.png", alt: "Solana staking widget" },
+          { src: "/projects/figment-dapp/widget/avax.png", alt: "Avalanche staking widget" },
+          { src: "/projects/figment-dapp/widget/near.png", alt: "NEAR staking widget" },
+          { src: "/projects/figment-dapp/widget/eth.png", alt: "ETH staking widget" },
+        ],
+      },
+      { 
+        type: "text",
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
+      },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li>Net new assets under stake of over $500m</li>
+            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
+            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
+          </ol>
+        `,
+      },
+      // {
+      //   type: "image",
+      //   src: "/projects/figment-dapp/sol.png"
+      // },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/eth-stake.png"
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dapp/eth-why-stake.png"
+      },
+    ],
+  },
+  {
     slug: "chisel",
     title: "Chisel",
     role: "Design & Engineering",
@@ -154,70 +218,6 @@ export const projects: Project[] = [
             <li>Faster product iteration. Simple edits like copy changes and layout adjustments can be handled by PMs without the unnecessary overhead of Linear tickets, Figma updates, and engineering pipelines.</li>
           </ol>
         `,
-      },
-    ],
-  },
-  {
-    slug: "figment-dapp",
-    title: "Figment dApp",
-    role: "Product Design & Growth",
-    thumbnail: "projects/figment-dapp/thumbnail.png",
-    tags: ["react", "web3", "design"],
-    summary: "A consumer swing for a B2B crypto infrastructure company",
-    content: [
-      {
-        type: "text",
-        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent and neglected consumer dApp that had been hiding in the Ledger Wallet marketplace. with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
-      },
-      { 
-        type: "video", 
-        src: "/projects/figment-dapp/eth-flow.mp4", 
-        alt: "Ethereum staking flow in Ledger dApp", 
-        autoplay: true, 
-      },
-      { 
-        type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
-      },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/dashboard.png"
-      },
-      {
-        type: "grid",
-        items: [
-          { src: "/projects/figment-dapp/widget/sol.png", alt: "Solana staking widget" },
-          { src: "/projects/figment-dapp/widget/avax.png", alt: "Avalanche staking widget" },
-          { src: "/projects/figment-dapp/widget/near.png", alt: "NEAR staking widget" },
-          { src: "/projects/figment-dapp/widget/eth.png", alt: "ETH staking widget" },
-        ],
-      },
-      { 
-        type: "text",
-        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
-      },
-      {
-        type: "text",
-        html: `
-        <strong>Outcomes</strong>
-          <ol>
-            <li>Net new assets under stake of over $500m</li>
-            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
-            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
-          </ol>
-        `,
-      },
-      // {
-      //   type: "image",
-      //   src: "/projects/figment-dapp/sol.png"
-      // },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/eth-stake.png"
-      },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/eth-why-stake.png"
       },
     ],
   },

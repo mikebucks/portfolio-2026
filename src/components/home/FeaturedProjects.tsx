@@ -96,8 +96,8 @@ export function FeaturedProjects() {
                     alt=""
                     className={`absolute inset-0 h-full w-full object-cover ${
                       p.comingSoon
-                        ? "opacity-85 saturate-75"
-                        : "transition-transform duration-700 ease-[cubic-bezier(0.05,0,0,1)] group-hover:scale-[1.15]"
+                        ? ""
+                        : "transition-transform duration-700 ease-[cubic-bezier(0.05,0,0,1)] group-hover:scale-[1.05]"
                     }`}
                   />
                 )}
