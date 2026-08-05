@@ -224,11 +224,11 @@ export function AllProjects() {
     // the fixed shader. A wrapper background — or just the wrapper's blur, which
     // filters everything behind it whether or not it paints — would fill those
     // holes back in and the separation would vanish.
-    <div ref={rootRef} className="pb-[3px] -mx-[var(--gutter)] px-[var(--gutter)] overflow-x-clip">
+    <div ref={rootRef} className="pb-[1px] -mx-[var(--gutter)] px-[var(--gutter)] overflow-x-clip">
       {/* The 3px is a gap, not a row margin: gaps fall only BETWEEN rows, so the
           list doesn't ship a trailing 3px of shader between the last row and the
           wrapper's own pb-6. */}
-      <ul className="flex flex-col gap-[3px]">
+      <ul className="flex flex-col gap-[1px]">
         {otherProjects.map((p) => {
           const images = projectImages(p);
 
@@ -249,7 +249,7 @@ export function AllProjects() {
                 data-row
                 href={projectPath(p.slug)}
                 onClick={(e) => onRowClick(e, p.slug)}
-                className="group relative flex items-center gap-6 -mx-[var(--gutter)] px-[var(--gutter)] bg-white/70 backdrop-blur-md"
+                className="group relative flex items-center gap-6 -mx-[var(--gutter)] px-[var(--gutter)] bg-white/80 backdrop-blur-md"
               >
                 {/* Cream wash. A real element rather than a ::before because
                     GSAP drives it (see the wipe in the effect above) and a

@@ -148,33 +148,6 @@ export const projects: Project[] = [
     ],
   },
   {
-    slug: "book-of-idra",
-    title: "Book of Idra",
-    role: "Design Engineering",
-    thumbnail: "projects/book-of-idra/thumbnail.png",
-    tags: ["web3", "creative-coding", "design", "branding"],
-    summary: "What does the future of creative writing look like?",
-    body: [
-      "Book of Idra is a web3 experiment in collaborative storytelling. Token holders work together to craft a fictional story through consensus. Characters, locations, and entire worlds await their discovery.",
-    ],
-    media: [
-      { type: "image", src: "/projects/book-of-idra/homepage.jpg", alt: "Book of Idra homepage" },
-      { type: "image", src: "/projects/book-of-idra/angel-descriptions.jpg", alt: "The four celestial orders" },
-      {
-        type: "grid",
-        items: [
-          { src: "/projects/book-of-idra/angel1.jpg", alt: "Angel 1" },
-          { src: "/projects/book-of-idra/angel2.jpg", alt: "Angel 2" },
-          { src: "/projects/book-of-idra/angel3.png", alt: "Angel 3" },
-          { src: "/projects/book-of-idra/angel4.jpg", alt: "Angel 4" },
-        ],
-      },
-      { type: "image", src: "/projects/book-of-idra/logos.png", alt: "Logo explorations" },
-      { type: "image", src: "/projects/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
-      { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
-    ],
-  },
-  {
     slug: "chisel",
     title: "Chisel",
     role: "Design & Engineering",
@@ -241,6 +214,33 @@ export const projects: Project[] = [
           </ol>
         `,
       },
+    ],
+  },
+  {
+    slug: "book-of-idra",
+    title: "Book of Idra",
+    role: "Design Engineering",
+    thumbnail: "projects/book-of-idra/thumbnail.png",
+    tags: ["web3", "creative-coding", "design", "branding"],
+    summary: "What does the future of creative writing look like?",
+    body: [
+      "Book of Idra is a web3 experiment in collaborative storytelling. Token holders work together to craft a fictional story through consensus. Characters, locations, and entire worlds await their discovery.",
+    ],
+    media: [
+      { type: "image", src: "/projects/book-of-idra/homepage.jpg", alt: "Book of Idra homepage" },
+      { type: "image", src: "/projects/book-of-idra/angel-descriptions.jpg", alt: "The four celestial orders" },
+      {
+        type: "grid",
+        items: [
+          { src: "/projects/book-of-idra/angel1.jpg", alt: "Angel 1" },
+          { src: "/projects/book-of-idra/angel2.jpg", alt: "Angel 2" },
+          { src: "/projects/book-of-idra/angel3.png", alt: "Angel 3" },
+          { src: "/projects/book-of-idra/angel4.jpg", alt: "Angel 4" },
+        ],
+      },
+      { type: "image", src: "/projects/book-of-idra/logos.png", alt: "Logo explorations" },
+      { type: "image", src: "/projects/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
+      { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
     ],
   },
   {

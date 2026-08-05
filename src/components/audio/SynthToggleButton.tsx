@@ -62,13 +62,20 @@ export function SynthToggleButton() {
       aria-label={open ? "Close synth panel" : "Open synth panel"}
       title={open ? "Close synth" : "Open synth"}
       // Sits on the same cream-frame rails as the panel (10px, widened by the
-      // safe-area insets on notched devices), and above it — z-40 is the
-      // panel — so the seal stays hittable while the panel is out.
+      // safe-area insets on notched devices), and above it — z-40 is the panel
+      // — so the seal stays hittable while the panel is out.
+      //
+      // 105 rather than the 50 it used to hold: a hovered featured card takes
+      // z-101 (see FeaturedProjects) and would otherwise slide over the seal as
+      // the pointer crossed the row. Above the cream frame bars (100) too, which
+      // costs nothing — the seal is inset 16px and never touches the 10px rails.
+      // Still under the scrolled header (110) and the project modal (120), where
+      // it's meant to fade out rather than float.
       style={{
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)",
         right: "calc(env(safe-area-inset-right, 0px) + 16px)",
       }}
-      className={`fixed z-50 cursor-pointer`}
+      className={`fixed z-[105] cursor-pointer`}
     >
       <span
         className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg backdrop-blur-md transition-[background-color,color,border-color] duration-300 ${

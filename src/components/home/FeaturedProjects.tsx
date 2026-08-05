@@ -89,7 +89,7 @@ export function FeaturedProjects() {
           Both bleeds are published as --bleed so the cards' own padding can
           read it back — that's what keeps their copy on the column. See the
           card content div below. */}
-      <ul className="[--bleed:calc(var(--gutter)_-_10px)] min-[1684px]:[--bleed:var(--gutter)] grid md:grid-cols-2 gap-[3px] pt-[10px] pb-[3px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_20px)] min-[1684px]:max-w-[calc(1600px_+_var(--gutter)*2)]">
+      <ul className="[--bleed:calc(var(--gutter)_-_10px)] min-[1684px]:[--bleed:var(--gutter)] grid md:grid-cols-2 gap-[1px] pt-[10px] pb-[1px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_20px)] min-[1684px]:max-w-[calc(1600px_+_var(--gutter)*2)]">
         {featured.map((p) => (
           <li
             key={p.slug}
@@ -112,7 +112,7 @@ export function FeaturedProjects() {
             // named there. It's deep and far-thrown on purpose — the row is
             // edge to edge now, and the shadow is the only thing separating a
             // raised card from the two still lying flat beside it.
-            className="relative z-0 overflow-hidden ring-0 ring-accent/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:z-[101] hover:ring-[10px] hover:ring-accent hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.55),0_14px_32px_-12px_rgba(0,0,0,0.45)]"
+            className="relative z-0 overflow-hidden ring-0 ring-accent/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:z-[101] hover:ring-[10px] hover:ring-accent hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.55),0_14px_32px_-12px_rgba(0,0,0,0.45)] md:mix-blend-luminosity hover:mix-blend-normal"
           >
             <a
               href={projectPath(p.slug)}
@@ -130,7 +130,7 @@ export function FeaturedProjects() {
 
               {/* Scrim — compressed to the lower half so the art stays
                   visible up top, staying dark down low for text legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-cream from-0% via-cream/90 via-30% to-transparent to-55%" />
+              <div className="absolute inset-0 bg-gradient-to-t from-white from-0% via-cream/80 via-15% to-transparent to-30% "  />
 
               {/* Content. The horizontal padding is the row's own bleed, not a
                   design value — that's the whole distance between the card's
