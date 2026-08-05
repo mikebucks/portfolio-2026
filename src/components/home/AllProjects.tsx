@@ -62,7 +62,47 @@ export function AllProjects() {
         // Committed rest state: strip hidden + nudged right.
         gsap.set(imgs, { opacity: 0, scale: 0.8, xPercent: 20 });
 
+        // The wash wipes rather than fades: down from the top edge on the way
+        // in, and — still travelling down — out through the bottom edge on the
+        // way out. Both halves are one origin-at-top transform, `scaleY` for
+        // the height and `yPercent` for where the band sits:
+        //
+        //   top = yPercent × H     height = scaleY × H
+        //
+        // In: yPercent 0, scaleY 0 → 1. Top pinned, bottom edge runs down.
+        // Out: yPercent 0 → 1 while scaleY 1 → 0. Because both ride the same
+        // eased progress their sum is 1 at every frame, so the BOTTOM edge is
+        // pinned at H and the top edge chases it down. That's what keeps the
+        // exit inside the row: a naive scaleY-with-origin-swap would jump on a
+        // fast mouse-out, and translating a collapsing band any further would
+        // drag cream across the row below (the wrapper only clips the x-axis).
+        //
+        // opacity 1 here is the handoff from the CSS `opacity-0` start; from now
+        // on the height alone decides whether the wash is visible.
+        const wash = row.querySelector<HTMLElement>("[data-wash]");
+        gsap.set(wash, {
+          opacity: 1,
+          scaleY: 0,
+          yPercent: 0,
+          transformOrigin: "50% 0%",
+        });
+
         const enter = () => {
+          // Re-arm at the top, but only from a standing start. Mid-flight the
+          // band is somewhere in the middle of its exit, and snapping it back to
+          // the top edge to regrow would read as a flicker — tweening the
+          // partial band straight back to full height reverses the gesture
+          // instead, which is what a quick out-and-back should look like.
+          if ((gsap.getProperty(wash, "scaleY") as number) < 0.001) {
+            gsap.set(wash, { yPercent: 0 });
+          }
+          gsap.to(wash, {
+            scaleY: 1,
+            yPercent: 0,
+            ease: "power3",
+            overwrite: true,
+            ...REVEAL,
+          });
           gsap.to(imgs, {
             opacity: 1,
             scale: 1,
@@ -74,6 +114,13 @@ export function AllProjects() {
           });
         };
         const leave = () => {
+          gsap.to(wash, {
+            scaleY: 0,
+            yPercent: 100,
+            ease: "power4",
+            overwrite: true,
+            ...REVEAL,
+          });
           gsap.to(imgs, {
             opacity: 0,
             scale: 0.8,
@@ -149,15 +196,30 @@ export function AllProjects() {
                 data-row
                 href={projectPath(p.slug)}
                 onClick={(e) => onRowClick(e, p.slug)}
-                // The cream wash is a pseudo-element, not a background on the
-                // row itself: absolutely positioned, it escapes the section's
-                // gutters by exactly --gutter on each side — the same bleed the
-                // featured card row uses — without touching the row's own box,
-                // so the title and summary don't move on hover. Everything that
-                // sits on top of it needs `relative`: the wash is positioned and
-                // would otherwise paint over its static siblings.
-                className="group relative flex items-center gap-6 before:pointer-events-none before:absolute before:inset-y-0 before:-inset-x-[var(--gutter)] before:bg-cream before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100"
+                className="group relative flex items-center gap-6"
               >
+                {/* Cream wash. A real element rather than a ::before because
+                    GSAP drives it (see the wipe in the effect above) and a
+                    pseudo-element isn't addressable from script.
+
+                    Out of flow, so the title and summary never move on hover,
+                    and bled by exactly --gutter on each side — the same escape
+                    the featured card row makes from the section's padding.
+
+                    Starts `opacity-0` in CSS and is handed to GSAP as opacity 1
+                    + zero height on mount: without the CSS start every row would
+                    flash cream between paint and hydration. Reduced-motion users
+                    never reach that handoff, so the opacity fade below is their
+                    whole animation. */}
+                <span
+                  aria-hidden
+                  data-wash
+                  className="pointer-events-none absolute inset-y-0 -inset-x-[var(--gutter)] bg-cream opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100"
+                />
+
+                {/* `relative` on everything the wash sits behind — it's
+                    positioned, so it would otherwise paint over static siblings
+                    regardless of DOM order. */}
                 <div className="relative min-w-0 flex-1 flex flex-col gap-2 py-6">
                   <div className="truncate text-2xl font-semibold leading-tight tracking-tight text-black">
                     {p.title}

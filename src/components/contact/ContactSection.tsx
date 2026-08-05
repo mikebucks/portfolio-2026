@@ -13,7 +13,7 @@ const ACCESS_KEY = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY ?? "";
 type Status = "idle" | "submitting" | "success" | "error";
 
 const fieldClass =
-  "w-full rounded-md border border-black/15 bg-black/[0.04] px-4 py-3 text-black placeholder-black/40 outline-none transition-colors focus:border-accent";
+  "w-full rounded-md border border-black/15 bg-white/40 px-4 py-3 text-black placeholder-black/40 outline-none transition-colors focus:bg-white";
 
 export function ContactSection() {
   const [status, setStatus] = useState<Status>("idle");
@@ -126,13 +126,13 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative z-10 gutter-x bg-white/70 backdrop-blur-md"
+      className="relative z-10 gutter-x bg-white/50 backdrop-blur-md"
     >
       {/* gutter-x on the section, cap + centering on the inner column — same
           split as the other sections, so every left edge agrees past 1600px. */}
-      <div className="mx-auto max-w-[1600px] pt-20 pb-28">
-        <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
-          Contact
+      <div className="mx-auto max-w-[1600px] pt-10 pb-28">
+        <h2 className="mb-10 font-mono text-xs uppercase tracking-widest text-black">
+          Let's build something
         </h2>
 
         <div style={{ minHeight: reservedHeight }}>
@@ -164,10 +164,6 @@ export function ContactSection() {
           </div>
         ) : (
           <div ref={formWrapRef}>
-            <p className="mb-12 max-w-2xl text-2xl md:text-3xl font-semibold tracking-tight text-black">
-              Have something to build? Let&apos;s talk.
-            </p>
-
             {/* Form */}
             <form onSubmit={handleSubmit} className="max-w-xl">
             {/* Honeypot */}
