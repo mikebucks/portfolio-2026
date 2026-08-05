@@ -142,8 +142,17 @@ export function Header() {
       // Transition only the scroll-state properties (padding + background), NOT
       // `all`: the intro flies the header in with a GSAP transform, and a CSS
       // transition on `transform` would fight GSAP's per-frame writes.
-      className={cn("fixed z-30 w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
-      scrolled ? "py-[10px] bg-cream" : "pt-6 pb-4 bg-white/80")}>
+      className={cn("fixed w-full gutter-x backdrop-blur-sm transition-[background-color,padding] duration-400",
+      // The scrolled bar outranks the cream frame bars (z-100), the unscrolled
+      // one doesn't. A hovered featured card takes z-101 to get its ring out
+      // from under that frame, and a card scrolled up behind the nav would
+      // otherwise paint over it. Only the scrolled bar can afford the
+      // promotion: it's opaque bg-cream, so covering the frame's 10px rails
+      // across its own height is seamless. Unscrolled it's bg-white/80 over the
+      // hero — there it stays under the frame so the cream edge reads
+      // continuous, which is safe because the featured row can't reach the top
+      // of a 100svh hero.
+      scrolled ? "z-[110] py-[10px] bg-cream" : "z-30 pt-6 pb-4 bg-white/80")}>
       {/* Contents fade out behind the translucent project modal; the bar's own
           background is cleared by the same rules. Kept off the <header>
           element so GSAP's intro autoAlpha tween owns its opacity alone.

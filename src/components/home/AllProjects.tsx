@@ -1,6 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef, type MouseEvent } from "react";
+// Aliased: the effect below handles native DOM MouseEvents, and an unaliased
+// `MouseEvent` import silently shadows the global one.
+import { useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import gsap from "gsap";
 import { otherProjects, projectImages } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
@@ -70,18 +72,22 @@ export function AllProjects() {
         //   top = yPercent × H     height = scaleY × H
         //
         // In: yPercent 0, scaleY 0 → 1. Top pinned, bottom edge runs down.
-        // Out: yPercent 0 → 1 while scaleY 1 → 0. Because both ride the same
-        // eased progress their sum is 1 at every frame, so the BOTTOM edge is
-        // pinned at H and the top edge chases it down. That's what keeps the
-        // exit inside the row: a naive scaleY-with-origin-swap would jump on a
-        // fast mouse-out, and translating a collapsing band any further would
-        // drag cream across the row below (the wrapper only clips the x-axis).
+        // Out through the bottom: yPercent 0 → 1 while scaleY 1 → 0. Because
+        // both ride the same eased progress their sum is 1 at every frame, so
+        // the BOTTOM edge is pinned at H and the top edge chases it down. That's
+        // what keeps the exit inside the row: a naive scaleY-with-origin-swap
+        // would jump on a fast mouse-out, and translating a collapsing band any
+        // further would drag cream across the row below (the wrapper only clips
+        // the x-axis).
+        // Out through the top: yPercent stays 0, scaleY 1 → 0. Top pinned, the
+        // bottom edge retreats up. See `leave` for which one runs when.
         //
-        // opacity 1 here is the handoff from the CSS `opacity-0` start; from now
-        // on the height alone decides whether the wash is visible.
+        // Opacity rides along with the wipe in both directions, so the rest
+        // state agrees with the CSS `opacity-0` the markup ships — no handoff
+        // needed, GSAP just keeps holding it at 0.
         const wash = row.querySelector<HTMLElement>("[data-wash]");
         gsap.set(wash, {
-          opacity: 1,
+          opacity: 0,
           scaleY: 0,
           yPercent: 0,
           transformOrigin: "50% 0%",
@@ -97,26 +103,53 @@ export function AllProjects() {
             gsap.set(wash, { yPercent: 0 });
           }
           gsap.to(wash, {
+            opacity: 1,
             scaleY: 1,
             yPercent: 0,
             ease: "power3",
             overwrite: true,
             ...REVEAL,
           });
+          // Held back so the cream lands first and the thumbnails arrive onto
+          // it rather than racing it. Enter only — the exit stays in lockstep
+          // with the wash, and a leave inside the 200ms window overwrites this
+          // tween before it starts, so a glancing hover never flashes the strip.
           gsap.to(imgs, {
             opacity: 1,
             scale: 1,
             xPercent: 0,
             ease: "power3",
             stagger: -0.05, // right-most thumbnail leads
+            delay: 0.2,
             overwrite: true,
             ...REVEAL,
           });
         };
-        const leave = () => {
+        const leave = (e: globalThis.MouseEvent) => {
+          // The exit retreats AWAY from wherever the pointer went, which is the
+          // only thing that keeps the next row's wipe visible. Rows are 3px
+          // apart — far too little to read as a break between two cream bands,
+          // so a wash that always collapsed to its bottom edge would still be
+          // all but touching that edge — the same edge the row below
+          // is growing its own cream down from. Two same-coloured bands meeting
+          // at an invisible seam read as one block: moving down the list, the
+          // incoming wipe simply can't be seen. (Moving up already looked right,
+          // because there the two bands separate.) No easing or duration change
+          // fixes that — they're contiguous for the whole tween.
+          //
+          // Leaving through the bottom half therefore exits upward and vice
+          // versa, so the outgoing band always pulls away from the incoming one.
+          // Midpoint rather than the exact edge: a fast pointer reports a
+          // clientY well past the row, and the half it's on stays correct where
+          // an edge test wouldn't. A sideways exit has no neighbour to collide
+          // with and falls through to the default downward wipe.
+          const { top, height } = row.getBoundingClientRect();
+          const leftDownward = e.clientY > top + height / 2;
+
           gsap.to(wash, {
+            opacity: 0,
             scaleY: 0,
-            yPercent: 100,
+            yPercent: leftDownward ? 0 : 100,
             ease: "power4",
             overwrite: true,
             ...REVEAL,
@@ -146,7 +179,7 @@ export function AllProjects() {
     };
   }, []);
 
-  function onRowClick(e: MouseEvent<HTMLAnchorElement>, slug: string) {
+  function onRowClick(e: ReactMouseEvent<HTMLAnchorElement>, slug: string) {
     // Let modified clicks (new tab, etc.) and reduced-motion users use the
     // plain anchor; /projects/<slug> serves the same page with the modal open,
     // just without the grow.
@@ -185,36 +218,59 @@ export function AllProjects() {
     // only sets overflow-y), that overhang would show up as a horizontal
     // scrollbar on every cold load. `clip` rather than `hidden` so the y-axis
     // stays truly visible instead of silently becoming a scroll container.
-    <div ref={rootRef} className="pb-6 -mx-[var(--gutter)] px-[var(--gutter)] overflow-x-clip">
-      <ul>
+    //
+    // Deliberately no background: the panel is painted per row now (see the
+    // rows' `bg-white/70`), so the 3px between them is a real hole through to
+    // the fixed shader. A wrapper background — or just the wrapper's blur, which
+    // filters everything behind it whether or not it paints — would fill those
+    // holes back in and the separation would vanish.
+    <div ref={rootRef} className="pb-[3px] -mx-[var(--gutter)] px-[var(--gutter)] overflow-x-clip">
+      {/* The 3px is a gap, not a row margin: gaps fall only BETWEEN rows, so the
+          list doesn't ship a trailing 3px of shader between the last row and the
+          wrapper's own pb-6. */}
+      <ul className="flex flex-col gap-[3px]">
         {otherProjects.map((p) => {
           const images = projectImages(p);
 
           return (
             <li key={p.slug}>
+              {/* Each row carries the panel now, so it has to reach as wide as
+                  the panel used to: the negative margin puts its border box on
+                  the wrapper's, and the matching padding puts its CONTENT box
+                  back on the centering column, so the title still starts where
+                  the featured cards' copy does. Net content width is unchanged —
+                  the two cancel — which is why the layout doesn't move.
+
+                  The blur travels with the background for the same reason the
+                  wrapper can't keep it: a backdrop-filter applies over the whole
+                  element it's on, so leaving it upstairs would blur the shader in
+                  the 3px seams that are meant to read as raw shader. */}
               <a
                 data-row
                 href={projectPath(p.slug)}
                 onClick={(e) => onRowClick(e, p.slug)}
-                className="group relative flex items-center gap-6"
+                className="group relative flex items-center gap-6 -mx-[var(--gutter)] px-[var(--gutter)] bg-white/70 backdrop-blur-md"
               >
                 {/* Cream wash. A real element rather than a ::before because
                     GSAP drives it (see the wipe in the effect above) and a
                     pseudo-element isn't addressable from script.
 
-                    Out of flow, so the title and summary never move on hover,
-                    and bled by exactly --gutter on each side — the same escape
-                    the featured card row makes from the section's padding.
+                    Out of flow, so the title and summary never move on hover.
+                    `inset-x-0`, not a bleed of its own: insets resolve against
+                    the row's padding box, and the row now bleeds the gutter
+                    itself, so zero already reaches exactly as far as the cream
+                    always did. (It bled --gutter here back when the row's box
+                    stopped at the column.)
 
-                    Starts `opacity-0` in CSS and is handed to GSAP as opacity 1
-                    + zero height on mount: without the CSS start every row would
-                    flash cream between paint and hydration. Reduced-motion users
-                    never reach that handoff, so the opacity fade below is their
-                    whole animation. */}
+                    `opacity-0` is the shared rest state: it stops every row
+                    flashing cream between first paint and hydration, and GSAP
+                    then holds it there and fades it in alongside the wipe.
+                    Reduced-motion users never reach the GSAP path, so the
+                    `motion-reduce` fade below is their whole animation. */}
                 <span
                   aria-hidden
                   data-wash
-                  className="pointer-events-none absolute inset-y-0 -inset-x-[var(--gutter)] bg-cream opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-y-0 inset-x-0 bg-cream opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100"
                 />
 
                 {/* `relative` on everything the wash sits behind — it's
@@ -234,8 +290,8 @@ export function AllProjects() {
                     reserved column. GSAP reveals it on hover for motion users,
                     `group-hover` does for reduced-motion users.
 
-                    The negative right margin eats the section's gutter so the
-                    right-most thumbnail sits flush against the same edge the
+                    The negative right margin eats the row's own right padding so
+                    the right-most thumbnail sits flush against the same edge the
                     cream wash reaches — the strip slides in off the page edge,
                     not off an invisible inset. Negative margin rather than a
                     transform: it shrinks the flex item's outer size too, so the
