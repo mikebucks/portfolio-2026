@@ -126,9 +126,11 @@ export function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative z-10 bg-white/70 backdrop-blur-md"
+      className="relative z-10 gutter-x bg-white/70 backdrop-blur-md"
     >
-      <div className="max-w-[1600px] gutter-x pt-20 pb-28">
+      {/* gutter-x on the section, cap + centering on the inner column — same
+          split as the other sections, so every left edge agrees past 1600px. */}
+      <div className="mx-auto max-w-[1600px] pt-20 pb-28">
         <h2 className="mb-3 font-mono text-xs uppercase tracking-widest text-accent">
           Contact
         </h2>

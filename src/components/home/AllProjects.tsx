@@ -68,7 +68,7 @@ export function AllProjects() {
             scale: 1,
             xPercent: 0,
             ease: "power3",
-            stagger: -0.035, // right-most thumbnail leads
+            stagger: -0.05, // right-most thumbnail leads
             overwrite: true,
             ...REVEAL,
           });
@@ -126,35 +126,22 @@ export function AllProjects() {
   }
 
   return (
-    <div ref={rootRef} className="max-w-[1600px] pb-20">
-      <h2 className="mb-6 font-mono text-xs uppercase tracking-widest text-black/80">
-        All projects
-      </h2>
-      <ul className="divide-y divide-black/10 border-y border-black/10">
+    // No width cap of its own — it renders inside the featured section's
+    // centering column, which already owns the 1600px measure.
+    //
+    // The negative margin + matching padding cancel out: rows still measure the
+    // centering column, but this box's border edge is now a gutter wider on each
+    // side, which is exactly how far the cream wash and the preview strip reach.
+    // That makes it the right place to clip. It has to clip, because the strip's
+    // rest state parks the thumbnails 20% of their width to the RIGHT of a strip
+    // that now ends at the page edge — with nothing clipping the x-axis (html
+    // only sets overflow-y), that overhang would show up as a horizontal
+    // scrollbar on every cold load. `clip` rather than `hidden` so the y-axis
+    // stays truly visible instead of silently becoming a scroll container.
+    <div ref={rootRef} className="pb-6 -mx-[var(--gutter)] px-[var(--gutter)] overflow-x-clip">
+      <ul>
         {otherProjects.map((p) => {
           const images = projectImages(p);
-
-          // No case study yet: the row is inert (plain <div>, no hover strip)
-          // and wears a badge instead of linking into the modal.
-          if (p.comingSoon) {
-            return (
-              <li key={p.slug}>
-                <div className="flex items-center gap-6 py-6">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-xl md:text-2xl font-medium text-black/70">
-                      {p.title}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-black/50">
-                      {p.summary}
-                    </div>
-                  </div>
-                  <span className="shrink-0 rounded-full border border-accent/35 px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-accent">
-                    Coming soon
-                  </span>
-                </div>
-              </li>
-            );
-          }
 
           return (
             <li key={p.slug}>
@@ -162,13 +149,20 @@ export function AllProjects() {
                 data-row
                 href={projectPath(p.slug)}
                 onClick={(e) => onRowClick(e, p.slug)}
-                className="group flex items-center gap-6 py-6 transition-colors hover:bg-black/[0.02]"
+                // The cream wash is a pseudo-element, not a background on the
+                // row itself: absolutely positioned, it escapes the section's
+                // gutters by exactly --gutter on each side — the same bleed the
+                // featured card row uses — without touching the row's own box,
+                // so the title and summary don't move on hover. Everything that
+                // sits on top of it needs `relative`: the wash is positioned and
+                // would otherwise paint over its static siblings.
+                className="group relative flex items-center gap-6 before:pointer-events-none before:absolute before:inset-y-0 before:-inset-x-[var(--gutter)] before:bg-cream before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-xl md:text-2xl font-medium text-black">
+                <div className="relative min-w-0 flex-1 flex flex-col gap-2 py-6">
+                  <div className="truncate text-2xl font-semibold leading-tight tracking-tight text-black">
                     {p.title}
                   </div>
-                  <div className="mt-1 truncate text-sm text-black/60">
+                  <div className="truncate text-sm text-black/80 leading-snug">
                     {p.summary}
                   </div>
                 </div>
@@ -176,17 +170,25 @@ export function AllProjects() {
                 {/* Preview strip. Only shown on hover-capable devices (mouse) so
                     touch users get full-width, legible copy instead of an empty
                     reserved column. GSAP reveals it on hover for motion users,
-                    `group-hover` does for reduced-motion users. */}
+                    `group-hover` does for reduced-motion users.
+
+                    The negative right margin eats the section's gutter so the
+                    right-most thumbnail sits flush against the same edge the
+                    cream wash reaches — the strip slides in off the page edge,
+                    not off an invisible inset. Negative margin rather than a
+                    transform: it shrinks the flex item's outer size too, so the
+                    space goes back to the truncating title column instead of
+                    overlapping it. */}
                 <span
                   aria-hidden
-                  className="pointer-events-none hidden shrink-0 items-center justify-end gap-2 [@media(hover:hover)]:flex"
+                  className="pointer-events-none relative hidden shrink-0 items-center justify-end -mr-[var(--gutter)] [@media(hover:hover)]:flex"
                 >
                   {images.map((src, i) => (
                     <span
                       key={i}
                       data-img
                       data-src={src}
-                      className="block aspect-square w-11 shrink-0 rounded bg-black/5 bg-cover bg-center opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100 md:w-14"
+                      className="block aspect-square w-14 shrink-0 bg-black/5 bg-cover bg-center opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100 md:w-20 lg:w-30"
                     />
                   ))}
                 </span>

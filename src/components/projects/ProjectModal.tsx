@@ -9,16 +9,11 @@ import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
 import { currentRoute, navigate, onRouteChange } from "@/lib/appRoute";
 import { ProjectDetail } from "./ProjectDetail";
 
-/**
- * Resolve `/projects/<slug>` → a valid project slug, or null. Projects flagged
- * `comingSoon` have no case study to show, so they don't open even via a
- * hand-typed or shared URL.
- */
+/** Resolve `/projects/<slug>` → a valid project slug, or null. */
 function slugFromUrl(): string | null {
   const { slug } = currentRoute();
   if (!slug) return null;
-  const project = getProject(slug);
-  return project && !project.comingSoon ? slug : null;
+  return getProject(slug) ? slug : null;
 }
 
 type Phase = "enter" | "open" | "leave";

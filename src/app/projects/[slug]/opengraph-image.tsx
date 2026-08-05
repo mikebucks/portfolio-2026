@@ -24,9 +24,9 @@ export default async function ProjectOpengraphImage({
   const project = getProject(slug);
   const options = { ...size, fonts: await loadOgFonts() };
 
-  // Unknown slug, or one with no case study to open: fall back to the site card
-  // rather than previewing a project that can't be read.
-  if (!project || project.comingSoon) {
+  // Unknown slug: fall back to the site card rather than previewing a project
+  // that can't be read.
+  if (!project) {
     return new ImageResponse(
       <OgCard title={SITE.title} description={SITE.description} />,
       options,

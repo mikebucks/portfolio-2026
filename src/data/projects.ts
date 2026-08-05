@@ -71,11 +71,6 @@ export type Project = {
   /** Used on featured cards and the projects index list. */
   thumbnail?: string;
   /**
-   * Case study isn't written yet: the index row shows a "Coming soon" badge
-   * instead of linking, and `/projects/<slug>` won't open the modal.
-   */
-  comingSoon?: boolean;
-  /**
    * Legacy copy paragraphs, rendered before `media`. Each string is rich text
    * (inline HTML allowed). Prefer `content` for new projects.
    */
@@ -222,28 +217,6 @@ export const projects: Project[] = [
     ],
   },
   {
-    slug: "figment-dashboard",
-    title: "Figment Dashboard",
-    role: "Product Design & Growth",
-    thumbnail: "projects/figment-dashboard/thumbnail.png",
-    comingSoon: true,
-    tags: ["react", "web3", "design"],
-    summary: "Digital asset management for financial institutions",
-    body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
-    media: [],
-  },
-  {
-    slug: "beatvox",
-    title: "BeatVox",
-    role: "Solo Founder",
-    thumbnail: "https://picsum.photos/seed/beatvox/800/600",
-    comingSoon: true,
-    tags: ["swiftui", "audio", "design"],
-    summary: "The musical sketchbook",
-    body: ["TODO"],
-    media: [],
-  },
-  {
     slug: "book-of-idra",
     title: "Book of Idra",
     role: "Design Engineering",
@@ -270,6 +243,26 @@ export const projects: Project[] = [
       { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
     ],
   },
+  {
+    slug: "figment-dashboard",
+    title: "Figment Dashboard",
+    role: "Product Design & Growth",
+    thumbnail: "projects/figment-dashboard/thumbnail.png",
+    tags: ["react", "web3", "design"],
+    summary: "Digital asset management for financial institutions",
+    body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
+    media: [],
+  },
+  // {
+  //   slug: "beatvox",
+  //   title: "BeatVox",
+  //   role: "Solo Founder",
+  //   thumbnail: "https://picsum.photos/seed/beatvox/800/600",
+  //   tags: ["swiftui", "audio", "design"],
+  //   summary: "The musical sketchbook",
+  //   body: ["TODO"],
+  //   media: [],
+  // },
   {
     slug: "lyric",
     title: "Lyric",
@@ -335,7 +328,7 @@ export const projects: Project[] = [
     title: "Google Pride",
     role: "Design Engineering",
     tags: ["design", "react/native", ""],
-    summary: "A highly interactive video storytelling platform",
+    summary: "An award winning interactive documentary",
     body: [
       "Partnering with Stink Studios NY to build Google's #ShowUp platform, I lead the frontend development as well as created a CSS motion design language with an extremely talented team of designers and developers. We built an interactive map taking visitors on a documentary-style journey through the LGBTQ communities in several American cities. The campaign has ended but you can read about its success and see the work here, here and here.",
     ],
@@ -368,7 +361,7 @@ export function getProject(slug: string) {
 }
 
 /** How many leading projects are treated as "featured" cards. */
-export const FEATURED_COUNT = 3;
+export const FEATURED_COUNT = 4;
 
 /** The featured cards shown up top under "Recently shipped". */
 export const featuredProjects = projects.slice(0, FEATURED_COUNT);

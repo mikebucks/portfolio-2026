@@ -21,7 +21,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const project = getProject(slug);
-  if (!project || project.comingSoon) return {};
+  if (!project) return {};
 
   return {
     title: project.title,
@@ -46,8 +46,8 @@ export async function generateMetadata({
 // `ProjectModal` reads the slug off the path on mount, so a direct load lands
 // with the case study already open.
 //
-// The slug isn't validated here: an unknown or `comingSoon` slug leaves the
-// modal closed and the visitor on the homepage, same as before. Swap this for a
+// The slug isn't validated here: an unknown slug leaves the modal closed and
+// the visitor on the homepage, same as before. Swap this for a
 // `notFound()` if a real 404 is wanted (it'd need a not-found.tsx to match the
 // site — the stock Next page doesn't).
 export default function ProjectPage() {
