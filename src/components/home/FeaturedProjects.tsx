@@ -117,7 +117,7 @@ export function FeaturedProjects() {
             <a
               href={projectPath(p.slug)}
               onClick={(e) => onCardClick(e, p.slug)}
-              className="group relative block aspect-[16/13] xl:aspect-[16/11] bg-white/5"
+              className="group relative block aspect-[16/11] bg-white/5"
             >
               {p.thumbnail && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -130,7 +130,7 @@ export function FeaturedProjects() {
 
               {/* Scrim — compressed to the lower half so the art stays
                   visible up top, staying dark down low for text legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white from-0% via-cream/80 via-15% to-transparent to-30% "  />
+              <div className="absolute inset-0 bg-gradient-to-t from-white from-0% via-cream/90 via-20% to-transparent to-30% "  />
 
               {/* Content. The horizontal padding is the row's own bleed, not a
                   design value — that's the whole distance between the card's

@@ -250,8 +250,34 @@ export const projects: Project[] = [
     thumbnail: "projects/figment-dashboard/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions",
-    body: ["As the sole product designer at Figment, growing a self-serve staking product from zero to over $500M in assets under stake in 14 months as the sole designer for the entire experience."],
     media: [],
+    content: [
+      {
+        type: "text",
+        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets. The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to any proof-of-stake protocol's mainnet and testnets.",
+      },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li><strong>$921,473,361.31</strong> (213,152 ETH) Staked via Figment app</li>
+            <li><strong>+22</strong> additional protocols supported (beyond ETH)</li>
+            <li><strong>81%</strong> customers migrated from self-monitoring</li>
+          </ol>
+        `,
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dashboard/all.png",
+        alt: "Figment dashboard landing"
+       },
+       {
+        type: "image",
+        src: "/projects/figment-dashboard/eth.png",
+        alt: "Figment Ethereum dashboard"
+       },
+    ]
   },
   // {
   //   slug: "beatvox",

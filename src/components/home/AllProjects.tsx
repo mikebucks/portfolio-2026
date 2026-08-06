@@ -270,7 +270,7 @@ export function AllProjects() {
                 <span
                   aria-hidden
                   data-wash
-                  className="pointer-events-none absolute inset-y-0 inset-x-0 bg-cream opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100"
+                  className="pointer-events-none absolute inset-y-0 inset-x-0 bg-white opacity-0 motion-reduce:transition-opacity motion-reduce:duration-300 motion-reduce:group-hover:opacity-100"
                 />
 
                 {/* `relative` on everything the wash sits behind — it's
