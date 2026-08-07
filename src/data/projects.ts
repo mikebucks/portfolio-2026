@@ -49,13 +49,39 @@ export type ProjectMedia =
     };
 
 /**
+ * A dashboard-style row of headline numbers — the outcomes of a project read as
+ * a stat grid instead of a bulleted list. Each tile is a label + a figure, so
+ * only use it where the outcome really is a number; prose outcomes stay a
+ * `text` block with an <ol>, where they read better.
+ */
+export type ProjectStats = {
+  type: "stats";
+  /** Eyebrow above the grid, e.g. "Outcomes". Omit for a bare row of tiles. */
+  title?: string;
+  items: {
+    /** The figure itself — pre-formatted, since only the author knows the
+     *  unit and the precision worth showing ("$921,473,361.31", "+22", "81%"). */
+    value: string;
+    /** What the figure counts, in sentence case. */
+    label: string;
+    /** Optional second reading of the same figure ("213,152 ETH"). */
+    note?: string;
+  }[];
+  /** Tiles per row from `sm` up. Defaults to the item count, capped at 3. */
+  columns?: 2 | 3 | 4;
+};
+
+/**
  * A single ordered block of a project's detail page. `text` is rich text — its
  * `html` is rendered as trusted markup (this content is authored here in-repo,
  * never user input), so inline tags like <strong> / <em> / <a> render instead
  * of showing as literal characters. All the media block types can be freely
  * interleaved with text, letting images be peppered in amongst the copy.
  */
-export type ProjectBlock = { type: "text"; html: string } | ProjectMedia;
+export type ProjectBlock =
+  | { type: "text"; html: string }
+  | ProjectStats
+  | ProjectMedia;
 
 export type Project = {
   slug: string;
@@ -257,15 +283,24 @@ export const projects: Project[] = [
         html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets. The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to any proof-of-stake protocol's mainnet and testnets.",
       },
       {
-        type: "text",
-        html: `
-        <strong>Outcomes</strong>
-          <ol>
-            <li><strong>$921,473,361.31</strong> (213,152 ETH) Staked via Figment app</li>
-            <li><strong>+22</strong> additional protocols supported (beyond ETH)</li>
-            <li><strong>81%</strong> customers migrated from self-monitoring</li>
-          </ol>
-        `,
+        type: "stats",
+        items: [
+          {
+            value: "$921,473,360",
+            note: "213,152 ETH",
+            label: "ETH Staked",
+          },
+          {
+            value: "+22",
+            note: "Beyond Ethereum",
+            label: "Protocols supported",
+          },
+          {
+            value: "81%",
+            note: "From self-monitoring",
+            label: "Customers migrated",
+          },
+        ],
       },
       {
         type: "image",

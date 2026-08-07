@@ -1,5 +1,6 @@
 import type { Project, ProjectBlock } from "@/data/projects";
 import { ProjectMediaFigure } from "./ProjectMediaList";
+import { ProjectStatGrid } from "./ProjectStatGrid";
 
 /**
  * Normalize a project into an ordered block list. Prefers the new `content`
@@ -49,6 +50,8 @@ export function ProjectDetail({ project }: { project: Project }) {
               // Trusted, in-repo authored copy (see ProjectBlock) — not user input.
               dangerouslySetInnerHTML={{ __html: block.html }}
             />
+          ) : block.type === "stats" ? (
+            <ProjectStatGrid key={i} stats={block} className="mt-8" />
           ) : (
             <ProjectMediaFigure
               key={i}
