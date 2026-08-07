@@ -128,21 +128,45 @@ export function FeaturedProjects() {
                 />
               )}
 
-              {/* Scrim — compressed to the lower half so the art stays
-                  visible up top, staying dark down low for text legibility */}
-              <div className="absolute inset-0 bg-gradient-to-t from-white from-0% via-cream/90 via-20% to-transparent to-30% "  />
+              {/* Scrim + content in one box, deliberately. The scrim used to be
+                  a separate full-card layer fading out at a fixed 30% of the
+                  card's height, which only ever held on a wide card: the card
+                  is a fixed 16/11 ratio, so a narrow one is short, while the
+                  copy inside it gets TALLER as the title and summary wrap to
+                  more lines. On a phone that crossed over — the title was
+                  sitting above the 30% mark, on bare photo, and stopped being
+                  readable. Any fixed fraction has the same failure, just at a
+                  different width.
 
-              {/* Content. The horizontal padding is the row's own bleed, not a
-                  design value — that's the whole distance between the card's
-                  left edge and the 1600px column the rest of the page measures
-                  from, so paying exactly it back lands this copy on the same
-                  line as the "All projects" titles below, at every width. Any
-                  fixed padding can only be right at one breakpoint: the bleed is
-                  a gutter minus 10px under 1684px and a full gutter over it, and
-                  the gutter itself steps 20px → 32px at 40rem — so the target is
-                  10px, then 22px, then 32px. Vertical padding is free to
-                  be a design value, so it stays one. */}
-              <div className="relative h-full py-4 md:py-8 px-[var(--bleed)] flex flex-col gap-2 justify-end">
+                  So the gradient is painted on the text block itself. That box
+                  is bottom-anchored and only as tall as its own copy plus
+                  --scrim-fade of headroom, so it grows line for line with the
+                  text and the scrim can't be outrun. The stops are lengths, not
+                  percentages, for the same reason: solid up to
+                  `100% - --scrim-fade`, i.e. right up to the first line of
+                  copy, then fading over exactly that headroom. The soft edge is
+                  a constant 5rem at every width instead of a slice of the
+                  card, and the art above it stays untouched.
+
+                  Absolute rather than `h-full` + `justify-end`: the height has
+                  to come from the content, not the card. It's the only thing in
+                  the anchor's flow, so nothing else moves.
+
+                  Colors are --color-cream at 90% and at 0 — written out because
+                  a stop needs the alpha baked in, and landing on cream (not
+                  `transparent`) keeps the fade from drifting through grey.
+
+                  The horizontal padding is the row's own bleed, not a design
+                  value — that's the whole distance between the card's left edge
+                  and the 1600px column the rest of the page measures from, so
+                  paying exactly it back lands this copy on the same line as the
+                  "All projects" titles below, at every width. Any fixed padding
+                  can only be right at one breakpoint: the bleed is a gutter
+                  minus 10px under 1684px and a full gutter over it, and the
+                  gutter itself steps 20px → 32px at 40rem — so the target is
+                  10px, then 22px, then 32px. Vertical padding is free to be a
+                  design value, so it stays one. */}
+              <div className="absolute inset-x-0 bottom-0 [--scrim-fade:5rem] pt-[var(--scrim-fade)] pb-4 md:pb-8 px-[var(--bleed)] flex flex-col gap-2 bg-[linear-gradient(to_top,#fff_0%,rgba(244,241,234,0.9)_calc(100%_-_var(--scrim-fade)),rgba(244,241,234,0)_100%)]">
                 <div className="text-2xl font-semibold text-black leading-tight tracking-tight">
                   {p.title}
                 </div>
