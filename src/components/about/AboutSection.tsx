@@ -17,9 +17,9 @@ export function AboutSection() {
         </h2>
 
         <div className="max-w-4xl space-y-6 text-lg leading-relaxed text-white/90">
-          <p>I <strong>design</strong>, <strong>build</strong>, and <strong>grow</strong> digital products. A natural systems thinker, I recently built <ProjectLink slug="chisel" className="hover:text-white/60">Chisel, an agentic design system and prototyping tool</ProjectLink> that connects design, code, research, and analytics. Before that I redesigned <ProjectLink slug="figment-dapp" className="hover:text-white/60">Figment's staking dApp</ProjectLink> and grew it from roughly $0 to <strong>$500M+</strong> in staked assets as half of a two man team.</p>
+          <p>I <strong>design</strong>, <strong>build</strong>, and <strong>grow</strong> digital products. A natural systems thinker, I recently built <ProjectLink slug="chisel" className="hover:text-white/60">Chisel, an agentic design system and prototyping tool</ProjectLink> that connects design, code, research, and analytics. Before that I redesigned <ProjectLink slug="figment-dapp" className="hover:text-white/60">Figment's staking dApp</ProjectLink> and grew it from 0 to <strong>$500M+</strong> in staked.</p>
 
-          <p>High impact IC with a builder's mindset. I'm at home crafting UIs, interviewing customers, mapping business processes, shipping production code, or prototyping feature ideas.</p>
+          <p>A high-impact IC with a builder's mindset and experience leading design and engineering teams. I'm at home crafting UIs, interviewing customers, mapping business processes, shipping production code, facilitating collaborative workshops, or prototyping feature ideas.</p>
         </div>
 
         <div className="mt-16">

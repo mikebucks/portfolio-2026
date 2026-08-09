@@ -113,7 +113,7 @@ export const projects: Project[] = [
     slug: "figment-dapp",
     title: "Figment dApp",
     role: "Product Design & Growth",
-    thumbnail: "projects/figment-dapp/thumbnail.png",
+    thumbnail: "/projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "A consumer swing for a B2B crypto infrastructure company",
     content: [
@@ -177,7 +177,7 @@ export const projects: Project[] = [
     slug: "chisel",
     title: "Chisel",
     role: "Design & Engineering",
-    thumbnail: "projects/chisel/thumbnail-light.png",
+    thumbnail: "/projects/chisel/thumbnail-light.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
     summary: "The agentic design system",
     content: [
@@ -246,7 +246,7 @@ export const projects: Project[] = [
     slug: "book-of-idra",
     title: "Book of Idra",
     role: "Design Engineering",
-    thumbnail: "projects/book-of-idra/thumbnail.png",
+    thumbnail: "/projects/book-of-idra/thumbnail.png",
     tags: ["web3", "creative-coding", "design", "branding"],
     summary: "What does the future of creative writing look like?",
     body: [
@@ -273,7 +273,7 @@ export const projects: Project[] = [
     slug: "figment-dashboard",
     title: "Figment Dashboard",
     role: "Product Design & Growth",
-    thumbnail: "projects/figment-dashboard/thumbnail.png",
+    thumbnail: "/projects/figment-dashboard/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions",
     media: [],
@@ -446,9 +446,11 @@ export function projectImages(project: Project, limit = 4): string[] {
   const out: string[] = [];
   const push = (src?: string) => {
     if (!src) return;
-    // Thumbnails are authored without a leading slash; media with one. Normalize
-    // to root-absolute (leave remote http(s) URLs untouched) so both work as
-    // background-image / <img> srcs from any route.
+    // Paths are authored root-absolute, but normalize anyway (leaving remote
+    // http(s) URLs untouched): a relative src resolves against the CURRENT
+    // document URL, so one authored without a leading slash would 404 on
+    // /projects/<slug> and — since that route never remounts the page tree —
+    // stay broken after navigating back home.
     const norm = /^https?:\/\//.test(src) ? src : src.startsWith("/") ? src : `/${src}`;
     if (!out.includes(norm)) out.push(norm);
   };
