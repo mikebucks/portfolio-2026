@@ -181,7 +181,7 @@ export function SynthKeyCap({
             }
           : { ["--cap" as string]: color }
       }
-      className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
+      className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border border-white/30 text-white/60 font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
         SIZES[size]
       } ${
         active

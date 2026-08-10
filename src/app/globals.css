@@ -4,13 +4,17 @@
   /* --color-accent: #ff5f15; */
   --color-accent: #FD7220;
   --color-cream: #f4f1ea;
+  /* The page's base black. Lives in @theme (not just :root) so it's usable as
+     `bg-ink`/`text-ink` in markup, as `var(--color-ink)` in CSS, and readable
+     off the document at runtime — the WebGL clear color in
+     InteractiveBackground reads it so the canvas matches the page exactly. */
+  --color-ink: #08080a;
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
 :root {
   color-scheme: dark;
-  --ink: #08080a;
 }
 
 /* The site's outer gutter — every full-bleed section pads its sides with this,
@@ -62,7 +66,7 @@
    If body also has a background it paints OVER position:fixed z-index:-10
    children — hiding the WebGL canvas and CSS gradient entirely. */
 html {
-  background: var(--ink);
+  background: var(--color-ink);
   /* Always reserve the scrollbar's space so the page never jumps sideways when
      ProjectModal locks scroll with `body { overflow: hidden }` (the scrollbar
      vanishes and, without a reserved gutter, content + fixed header widen to

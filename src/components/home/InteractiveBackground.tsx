@@ -74,11 +74,11 @@ export function InteractiveBackground({
             // than inset-0: a fixed inset-0 box tracks iOS's *dynamic* viewport,
             // so its height changes all the way through the toolbar animation.
             // See the .bg-layer-full comment in globals.css.
-            "pointer-events-none fixed inset-x-0 top-0 bg-layer-full -z-10 overflow-hidden bg-[#08080a]"
+            "pointer-events-none fixed inset-x-0 top-0 bg-layer-full -z-10 overflow-hidden bg-ink"
           : // Render at full viewport height anchored to the banner's top, so
             // the shader is the SAME scale as the home page and the banner's
             // own overflow-hidden simply crops the bottom — no squashing.
-            "pointer-events-none absolute top-0 left-0 h-screen w-full z-0 overflow-hidden bg-[#08080a]"
+            "pointer-events-none absolute top-0 left-0 h-screen w-full z-0 overflow-hidden bg-ink"
       }
     >
       {/* CSS gradient — fallback only. Shown when WebGL is unavailable or setup
@@ -176,7 +176,15 @@ function WebGLCanvas({
           alpha: false,
           powerPreference: "high-performance",
         });
-        renderer.setClearColor(0x08080a);
+        // Match the canvas to the page's base black by reading the token off the
+        // document rather than repeating the hex — the wrapper div behind this
+        // canvas is `bg-ink`, and any drift between the two shows as a seam
+        // while the shader fades in. Left at three's default black if the
+        // variable somehow isn't resolvable yet; that's within a hair of --color-ink.
+        const ink = getComputedStyle(document.documentElement)
+          .getPropertyValue("--color-ink")
+          .trim();
+        if (ink) renderer.setClearColor(ink);
 
         // Resolution is controlled on ONE axis: the output canvas is pinned at
         // the device-clamped DPR, and the shader is drawn into a lower-resolution
