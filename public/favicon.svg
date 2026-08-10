@@ -1,8 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <circle cx="50" cy="50" r="48" fill="#000000"/>
-  <g fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linejoin="miter">
-    <polygon points="50,2 91.6,74 8.4,74"/>
-    <rect x="30.7" y="35.3" width="38.7" height="38.7"/>
-    <circle cx="50" cy="54.6" r="19.3"/>
-  </g>
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_322_157)">
+<path d="M50 100C77.6142 100 100 77.6142 100 50C100 22.3858 77.6142 0 50 0C22.3858 0 0 22.3858 0 50C0 77.6142 22.3858 100 50 100Z" fill="white"/>
+<path d="M49.9999 2L91.5999 74H8.3999L49.9999 2Z" stroke="black" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M69.3997 35.2998H30.6997V73.9998H69.3997V35.2998Z" fill="black" stroke="black" stroke-width="3.5" stroke-linejoin="round"/>
+<path d="M50.0003 72.441C60.1298 72.441 68.3414 64.2294 68.3414 54.0999C68.3414 43.9704 60.1298 35.7588 50.0003 35.7588C39.8708 35.7588 31.6592 43.9704 31.6592 54.0999C31.6592 64.2294 39.8708 72.441 50.0003 72.441Z" fill="white"/>
+</g>
+<defs>
+<clipPath id="clip0_322_157">
+<rect width="100" height="100" fill="white"/>
+</clipPath>
+</defs>
 </svg>

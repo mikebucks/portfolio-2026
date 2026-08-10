@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUIStore } from "@/lib/store";
+import {
+  CloseGlyph,
+  PhilosophersSealGlyph,
+  PHILOSOPHERS_SEAL_CENTER,
+  PHILOSOPHERS_SEAL_VIEW_BOX,
+} from "@/components/icons";
 import { primeAudioContext } from "./primeAudioContext";
 
 // The two glyphs share the seal's (10,10) center and cross-fade through a
@@ -13,7 +19,7 @@ import { primeAudioContext } from "./primeAudioContext";
 // and the glyph swings off-center.
 const glyph = (visible: boolean, hiddenDeg: number) => ({
   transformBox: "view-box" as const,
-  transformOrigin: "10px 10px",
+  transformOrigin: `${PHILOSOPHERS_SEAL_CENTER}px ${PHILOSOPHERS_SEAL_CENTER}px`,
   transform: `rotate(${visible ? 0 : hiddenDeg}deg)`,
   opacity: visible ? 1 : 0,
   transition:
@@ -81,18 +87,20 @@ export function SynthToggleButton() {
         className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg backdrop-blur-md transition-[background-color,color,border-color] duration-300 ${
           open
             ? "bg-black/85 text-white hover:text-accent"
-            : "bg-white/80 text-black hover:text-accent"
+            : "bg-white text-black hover:text-accent"
         }`}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          // 20, not 24: the seal is drawn about (10,10) and spans the full 20
-          // units, so a 24-unit box parked it up and to the left. Harmless when
-          // the button had no background — now that it's a chip, it has to be
-          // centered in it.
-          viewBox="0 0 20 20"
+          // Fills the 40px chip rather than sitting inside it at 24: the seal
+          // was redrawn in Figma with the chip's padding baked into its box, so
+          // the mark only spans 28 of its 40 units. At 24 it would render a
+          // third smaller than the artwork; at 40 the ink lands exactly where
+          // the design puts it, and the chip below stands in for the disc the
+          // export draws behind the mark.
+          width="40"
+          height="40"
+          viewBox={PHILOSOPHERS_SEAL_VIEW_BOX}
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
@@ -100,24 +108,17 @@ export function SynthToggleButton() {
           strokeLinejoin="round"
           aria-hidden="true"
         >
-          {/* Philosopher's Seal */}
-          <g
-            style={glyph(!open, 90)}
-            fill="none"
-            strokeWidth="1"
-            strokeLinejoin="miter"
-          >
-            <circle cx="10" cy="10" r="9.3" />
-            <polygon points="10,0.7 18.05,14.65 1.95,14.65" />
-            <rect x="6.25" y="7.15" width="7.5" height="7.5" />
-            <circle cx="10" cy="10.9" r="3.75" />
-          </g>
+          {/* Both glyphs come from @/components/icons — they're drawn on the
+              same 40-unit grid, which is what lets them share this one <svg>
+              and rotate about a common center. Only the animation is local.
 
-          {/* Close */}
-          <g style={glyph(open, -90)} strokeWidth="1.5">
-            <path d="M5.4 5.4 14.6 14.6" />
-            <path d="M14.6 5.4 5.4 14.6" />
-          </g>
+              paper="none" because this chip is the white plate the artwork was
+              drawn on, and it's deliberately translucent — an opaque fill would
+              punch a solid disc through the backdrop blur. Nothing in the mark
+              needs it: only the inner circle's fill is load-bearing, knocking
+              itself out of the solid square. */}
+          <PhilosophersSealGlyph paper="none" style={glyph(!open, 90)} />
+          <CloseGlyph style={glyph(open, -90)} />
         </svg>
       </span>
     </button>,
