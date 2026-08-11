@@ -38,14 +38,13 @@ export function Footer() {
         </ul>
 
         <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
-          <span>&copy; {year} · built with humanity · </span>
-          {/* Not decoration — the caps play their notes, same as the keys. */}
           <span className="inline-flex items-center gap-1">
             {["a", "s", "d", "f"].map((k) => (
               <SynthKeyCap key={k} keyName={k} />
             ))}
-            <span className="ml-1">make me dance</span>
+            <span className="ml-1">makes me dance</span>
           </span>
+          <span> · &copy; {year} · built with humanity</span>
         </div>
       </div>
     </footer>
