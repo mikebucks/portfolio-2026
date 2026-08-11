@@ -121,6 +121,37 @@ export const projects: Project[] = [
         type: "text",
         html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent and neglected consumer dApp that had been hiding in the Ledger Wallet marketplace. with the goal of opening <strong>Figment's institutional-grade infrastructure to the wider audience of self-custody crypto holders</strong>."
       },
+      {
+        type: "stats",
+        items: [
+          {
+            value: "$500,000,000",
+            note: "213,152 ETH",
+            label: "Net new ETH Staked",
+          },
+          {
+            value: "PLG",
+            note: "Beyond Ethereum",
+            label: "New Org Competence",
+          },
+          {
+            value: "1",
+            note: "From self-monitoring",
+            label: "Component Libraries",
+          },
+        ],
+      },
+      {
+        type: "text",
+        html: `
+        <strong>Outcomes</strong>
+          <ol>
+            <li>Net new assets under stake of over $500m</li>
+            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
+            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
+          </ol>
+        `,
+      },
       { 
         type: "video", 
         src: "/projects/figment-dapp/eth-flow.mp4", 
@@ -148,17 +179,6 @@ export const projects: Project[] = [
         type: "text",
         html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
       },
-      {
-        type: "text",
-        html: `
-        <strong>Outcomes</strong>
-          <ol>
-            <li>Net new assets under stake of over $500m</li>
-            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
-            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
-          </ol>
-        `,
-      },
       // {
       //   type: "image",
       //   src: "/projects/figment-dapp/sol.png"
@@ -172,6 +192,51 @@ export const projects: Project[] = [
         src: "/projects/figment-dapp/eth-why-stake.png"
       },
     ],
+  },
+  {
+    slug: "figment-dashboard",
+    title: "Figment Dashboard",
+    role: "Product Design & Growth",
+    thumbnail: "/projects/figment-dashboard/thumbnail.png",
+    tags: ["react", "web3", "design"],
+    summary: "Digital asset management for financial institutions",
+    media: [],
+    content: [
+      {
+        type: "text",
+        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets. The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to any proof-of-stake protocol's mainnet and testnets.",
+      },
+      {
+        type: "stats",
+        items: [
+          {
+            value: "$921,473,360",
+            note: "213,152 ETH",
+            label: "ETH Staked",
+          },
+          {
+            value: "+22",
+            note: "Beyond Ethereum",
+            label: "Protocols supported",
+          },
+          {
+            value: "81%",
+            note: "From self-monitoring",
+            label: "Customers migrated",
+          },
+        ],
+      },
+      {
+        type: "image",
+        src: "/projects/figment-dashboard/all.png",
+        alt: "Figment dashboard landing"
+       },
+       {
+        type: "image",
+        src: "/projects/figment-dashboard/eth.png",
+        alt: "Figment Ethereum dashboard"
+       },
+    ]
   },
   {
     slug: "chisel",
@@ -268,51 +333,6 @@ export const projects: Project[] = [
       { type: "image", src: "/projects/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
       { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
     ],
-  },
-  {
-    slug: "figment-dashboard",
-    title: "Figment Dashboard",
-    role: "Product Design & Growth",
-    thumbnail: "/projects/figment-dashboard/thumbnail.png",
-    tags: ["react", "web3", "design"],
-    summary: "Digital asset management for financial institutions",
-    media: [],
-    content: [
-      {
-        type: "text",
-        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets. The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to any proof-of-stake protocol's mainnet and testnets.",
-      },
-      {
-        type: "stats",
-        items: [
-          {
-            value: "$921,473,360",
-            note: "213,152 ETH",
-            label: "ETH Staked",
-          },
-          {
-            value: "+22",
-            note: "Beyond Ethereum",
-            label: "Protocols supported",
-          },
-          {
-            value: "81%",
-            note: "From self-monitoring",
-            label: "Customers migrated",
-          },
-        ],
-      },
-      {
-        type: "image",
-        src: "/projects/figment-dashboard/all.png",
-        alt: "Figment dashboard landing"
-       },
-       {
-        type: "image",
-        src: "/projects/figment-dashboard/eth.png",
-        alt: "Figment Ethereum dashboard"
-       },
-    ]
   },
   // {
   //   slug: "beatvox",

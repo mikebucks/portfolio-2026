@@ -1,0 +1,70 @@
+import type { SVGProps } from "react";
+import { Icon, type IconProps } from "./Icon";
+
+/** Same 40-unit grid as the seal, so the two line up in a row without scaling. */
+export const BUCKS_UNLTD_VIEW_BOX = "0 0 40 40";
+
+type BucksUnltdColors = {
+  /** The B and the U — the whole mark. */
+  ink?: string;
+};
+
+/**
+ * Bare shapes, for callers that need them inside an <svg> they already own.
+ * Everything else wants <BucksUnltd />.
+ *
+ * Path data is verbatim from the Figma export (public/icons/bucks-unltd.svg);
+ * only the hard-coded colour is lifted into a prop. Two letterforms and nothing
+ * else — the redraw dropped the ring that used to trace the plate's edge, so
+ * there is no longer any part of this mark that survives without a background
+ * behind it. Whatever it sits on has to supply the contrast.
+ */
+export function BucksUnltdGlyph({
+  ink = "currentColor",
+  ...props
+}: SVGProps<SVGGElement> & BucksUnltdColors) {
+  return (
+    <g stroke="none" {...props}>
+      <path
+        d="M10.2002 25.4002V9.2002H15.5002C16.9224 9.2002 17.9576 9.48707 18.6058 10.0608C19.2539 10.6346 19.578 11.5811 19.578 12.9004V13.6092C19.578 14.3701 19.4132 14.9868 19.0835 15.4593C18.7539 15.9318 18.252 16.2417 17.578 16.3889C18.4595 16.573 19.0502 17.0041 19.3502 17.6822C19.6502 18.3603 19.8002 19.1871 19.8002 20.1628C19.8002 21.2121 19.6817 22.1295 19.4446 22.915C19.2076 23.7004 18.778 24.311 18.1558 24.7467C17.5335 25.1824 16.6483 25.4002 15.5002 25.4002H10.2002ZM14.0224 15.3028H14.8224C15.1854 15.3028 15.4187 15.1862 15.5224 14.953C15.6261 14.7199 15.678 14.4406 15.678 14.1154V12.4862C15.678 11.9646 15.4002 11.7038 14.8446 11.7038H14.0224V15.3028ZM14.4113 22.5468C15.4261 22.5468 15.9335 22.1479 15.9335 21.3502V19.3252C15.9335 18.865 15.8502 18.5014 15.6835 18.2345C15.5169 17.9675 15.2039 17.8341 14.7446 17.8341H14.0224V22.5284C14.1854 22.5406 14.315 22.5468 14.4113 22.5468Z"
+        fill={ink}
+      />
+      <path
+        d="M26.1002 30.8C24.4211 30.8 23.1846 30.4338 22.3908 29.7013C21.5971 28.9688 21.2002 27.8909 21.2002 26.4675V15H25.1156V26.3429C25.1156 26.6039 25.1347 26.8544 25.1729 27.0947C25.211 27.3349 25.2988 27.5321 25.4362 27.6863C25.5736 27.8405 25.7949 27.9176 26.1002 27.9176C26.4131 27.9176 26.6383 27.842 26.7757 27.6907C26.913 27.5395 26.9989 27.3423 27.0333 27.0991C27.0676 26.8559 27.0848 26.6039 27.0848 26.3429V15H31.0002V26.4675C31.0002 27.8909 30.6033 28.9688 29.8095 29.7013C29.0158 30.4338 27.7793 30.8 26.1002 30.8Z"
+        fill={ink}
+      />
+    </g>
+  );
+}
+
+/**
+ * Bucks Unltd — the B/U monogram.
+ *
+ * Unlike the seal, the letterforms run edge to edge in their box: the U's
+ * descender reaches 30.8 of 40. Nothing to inset for, so `size` is the mark.
+ */
+export function BucksUnltd({
+  plate,
+  ink,
+  ...props
+}: IconProps &
+  BucksUnltdColors & {
+    /** Draw the full-bleed disc behind the monogram. Off by default, matching
+     *  <PhilosophersSeal /> — a caller painting its own chip doesn't want it. */
+    plate?: string | boolean;
+  }) {
+  return (
+    <Icon viewBox={BUCKS_UNLTD_VIEW_BOX} {...props}>
+      {plate ? (
+        <rect
+          width="40"
+          height="40"
+          rx="20"
+          fill={typeof plate === "string" ? plate : "#FFFFFF"}
+          stroke="none"
+        />
+      ) : null}
+      <BucksUnltdGlyph ink={ink} />
+    </Icon>
+  );
+}

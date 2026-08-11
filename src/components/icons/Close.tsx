@@ -9,9 +9,11 @@ export const CLOSE_VIEW_BOX = "0 0 40 40";
  * toggle rotates one into the other inside a single <svg>, and a 24-grid X
  * would land at a different size and centre.
  *
- * Sized off the seal rather than the box — the cross spans half the seal's
- * outer circle and strokes 1.5× as heavy, the proportions it held before the
- * mark was redrawn with padding around it.
+ * Sized off the seal rather than the box: 14 units across, centred on
+ * PHILOSOPHERS_SEAL_CENTER. That was half the seal's outer circle back when it
+ * had one; the redraw dropped the circle but the cross was left alone, because
+ * what it has to hold is the read at 40px against the mark it swaps with, and
+ * it still does.
  */
 export function CloseGlyph(props: SVGProps<SVGGElement>) {
   return (

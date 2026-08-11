@@ -4,14 +4,18 @@ import { Icon, type IconProps } from "./Icon";
 /** The grid the seal is drawn on — exported so composers can match it. */
 export const PHILOSOPHERS_SEAL_VIEW_BOX = "0 0 40 40";
 
-/** The seal's centre, i.e. the origin any rotation of it should turn about. */
+/** The box's centre, and the origin any rotation of the mark should turn about.
+ *  Not the mark's own bounding-box centre — the triangle's is a couple of units
+ *  higher — but the centre of the 40-unit chip, which is what the close cross is
+ *  drawn about too. Turning both glyphs about the same point is the whole trick
+ *  in the synth toggle's cross-fade. */
 export const PHILOSOPHERS_SEAL_CENTER = 20;
 
 type SealColors = {
   /** Strokes and the solid square. */
   ink?: string;
-  /** The disc and triangle the ink sits on — these fills occlude, so they have
-   *  to match whatever is behind the mark or the hidden edges show through. */
+  /** The triangle the ink sits on — this fill occludes, so it has to match
+   *  whatever is behind the mark or the hidden edges show through. */
   paper?: string;
   /** The inner circle, a hair warmer than `paper` in the source artwork. */
   highlight?: string;
@@ -22,10 +26,15 @@ type SealColors = {
  * the synth toggle wraps them in an animated <g> that cross-fades with a close
  * cross on the same grid. Everything else wants <PhilosophersSeal />.
  *
- * Path data is verbatim from the Figma export (design/philosophers-seal.svg) so
- * a re-export diffs cleanly; only the hard-coded colours are lifted into props.
- * `ink` defaults to currentColor rather than the export's black, which is what
- * lets the synth toggle keep animating the mark's colour on hover.
+ * Path data is verbatim from the Figma export (public/icons/philosophers-seal.svg)
+ * so a re-export diffs cleanly; only the hard-coded colours are lifted into
+ * props. `ink` defaults to currentColor rather than the export's black, which is
+ * what lets the synth toggle keep animating the mark's colour on hover.
+ *
+ * Stroke weight is per-path, not on the <g>: the redraw gives the three shapes
+ * three different weights (triangle 1.5, square 2, circle 1) and that hierarchy
+ * is the design. The <g> carries the lightest as the default so the circle can
+ * stay bare, and so an `<svg strokeWidth>` above this can never leak in.
  */
 export function PhilosophersSealGlyph({
   ink = "currentColor",
@@ -36,19 +45,20 @@ export function PhilosophersSealGlyph({
   return (
     <g stroke={ink} strokeWidth="1" strokeLinejoin="round" {...props}>
       <path
-        d="M20.0001 34.1335C27.8058 34.1335 34.1335 27.8058 34.1335 20.0001C34.1335 12.1944 27.8058 5.8667 20.0001 5.8667C12.1944 5.8667 5.8667 12.1944 5.8667 20.0001C5.8667 27.8058 12.1944 34.1335 20.0001 34.1335Z"
+        d="M19.9995 6.6499C20.2675 6.6499 20.5159 6.79277 20.6499 7.0249L32.8833 28.2251C33.0172 28.4571 33.0172 28.7431 32.8833 28.9751C32.7494 29.207 32.5017 29.35 32.2339 29.3501H7.76611C7.49821 29.3501 7.25069 29.2071 7.1167 28.9751C6.98271 28.7431 6.98279 28.4572 7.1167 28.2251L19.3501 7.0249L19.4058 6.94189C19.5465 6.75928 19.7653 6.65001 19.9995 6.6499Z"
         fill={paper}
+        strokeWidth="1.5"
       />
       <path
-        d="M19.9999 5.8667L32.2336 27.0668H7.76611L19.9999 5.8667Z"
-        fill={paper}
-      />
-      <path
-        d="M25.6987 15.6685H14.3008V27.0664H25.6987V15.6685Z"
+        d="M25.6998 16.6685H14.2998V28.0664H25.6998V16.6685Z"
         fill={ink}
+        strokeWidth="2"
       />
+      {/* Drawn a touch proud of the square on three sides — it breaks the
+          silhouette at the left, right and bottom edges rather than sitting
+          inscribed. Deliberate; don't "fix" it back to the square's bounds. */}
       <path
-        d="M19.9997 27.0664C23.1472 27.0664 25.6987 24.5149 25.6987 21.3674C25.6987 18.22 23.1472 15.6685 19.9997 15.6685C16.8523 15.6685 14.3008 18.22 14.3008 21.3674C14.3008 24.5149 16.8523 27.0664 19.9997 27.0664Z"
+        d="M20 16.7021C23.3137 16.7021 26 19.3884 26 22.7021C26 26.0159 23.3137 28.7021 20 28.7021C16.6863 28.7021 14 26.0159 14 22.7021C14 19.3884 16.6863 16.7021 20 16.7021Z"
         fill={highlight}
       />
     </g>
@@ -56,11 +66,13 @@ export function PhilosophersSealGlyph({
 }
 
 /**
- * Circle, triangle, square, circle — the site's mark.
+ * Triangle, square, circle — the site's mark.
  *
  * The mark is inset from its box: the artwork was drawn inside the synth
- * toggle's 40px chip, so the outer circle only spans 28 of the 40 units. Size
- * it to the plate you're putting it on, not to the ink you want to see.
+ * toggle's 40px chip, so the triangle — the widest shape, and now the outermost
+ * since the redraw dropped the enclosing circle — spans about 26 of the 40
+ * units. Size it to the plate you're putting it on, not to the ink you want to
+ * see.
  */
 export function PhilosophersSeal({
   plate,

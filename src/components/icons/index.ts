@@ -7,9 +7,14 @@
  * `<Name>Glyph` — the bare shapes with the icon's own stroke settings on them,
  * so the two exports can't drift. Re-export both here.
  *
- * There is a static copy of the seal at /public/icons/philosophers-seal.svg for
- * non-React consumers (og images, mail signatures, anything loading a URL).
- * Edit both if the geometry changes.
+ * The three brand marks (seal, monogram, sigil) also have static copies under
+ * /public/icons for non-React consumers (og images, mail signatures, anything
+ * loading a URL). Those are the Figma exports and the source of truth for the
+ * path data — edit both if the geometry changes, and keep the components'
+ * `d` attributes verbatim so the next re-export diffs cleanly.
+ *
+ * All three are drawn on the same 40-unit grid and carry the same padding, so
+ * one `size` renders them as a matched set. The footer stands them in a row.
  */
 export { Icon, type IconProps } from "./Icon";
 export {
@@ -18,4 +23,6 @@ export {
   PHILOSOPHERS_SEAL_VIEW_BOX,
   PHILOSOPHERS_SEAL_CENTER,
 } from "./PhilosophersSeal";
+export { BucksUnltd, BucksUnltdGlyph, BUCKS_UNLTD_VIEW_BOX } from "./BucksUnltd";
+export { Sigil, SigilGlyph, SIGIL_VIEW_BOX } from "./Sigil";
 export { Close, CloseGlyph, CLOSE_VIEW_BOX } from "./Close";

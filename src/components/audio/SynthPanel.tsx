@@ -116,11 +116,18 @@ export function SynthPanel() {
       // header bar (--header-h, published by Header) so the nav stays visible
       // and clickable, and stops on the cream frame's 10px rails — which the
       // safe-area insets extend on notched devices, matching layout.tsx.
-      // The bottom rail also has to clear the toggle parked on it (40px chip +
-      // 10px rail), plus 12px of air, or the panel would cover its own control.
+      //
+      // The bottom stops short of that rail to clear the toggle, which is the
+      // panel's own close control and sits inside its width — overlap it and
+      // the panel covers the thing you dismiss it with. Written as the toggle's
+      // own inset (2.5rem, see SynthToggleButton) plus its 40px chip plus 16px
+      // of air, rather than as the single number that sum comes to, because the
+      // two have already drifted apart once: the toggle moved off the rail and
+      // onto the footer's content column, and a hard-coded 72px silently became
+      // an 8px overlap. Anchored this way it tracks.
       style={{
         top: "calc(env(safe-area-inset-top, 0px) + var(--header-h, 5rem))",
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
+        bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem + 56px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
       className="pointer-events-none fixed z-40 w-[min(400px,calc(100vw-2rem-60px))]"
