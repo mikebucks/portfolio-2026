@@ -127,29 +127,26 @@ export const projects: Project[] = [
           {
             value: "$500,000,000",
             note: "213,152 ETH",
-            label: "Net new ETH Staked",
+            label: "New Ethereum staked",
           },
           {
             value: "PLG",
-            note: "Beyond Ethereum",
-            label: "New Org Competence",
+            note: "Product led growth",
+            label: "New organizational competence",
           },
           {
             value: "1",
-            note: "From self-monitoring",
-            label: "Component Libraries",
+            note: "Across all product surfaces",
+            label: "Component libraries",
           },
         ],
       },
       {
         type: "text",
         html: `
-        <strong>Outcomes</strong>
-          <ol>
-            <li>Net new assets under stake of over $500m</li>
-            <li>A product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team.</li>
-            <li>Adoption of Figment's UI component library beyond its institutional customer dashboards was a driver of system improvements and org-wide support.</li>
-          </ol>
+          <p>
+            The dApp generated net new assets under stake of <strong>over $500M USD</strong>. We also created an entirely new product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team. Figment's UI component library was adopted  beyond its institutional customer dashboards and was a huge driver of system improvements and org-wide support.
+          </p>
         `,
       },
       { 
@@ -212,7 +209,7 @@ export const projects: Project[] = [
           {
             value: "$921,473,360",
             note: "213,152 ETH",
-            label: "ETH Staked",
+            label: "Ethereum staked",
           },
           {
             value: "+22",

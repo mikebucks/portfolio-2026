@@ -1,7 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { SOCIALS } from "@/data/socials";
 import { SynthKeyCap } from "@/components/audio/SynthKeyCap";
-import { BucksUnltd, Sigil } from "@/components/icons";
+import { BucksUnltd, NoTrash, RecycleIC3, Sigil } from "@/components/icons";
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -40,25 +40,7 @@ export function Footer() {
             </li>
           ))}
         </ul>
-
-        {/* items-end, not center: the marks sit on the same baseline as the
-            last line of copy, and that shared bottom edge is what the synth
-            toggle lines up against. Centering would float them by half the
-            difference in height, which changes whenever the copyright wraps.
-
-            Wrapping, not a breakpoint. The marks only need their own line when
-            the copy beside them genuinely runs out of room, and that depends on
-            how long the copy is — not on the viewport. Gated on `md` instead,
-            they drop a line at 700px while the column still has 300px spare,
-            which reads as broken next to copy that has *also* stacked: two
-            things wrapping where nothing had to. flex-wrap moves them only on
-            the width where they'd otherwise overflow.
-
-            `ml-auto` rather than justify-between because it survives the wrap —
-            justify-between puts a lone item on the second line at its start, so
-            the marks would jump to the left edge exactly when they wrap and
-            leave the toggle stranded on the right. */}
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-y-6">
           <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
             <span className="inline-flex items-center gap-1">
               {["a", "s", "d", "f"].map((k) => (
@@ -68,26 +50,15 @@ export function Footer() {
             </span>
             <span> · built with humanity &copy; {year}</span>
           </div>
-
-          {/* The other two marks. The trailing 40px hole is the synth toggle's:
-              it's fixed to the viewport but laid out on this same content
-              column, so at full scroll it lands in the gap and the three read
-              as one set. See SynthToggleButton.
-
-              Decorative — the seal is the only control. pointer-events off so
-              the hole can't shadow its hit area. shrink-0 so a narrow viewport
-              squeezes the copy rather than the marks. */}
           <div
             aria-hidden
-            className="pointer-events-none ml-auto flex shrink-0 items-center"
+            className="pointer-events-none ml-auto flex shrink-0 items-center text-neutral-400"
           >
-            {/* No `plate`: these read as bare white marks straight on the ink,
-                rather than as chips. The seal is the exception — it paints its
-                own, because it animates that chip to black when the panel
-                opens. */}
-            <BucksUnltd size={40} className="text-white" />
-            <Sigil size={40} className="text-white" />
-            <span className="ml-3 h-10 w-10" />
+            <BucksUnltd size={40} />
+            <NoTrash size={40} />
+            <RecycleIC3 size={40} />
+            <Sigil size={40} />
+            <span className="h-10 w-10 ml-2" />
           </div>
         </div>
       </div>

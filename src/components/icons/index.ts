@@ -25,4 +25,10 @@ export {
 } from "./PhilosophersSeal";
 export { BucksUnltd, BucksUnltdGlyph, BUCKS_UNLTD_VIEW_BOX } from "./BucksUnltd";
 export { Sigil, SigilGlyph, SIGIL_VIEW_BOX } from "./Sigil";
+export { NoTrash, NoTrashGlyph, NO_TRASH_VIEW_BOX } from "./NoTrash";
+export {
+  RecycleIC3,
+  RecycleIC3Glyph,
+  RECYCLE_IC3_VIEW_BOX,
+} from "./RecycleIC3";
 export { Close, CloseGlyph, CLOSE_VIEW_BOX } from "./Close";
