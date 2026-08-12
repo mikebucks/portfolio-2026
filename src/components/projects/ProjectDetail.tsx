@@ -51,7 +51,7 @@ export function ProjectDetail({ project }: { project: Project }) {
               dangerouslySetInnerHTML={{ __html: block.html }}
             />
           ) : block.type === "stats" ? (
-            <ProjectStatGrid key={i} stats={block} className="mt-8" />
+            <ProjectStatGrid key={i} stats={block} className="mt-4" />
           ) : (
             <ProjectMediaFigure
               key={i}

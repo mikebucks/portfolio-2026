@@ -112,7 +112,7 @@ export const projects: Project[] = [
   {
     slug: "figment-dapp",
     title: "Figment dApp",
-    role: "Product Design & Growth",
+    role: "Product Design, Engineering, & Growth",
     thumbnail: "/projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "A consumer swing for a B2B crypto infrastructure company",
@@ -141,14 +141,6 @@ export const projects: Project[] = [
           },
         ],
       },
-      {
-        type: "text",
-        html: `
-          <p>
-            The dApp has generated net new assets under stake of <strong>over $500M USD</strong>. As part of the process, it was necessary to create an entirely new product led growth discipline within Figment's highly b2b sales-driven product team. Figment's UI component library was adopted far beyond its previous role of institutional customer dashboards.
-          </p>
-        `,
-      },
       { 
         type: "video", 
         src: "/projects/figment-dapp/eth-flow.mp4", 
@@ -157,11 +149,19 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results surprised us."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results were surprising."
       },
       {
         type: "image",
         src: "/projects/figment-dapp/dashboard.png"
+      },
+      { 
+        type: "text",
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>. As part of the process, it was necessary to create an entirely new product led growth discipline within Figment's highly b2b sales-driven product team."
+      },
+      { 
+        type: "text",
+        html: "Figment's UI component library was adopted far beyond its previous role of institutional customer dashboards."
       },
       {
         type: "grid",
@@ -171,10 +171,6 @@ export const projects: Project[] = [
           { src: "/projects/figment-dapp/widget/near.png", alt: "NEAR staking widget" },
           { src: "/projects/figment-dapp/widget/eth.png", alt: "ETH staking widget" },
         ],
-      },
-      { 
-        type: "text",
-        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>."
       },
       // {
       //   type: "image",
@@ -193,7 +189,7 @@ export const projects: Project[] = [
   {
     slug: "figment-dashboard",
     title: "Figment Dashboard",
-    role: "Product Design & Growth",
+    role: "Product Design, Engineering, & Growth",
     thumbnail: "/projects/figment-dashboard/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions",
@@ -238,7 +234,7 @@ export const projects: Project[] = [
   {
     slug: "chisel",
     title: "Chisel",
-    role: "Design & Engineering",
+    role: "Systems Design & Engineering",
     thumbnail: "/projects/chisel/thumbnail-light.png",
     tags: ["design-systems", "react", "vercel", "continuous-integraion"],
     summary: "The agentic design system",
@@ -307,7 +303,7 @@ export const projects: Project[] = [
   {
     slug: "book-of-idra",
     title: "Book of Idra",
-    role: "Design Engineering",
+    role: "Product Design, Engineering, Branding, Creative Coding, & Smart Contracts",
     thumbnail: "/projects/book-of-idra/thumbnail.png",
     tags: ["web3", "creative-coding", "design", "branding"],
     summary: "What does the future of creative writing look like?",
@@ -344,7 +340,7 @@ export const projects: Project[] = [
   {
     slug: "lyric",
     title: "Lyric",
-    role: "Design Engineering",
+    role: "Product Design & Design Engineering",
     tags: ["design", "react/native", ""],
     summary: "The happy path for modern travelers",
     body: [
@@ -369,7 +365,7 @@ export const projects: Project[] = [
   {
     slug: "vori",
     title: "Vori Health",
-    role: "Design Engineering",
+    role: "Design Leadership, Product Design, & Engineering",
     tags: ["design", "react/native", ""],
     summary: "UI consistency for a massive digital health ecosystem",
     body: [
@@ -388,7 +384,7 @@ export const projects: Project[] = [
   {
     slug: "verse",
     title: "Verse",
-    role: "Design Engineering",
+    role: "Product Design & Design Engineering",
     tags: ["design", "react/native", ""],
     summary: "A highly interactive video storytelling platform",
     body: [

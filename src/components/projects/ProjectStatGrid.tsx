@@ -32,13 +32,13 @@ export function ProjectStatGrid({
     <section className={className}>
       <dl
         className={cn(
-          "mt-4 grid gap-px overflow-hidden rounded bg-black/5",
+          "grid gap-px overflow-hidden rounded bg-black/5",
           COLUMNS[columns] ?? COLUMNS[3],
         )}
       >
         {stats.items.map((item, i) => (
           <div key={i} className="bg-white/60 p-4">
-            <dt className="mb-1 text-sm leading-relaxed text-black">
+            <dt className="text-sm leading-relaxed text-black">
               {item.label}
             </dt>
             <dd className="text-3xl leading-none font-semibold font-mono tracking-tight text-black">
