@@ -145,7 +145,7 @@ export const projects: Project[] = [
         type: "text",
         html: `
           <p>
-            The dApp generated net new assets under stake of <strong>over $500M USD</strong>. We also created an entirely new product led growth discipline that didn't exist in Figment's highly b2b sales-driven product team. Figment's UI component library was adopted  beyond its institutional customer dashboards and was a huge driver of system improvements and org-wide support.
+            The dApp has generated net new assets under stake of <strong>over $500M USD</strong>. As part of the process, it was necessary to create an entirely new product led growth discipline within Figment's highly b2b sales-driven product team. Figment's UI component library was adopted far beyond its previous role of institutional customer dashboards.
           </p>
         `,
       },
