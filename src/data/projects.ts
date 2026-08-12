@@ -125,19 +125,19 @@ export const projects: Project[] = [
         type: "stats",
         items: [
           {
-            value: "$500,000,000",
+            value: "$500M+",
             note: "213,152 ETH",
             label: "New Ethereum staked",
           },
           {
-            value: "PLG",
-            note: "Product led growth",
-            label: "New organizational competence",
+            value: "27.45%",
+            note: "Of qualified wallets (32+ ETH)",
+            label: "Conversion rate",
           },
           {
-            value: "1",
-            note: "Across all product surfaces",
-            label: "Component libraries",
+            value: "22.7%",
+            note: "Post redesign",
+            label: "DAU increase",
           },
         ],
       },
