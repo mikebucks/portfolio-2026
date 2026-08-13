@@ -149,7 +149,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of any industry jargon. The results were surprising."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of industry jargon. We turned the complexity of staking crypto into trust in Figment's institutional pedigree."
       },
       {
         type: "image",
