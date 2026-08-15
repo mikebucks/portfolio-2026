@@ -119,7 +119,7 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent and neglected consumer dApp that had been hiding in the Ledger Wallet marketplace. The goal was to redesign the dApp and open <strong>Figment's institutional-grade infrastructure to a wider audience of self-custody crypto holders</strong>."
+        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent consumer decentraized app that had been hiding in Ledger Wallet's marketplace. The goal of the redesign was to <strong>open Figment's institutional-grade infrastructure to a wider audience of self-custody crypto holders</strong>."
       },
       {
         type: "stats",
@@ -149,7 +149,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI and scrubbed the dApp of industry jargon. We turned the complexity of staking crypto into trust in Figment's institutional pedigree."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI, scrubbed the dApp of industry jargon, and applied the same UI design system that had been proven with our institutional customers. <strong>We turned the complexity of staking crypto into trust in Figment's institutional pedigree</strong> that resonated with consumer crypto holders."
       },
       {
         type: "image",
@@ -161,7 +161,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "Figment's UI component library was adopted far beyond its previous role of institutional customer dashboards."
+        html: "Figment's UI component library was adopted far beyond its previous role of institutional customer dashboards. Figment now had a shared language that connected the brand with its products in a way it never had before."
       },
       {
         type: "grid",
@@ -197,7 +197,11 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets. The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to any proof-of-stake protocol's mainnet and testnets.",
+        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets.",
+      },
+      {
+        type: "text",
+        html: "The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to support over 20 additional proof-of-stake protocols' mainnets and testnets.",
       },
       {
         type: "stats",
@@ -225,6 +229,10 @@ export const projects: Project[] = [
         alt: "Figment dashboard landing"
        },
        {
+        type: "text",
+        html: "Prior to building the dashboard, the majority of Figment's customers managed their portfolios via spreadsheets and custom built software, making support an unpredictable and time-consuming endeavor. <strong>Support tickets regarding staking rewards and bonding/unbonding timelines went down by over 70%</strong> for customers using the dashboard. ",
+      },
+       {
         type: "image",
         src: "/projects/figment-dashboard/eth.png",
         alt: "Figment Ethereum dashboard"
@@ -241,22 +249,22 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to design and product material such as research findings, design operating principles, and review feedback. Time gets wasted by administrative overhead and highly async workflows.",
+        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to research findings, design operating principles, and review feedback. Time is wasted with administrative overhead and asynchronous workflows.",
       },
       {
         type: "text",
-        html: `Chisel connects these formerly siloed systems and unlocks new capabilities for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
+        html: `<strong>Chisel connects these formerly siloed systems</strong> and unlocks new capabilities for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
       },
-      {
-        type: "text",
-        html: `<strong>Project goals</strong>
-          <ol>
-            <li>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong></li>
-            <li>Rapid prototyping consistency and usability for PMs, Engineers, and Designers.</li>
-            <li>Faster product iteration for simple edits like copy and layout/styling changes.</li>
-          </ol>
-        `,
-      },
+      // {
+      //   type: "text",
+      //   html: `<strong>Project goals</strong>
+      //     <ol>
+      //       <li>Make high-quality craft more accessible, collaborative, and scalable across Figment.</strong></li>
+      //       <li>Rapid prototyping consistency and usability for PMs, Engineers, and Designers.</li>
+      //       <li>Faster product iteration for simple edits like copy and layout/styling changes.</li>
+      //     </ol>
+      //   `,
+      // },
       { 
         type: "image", 
         src: "/projects/chisel/chisel-process.png",
@@ -269,7 +277,7 @@ export const projects: Project[] = [
       },
       {
         type: "text",
-        html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec and code quality standards. A PM who can't read a diff still needs to know exactly what changed and see it running in a browser. An engineer who reviews the PR needs to feel safe approving it.",
+        html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec and coding standards.",
       },
       { 
         type: "image",

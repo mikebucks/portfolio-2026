@@ -37,14 +37,19 @@ export function ProjectStatGrid({
         )}
       >
         {stats.items.map((item, i) => (
-          <div key={i} className="bg-white/60 p-4">
-            <dt className="text-sm leading-relaxed text-black">
+          // Padding scales with the type: at the old p-4 the 44px figure sat
+          // almost on the hairline.
+          <div key={i} className="bg-white/60 p-5 md:p-6">
+            <dt className="text-lg leading-snug text-black md:text-[21px]">
               {item.label}
             </dt>
-            <dd className="text-3xl leading-none font-semibold font-mono tracking-tight text-black">
+            {/* The figure reuses the article title's step rather than inventing
+                one — the grid never sits next to the title, so the two never
+                compete, and the ramp stays four sizes wide instead of five. */}
+            <dd className="mt-2 text-[32px] font-semibold leading-[1.3] text-black md:text-[44px]">
               {item.value}
               {item.note && (
-                <span className="mt-1 block text-sm font-display font-normal tracking-normal text-black/65">
+                <span className="mt-2 block text-base font-display font-normal leading-snug tracking-normal text-black/65 md:text-lg">
                   {item.note}
                 </span>
               )}

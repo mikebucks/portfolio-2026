@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { X } from "lucide-react";
 import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
@@ -241,24 +240,12 @@ export function ProjectModal() {
                 : "opacity 140ms ease-in, transform 140ms ease-in",
           }}
         >
-          <ProjectDetail project={project} />
+          {/* The wordmark at the top of the article is the way out — there's no
+              floating close button. It scrolls away with the content, so Escape
+              (bound above) stays the always-available exit. */}
+          <ProjectDetail project={project} onBack={close} />
         </div>
       </div>
-
-      <button
-        type="button"
-        onClick={close}
-        aria-label="Close project"
-        style={{
-          opacity: isOpen ? 1 : 0,
-          transition: reduce ? "none" : "opacity 200ms 380ms",
-          // Clear the notch safe area (viewport-fit=cover); 0 on desktop.
-          top: "calc(1.25rem + env(safe-area-inset-top, 0px))",
-        }}
-        className="fixed right-5 z-[130] flex h-10 w-10 items-center justify-center rounded-full bg-black/5 text-black/70 transition-colors hover:bg-black/10 hover:text-black"
-      >
-        <X size={18} strokeWidth={1.75} />
-      </button>
     </div>
   );
 }

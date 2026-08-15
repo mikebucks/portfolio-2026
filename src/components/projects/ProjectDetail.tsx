@@ -1,6 +1,15 @@
 import type { Project, ProjectBlock } from "@/data/projects";
+import { cn } from "@/lib/utils";
 import { ProjectMediaFigure } from "./ProjectMediaList";
 import { ProjectStatGrid } from "./ProjectStatGrid";
+
+/**
+ * The reading column — narrower than the article itself, so copy holds a ~75
+ * character measure while screenshots, video and stat grids run to the full
+ * panel width. Everything that is words gets this; everything that is a picture
+ * doesn't.
+ */
+const COLUMN = "max-w-[49.5rem]";
 
 /**
  * Normalize a project into an ordered block list. Prefers the new `content`
@@ -18,49 +27,107 @@ function toBlocks(project: Project): ProjectBlock[] {
 }
 
 /**
- * Cream-themed (dark-text) project detail body, used inside the project modal.
- * The standalone /projects/[slug] route keeps its own dark-page treatment and
- * shares only the media renderer.
+ * Vertical rhythm between blocks. Prose sits close to prose; anything touching
+ * a full-width figure or stat grid gets the wide gap on both sides, so media
+ * reads as a break in the column rather than another paragraph.
  */
-export function ProjectDetail({ project }: { project: Project }) {
+function gapBefore(block: ProjectBlock, prev: ProjectBlock | undefined) {
+  if (!prev) return "";
+  return block.type === "text" && prev.type === "text" ? "mt-8" : "mt-14";
+}
+
+/**
+ * Cream-themed (dark-text) project detail body, used inside the project modal.
+ *
+ * Pass `onBack` to put the wordmark at the top of the article as the way out of
+ * the modal — it replaces a floating close affordance, so the exit lives in the
+ * reading column where the eye already starts.
+ */
+export function ProjectDetail({
+  project,
+  onBack,
+}: {
+  project: Project;
+  onBack?: () => void;
+}) {
   const blocks = toBlocks(project);
 
   return (
-    <article className="mx-auto max-w-5xl gutter-x pt-14 pb-24 md:px-10">
+    <article className="mx-auto max-w-6xl gutter-x pt-14 pb-24">
       <header>
-        <h2 className="text-4xl mb-2 md:text-5xl font-semibold tracking-tight text-black">
+        {onBack && (
+          // A real href so middle-click and "copy link address" still work; the
+          // click itself is intercepted so the modal plays its leave transition
+          // instead of hard-navigating. -ml-2.5 cancels nav-link's own inline
+          // padding, keeping the wordmark flush with the column like the header's.
+          <a
+            href="/projects"
+            onClick={(e) => {
+              e.preventDefault();
+              onBack();
+            }}
+            aria-label="Back to projects"
+            className="nav-link -ml-2.5 mb-10 inline-block text-lg font-medium tracking-tight text-black md:mb-14 md:text-[21px]"
+          >
+            Mike<span className="font-bold">Bucks</span>
+          </a>
+        )}
+
+        <h2
+          className={cn(
+            COLUMN,
+            "text-[32px] font-semibold leading-[1.3] text-black md:text-[44px]",
+          )}
+        >
           {project.title}
         </h2>
-        <p className="max-w-3xl text-xl md:text-2xl font-light leading-snug text-black/75">
+        <p
+          className={cn(
+            COLUMN,
+            "mt-2 text-2xl leading-[1.3] text-black/70 md:text-[28px]",
+          )}
+        >
           {project.summary}
         </p>
-        <div className="mt-4 font-mono text-xs text-black/60">
+        {/* <p className="mt-10 text-lg font-medium text-black/70 md:mt-14 md:text-[21px]">
           {project.role}
-        </div>
+        </p> */}
       </header>
 
-      <section className="mt-4">
-        {blocks.map((block, i) =>
-          block.type === "text" ? (
+      <section className="mt-10 border-t border-black/10 pt-10 md:mt-14 md:pt-14">
+        {blocks.map((block, i) => {
+          const gap = gapBefore(block, blocks[i - 1]);
+
+          return block.type === "text" ? (
             // A <div> (not <p>) so block-level rich text like <ol>/<ul> is valid
             // markup — a <p> would be force-closed before a list.
             <div
               key={i}
-              className="mt-4 leading-relaxed text-black/80 [&_a]:underline [&_strong]:font-semibold [&_strong]:text-black  [&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-1 [&_li]:pl-1 [&_li]:marker:text-black/40"
+              className={cn(
+                COLUMN,
+                gap,
+                "text-lg leading-[1.8] text-black/80 md:text-[21px]",
+                "[&_a]:underline [&_strong]:font-semibold [&_strong]:text-black",
+                "[&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-2 [&_li]:pl-1 [&_li]:marker:text-black/40",
+                // Section headings hold one size across breakpoints — the title
+                // shrinks on mobile and meets them, which is the whole ramp.
+                "[&_h2]:mb-6 [&_h2]:mt-10 [&_h2]:text-[28px] [&_h2]:font-medium [&_h2]:leading-[1.3] [&_h2]:text-black md:[&_h2]:mb-8 md:[&_h2]:mt-14",
+                "[&_h2:first-child]:mt-0",
+              )}
               // Trusted, in-repo authored copy (see ProjectBlock) — not user input.
               dangerouslySetInnerHTML={{ __html: block.html }}
             />
           ) : block.type === "stats" ? (
-            <ProjectStatGrid key={i} stats={block} className="mt-4" />
+            <ProjectStatGrid key={i} stats={block} className={gap} />
           ) : (
             <ProjectMediaFigure
               key={i}
               media={block}
-              className="mt-4"
+              className={gap}
               captionClassName="text-black/50"
             />
-          ),
-        )}
+          );
+        })}
       </section>
     </article>
   );
