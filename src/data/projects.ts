@@ -197,7 +197,7 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is where they monitor and manage their staked assets.",
+        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is how they monitor and manage the perfomance of billions of dollars in staked assets.",
       },
       {
         type: "text",
