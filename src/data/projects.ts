@@ -66,6 +66,12 @@ export type ProjectStats = {
     label: string;
     /** Optional second reading of the same figure ("213,152 ETH"). */
     note?: string;
+    /**
+     * Direction the stat is moving, drawn as a small arrow beside the figure.
+     * Only set it where the figure is itself a change — an absolute total has
+     * no direction, and an arrow on one would claim a trend that isn't there.
+     */
+    trend?: "up" | "down";
   }[];
   /** Tiles per row from `sm` up. Defaults to the item count, capped at 3. */
   columns?: 2 | 3 | 4;
@@ -115,7 +121,7 @@ export const projects: Project[] = [
     role: "Product Design, Engineering, & Growth",
     thumbnail: "/projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
-    summary: "A consumer swing for a B2B crypto infrastructure company",
+    summary: "A consumer swing for B2B crypto infrastructure",
     content: [
       {
         type: "text",
@@ -132,12 +138,13 @@ export const projects: Project[] = [
           {
             value: "27.45%",
             note: "Of qualified wallets (32+ ETH)",
-            label: "Conversion rate",
+            label: "Staking flow conversion rate",
           },
           {
             value: "22.7%",
             note: "Post redesign",
             label: "DAU increase",
+            trend: "up",
           },
         ],
       },
@@ -212,9 +219,10 @@ export const projects: Project[] = [
             label: "Ethereum staked",
           },
           {
-            value: "+22",
+            value: "22",
             note: "Beyond Ethereum",
             label: "Protocols supported",
+            trend: "up",
           },
           {
             value: "81%",
@@ -226,7 +234,7 @@ export const projects: Project[] = [
       {
         type: "image",
         src: "/projects/figment-dashboard/all.png",
-        alt: "Figment dashboard landing"
+        alt: "Figment dashboard overview"
        },
        {
         type: "text",
@@ -249,11 +257,15 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "Every org I've worked in restricts access to domain-specific systems. Simple changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs prototype in sandboxes disconnected from essential materials like React components, backend systems, and integration pipelines. And engineers don't have access to research findings, design operating principles, and review feedback. Time is wasted with administrative overhead and asynchronous workflows.",
+        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools</strong>. These systems should be available to any qualified teammate to participate in, learn from, and build on.",
       },
       {
         type: "text",
-        html: `<strong>Chisel connects these formerly siloed systems</strong> and unlocks new capabilities for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
+        html: "In complex orgs it's often necessary to restrict access to domain-specific systems. But this can cause unwanted administrative overhead. Simple things like copy changes can require Linear tickets, Figma updates, and engineering sprints. Designers and PMs are forced to prototype in sandboxes disconnected from essential materials like React components, backend systems, and continuous integration pipelines. And engineers don't have access to research findings, design and product principles, and review feedback.",
+      },
+      {
+        type: "text",
+        html: `<strong>Chisel connects these formerly siloed systems and unlocks new capabilities</strong> for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
       },
       // {
       //   type: "text",
@@ -273,11 +285,7 @@ export const projects: Project[] = [
       },
       {
         type: "text",
-        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools. These systems should be available to participate in, learn from, and build on.</strong>",
-      },
-      {
-        type: "text",
-        html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass Figment's rigid infosec and coding standards.",
+        html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass rigid infosec and coding standards.",
       },
       { 
         type: "image",

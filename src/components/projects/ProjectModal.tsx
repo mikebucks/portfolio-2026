@@ -24,7 +24,7 @@ const CLOSE_MS = 320;
 // The panel's cream, held short of opaque so the shader background bleeds
 // through it. The page's own content is faded out underneath (see the
 // `data-project-modal` effect below), so this is the shader and nothing else.
-const PANEL = "rgba(244, 241, 234, 0.85)";
+const PANEL = "rgba(244, 241, 234, 0.9)";
 // Softens the shader behind the panel so long-form copy stays readable while
 // the background still reads through. Ramps up with the panel rather than
 // switching on, so it needs a length at both ends — `none` can't be
