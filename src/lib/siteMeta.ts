@@ -6,7 +6,7 @@
 export const SITE = {
   url: "https://mikebucks.me",
   name: "Mike Bucks",
-  title: "Digital Product Builder",
+  title: "Mike Bucks | Digital Product Builder",
   description:
     "Design-engineering portfolio. Interfaces, systems, and the occasional audiovisual instrument.",
   author: "Mike Bucks",

@@ -21,25 +21,28 @@ export function Footer() {
       className="relative z-10 gutter-x pt-10 bg-ink"
     >
       <div className="mx-auto flex max-w-[1600px] flex-col gap-8">
-        <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs">
-          {SOCIALS.map((s) => (
-            <li key={s.label}>
-              <a
-                href={s.href}
-                target="_blank"
-                rel="noreferrer"
-                className="group inline-flex items-center gap-1 text-white/90 underline decoration-white/20 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
-              >
-                {s.label}
-                <ArrowUpRight
-                  size={14}
-                  strokeWidth={1.5}
-                  className="text-white/40 transition-colors group-hover:text-accent"
-                />
-              </a>
-            </li>
-          ))}
-        </ul>
+        <div className="flex justify-between">
+          <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-xs">
+            {SOCIALS.map((s) => (
+              <li key={s.label}>
+                <a
+                  href={s.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group inline-flex items-center gap-1 text-white/90 underline decoration-white/20 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent"
+                >
+                  {s.label}
+                  <ArrowUpRight
+                    size={14}
+                    strokeWidth={1.5}
+                    className="text-white/40 transition-colors group-hover:text-accent"
+                  />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <span className="font-mono text-xs text-white/60">Built with humanity</span>
+        </div>
         <div className="flex flex-wrap items-end justify-between gap-y-6">
           <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
             <span className="inline-flex items-center gap-1">
@@ -48,7 +51,7 @@ export function Footer() {
               ))}
               <span className="ml-1">makes me dance</span>
             </span>
-            <span> · built with humanity &copy; {year}</span>
+            <span> · &copy; {year}</span>
           </div>
           <div
             aria-hidden
@@ -56,9 +59,9 @@ export function Footer() {
           >
             <BucksUnltd size={40} />
             <NoTrash size={40} />
-            <RecycleIC3 size={40} />
             <Sigil size={40} />
-            <span className="h-10 w-10 ml-2" />
+            <RecycleIC3 size={40} />
+            <span className="h-10 w-10 ml-1" />
           </div>
         </div>
       </div>
