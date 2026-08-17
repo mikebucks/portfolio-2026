@@ -26,8 +26,10 @@ import { NOTE_HUE_GLSL } from "./palette";
  * At rest the whole rack is monochrome: near-white bobs and 1px white strings
  * on near-black, high contrast and colourless. Colour belongs to the keyboard —
  * playing a note washes the shared palette across the row (warmed toward the
- * pitch sounding) and it drains back to white as the note decays. The bob cores
- * stay white-hot throughout; the colour rides their glow.
+ * pitch sounding) and it drains back to white as the note decays. A press
+ * lands on the bobs themselves: the discs flush toward the played pitch's
+ * colour and swell slightly, easing back to small white points with the
+ * envelope.
  *
  * Macros:
  *   x  Swing — lateral travel of the whole rack, css-relative
@@ -48,6 +50,7 @@ uniform float uPointerImpulse;
 uniform vec2  uClickPos;
 uniform float uClickImpulse;
 uniform float uNoteOn;
+uniform float uNotePulse;
 uniform float uVelocity;
 uniform float uEnvelope;
 uniform float uReactivity;
@@ -106,7 +109,10 @@ vec2 formationPos(float i, vec2 C, float rIn, float rOut) {
   float off  = (q + 0.5) * (TAU / cnt);         // symmetric offset from the top
   float r    = outer > 0.5 ? rOut : rIn;
   float dir  = outer > 0.5 ? -1.0 : 1.0;        // rings counter-rotate
-  float ang  = PI * 0.5 + side * off + dir * uTime * 1.3;
+  // Spin phase: a slow real-time floor plus uShaderTime, whose rate spikes on
+  // each note strike and decays with the impulse — so the rings whirl fastest
+  // right after a key press and visibly decelerate as the note dies.
+  float ang  = PI * 0.5 + side * off + dir * (uTime * 0.25 + uShaderTime * 2.4);
   return C + r * vec2(cos(ang), sin(ang));
 }
 
@@ -168,7 +174,10 @@ void main() {
   float waveAmp = (0.055 + 0.09 * mWave) * (1.0 + 0.5 * energy);
   float WAVE_K  = TAU * 2.5 / NPEND;
 
-  float bobR = 0.011;                      // bulb radius at full size (under the cursor)
+  // Bulb radius at full size (under the cursor / in formation). Kept small so
+  // the note swell below has somewhere obvious to go — a pressed bob grows
+  // past this to ~1.5×, which is the visible "reacting" beat.
+  float bobR = 0.0085;
 
   // Cursor in the isotropic P-space, for proximity-driven bulb sizing. uPointer
   // rests at its off-screen sentinel (-9,-9) until the first move, which lands
@@ -189,8 +198,8 @@ void main() {
   float morphC = clamp(morph, 0.0, 1.0);    // clamped copy for size/trail
 
   // ── Accumulate the row ──────────────────────────────────────────────────────
-  vec3  bobCol   = vec3(0.0);   // coloured glow (halo); cores are added white
-  float coreLit  = 0.0;         // white-hot crisp discs
+  vec3  bobCol   = vec3(0.0);   // coloured glow (halo)
+  vec3  coreCol  = vec3(0.0);   // crisp discs — white at rest, note-coloured
   float bobGlow  = 0.0;         // total, for the note flash
   vec3  trailCol = vec3(0.0);
   float filament = 0.0;
@@ -228,10 +237,14 @@ void main() {
     // cursor at all). A Gaussian spotlight keeps the falloff smooth.
     float pd    = hasPtr ? length(bob - ptrP) : 1e3;
     float prox  = exp(-(pd * pd) / (reach * reach));
-    // Bulbs also bloom to full size while a formation is held, so the figure
-    // reads as bright points rather than the resting pinpricks.
-    float sizeK = max(mix(0.125, 1.0, prox), morphC);
-    float br    = bobR * sizeK;
+    // Bulbs also bloom while a formation is held — but only to just over half
+    // size, so the spinning figure stays a constellation of points and the
+    // note swell below still has visible headroom on top.
+    float sizeK = max(mix(0.125, 1.0, prox), morphC * 0.55);
+    // Notes swell every bulb to 3× at the strike. Rides uNotePulse — the same
+    // impulse that sets the spin rate — so the shrink back runs on exactly the
+    // timer the ring deceleration runs on: hit hard, ease off together.
+    float br    = bobR * sizeK * (1.0 + 2.0 * uNotePulse);
 
     // The glow colour: white at rest, ramping to the row's palette position
     // (warmed toward the pitch played) only as a note sounds. The crisp core is
@@ -268,7 +281,13 @@ void main() {
     float aa   = 1.2 * pxU;
     float core = 1.0 - smoothstep(br - aa, br + aa, d2);
     float halo = exp(-d2 * d2 / (br * br * 2.5));
-    coreLit  += core * shim;
+    // The disc itself takes the played pitch's colour — flushed harder toward
+    // playHue than the halo's ribbon tint, so a press reads on the circle and
+    // not just around it. White at rest by the same colorAmt gate as the halo.
+    vec3 coreHue = mix(vec3(1.0),
+                       mix(ribbon, playHue, min(1.0, playAmt * 2.0)),
+                       clamp(colorAmt * 1.5, 0.0, 0.95));
+    coreCol  += coreHue * core * shim;
     bobCol   += hue * halo * shim;
     bobGlow  += (core + halo) * shim;
   }
@@ -283,12 +302,17 @@ void main() {
                                                       // contrast than the bobs
 
   col += trailCol * (0.05 + 0.06 * mGlow) * (1.0 - morphC); // smear (wave only)
-  col += bobCol * (0.22 * glow);                      // coloured halos, faint
-  col += vec3(1.0) * coreLit * 1.4;                   // white-hot cores
+  // Coloured halos — faint at rest, blooming with note energy so a press
+  // reads as the whole figure lighting up, not just the discs resizing.
+  col += bobCol * (0.22 * glow) * (1.0 + 0.9 * energy);
+  col += coreCol * 1.4;                               // crisp cores
 
-  // Note flash: a quick white lift on the bobs so a strike reads as a pulse of
-  // light through the whole rack, then falls back with the envelope.
-  col += vec3(1.0) * bobGlow * uNoteOn * max(uVelocity, 0.3) * 0.4
+  // Note flash: a quick lift on the bobs so a strike reads as a pulse of light
+  // through the whole rack, then falls back with the envelope. Tinted halfway
+  // toward the played pitch so the flash doesn't wash the cores' colour back
+  // to white at the exact moment the press should read as coloured.
+  vec3 flashHue = mix(vec3(1.0), playHue, clamp(playW, 0.0, 1.0) * 0.75);
+  col += flashHue * bobGlow * uNoteOn * max(uVelocity, 0.3) * 0.55
        * (0.5 + 0.5 * uReactivity);
 
   // Very gentle vignette — only the far corners fall off, so the rack can spread

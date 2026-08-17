@@ -662,6 +662,9 @@ function WebGLCanvas({
           const u = material.uniforms;
           u.uTime.value += dt;
           u.uShaderTime.value = shaderTime;
+          // The same pulse that sets shaderTime's rate — shaders use it to sync
+          // one-shot reactions to the strike-then-decelerate timer.
+          u.uNotePulse.value = pulse;
           if (pointerHasMoved) {
             u.uPointer.value.set(visualState.pointer[0], visualState.pointer[1]);
             // Exponential ease toward the live pointer, frame-rate independent.
@@ -747,15 +750,19 @@ function WebGLCanvas({
 
           // Rhythm's mandala formation amount: a spring with a hold. Each note
           // refreshes an 0.9s hold (so even a very quick note keeps the figure
-          // up long enough to see it form and return); the spring is slightly
-          // underdamped (stiffness 130, damping 14 → ζ≈0.61) so both the move in
-          // and the move out overshoot a little. Frame-time clamped for stability.
+          // up long enough to see it form and return). The spring is asymmetric:
+          // the move IN stays lightly underdamped (damping 14 → ζ≈0.61, one
+          // small overshoot), but the melt back OUT runs much looser (damping
+          // 7 → ζ≈0.31) so the bobs spring past the wave and visibly bounce a
+          // couple of times before settling — the return used to read as an
+          // abrupt snap. Frame-time clamped for stability.
           if (visualState.noteImpulse > 0.5) formHold = 0.9;
           formHold = Math.max(0, formHold - dt);
           {
             const sdt = Math.min(dt, 0.05);
             const target = formHold > 0 ? 1 : 0;
-            formVel += (130 * (target - formMorph) - 14 * formVel) * sdt;
+            const damping = target > 0 ? 14 : 7;
+            formVel += (130 * (target - formMorph) - damping * formVel) * sdt;
             formMorph += formVel * sdt;
           }
           u.uFormMorph.value = formMorph;

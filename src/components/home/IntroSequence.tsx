@@ -94,7 +94,7 @@ export function IntroSequence() {
         if (header) {
           tl.to(
             header,
-            { yPercent: 0, autoAlpha: 1, duration: .2, ease: "expo.outut", delay: 0.12 },
+            { yPercent: 0, autoAlpha: 1, duration: .7, ease: "expo.out", delay: 0.05 },
             "-=0.25",
           );
         }
@@ -109,7 +109,7 @@ export function IntroSequence() {
             y: 0,
             duration: 0.9,
             ease: "expo.out",
-            delay: 0.45,
+            delay: 0.25,
             stagger: 0.18,
             force3D: true,
             // Clear only opacity — see the force3D note above for why transform

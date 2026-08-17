@@ -48,6 +48,11 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       // as the wavefront's clock. Notes trigger the same channel more quietly.
       uClickStrength: { value: 1 },
       uNoteOn: { value: 0 },
+      // The click+note impulse pulse that also sets uShaderTime's advance rate
+      // (1 right after a strike, decaying with the impulse). Exposed so shaders
+      // can sync one-shot reactions — e.g. Rhythm's bob swell — to the exact
+      // timer the spin deceleration runs on.
+      uNotePulse: { value: 0 },
       uFrequency: { value: 0 },
       uVelocity: { value: 0 },
       uEnvelope: { value: 0 },

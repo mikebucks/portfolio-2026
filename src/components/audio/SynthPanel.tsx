@@ -130,7 +130,12 @@ export function SynthPanel() {
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem + 56px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
-      className="pointer-events-none fixed z-40 w-[min(400px,calc(100vw-2rem-60px))]"
+      // z-[105]: above a hovered featured card (z-101, which itself outranks
+      // the cream frame bars at z-100) so the panel never gets painted over by
+      // the card's promoted hover ring; below the scrolled header (z-110) and
+      // the project modal (z-120). Same layer as the toggle chip (z-105) — the
+      // two never overlap, the panel's bottom inset stops above it.
+      className="pointer-events-none fixed z-[105] w-[min(400px,calc(100vw-2rem-60px))]"
     >
       <aside
         ref={panelRef}

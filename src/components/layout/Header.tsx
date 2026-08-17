@@ -19,10 +19,10 @@ const NAV_LINKS = [
 // can't collide with one.
 const HERO_KEY = "__hero";
 
-// The scrolled bar's vertical padding, in px. Mirrors the `py-[10px]` in the
+// The scrolled bar's vertical padding, in px. Mirrors the `py-3` in the
 // className below — Tailwind needs the literal, and the height published as
 // --header-h-collapsed needs the number.
-const COLLAPSED_PAD_Y = 10;
+const COLLAPSED_PAD_Y = 12;
 
 // SynthPanel still deferred (it pulls in Zustand + panel state), but defined at
 // module scope: creating it inside the component re-created the lazy identity on

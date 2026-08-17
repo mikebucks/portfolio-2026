@@ -90,7 +90,7 @@ export function ProjectStatGrid({
                   {item.value}
                 </span>
                 {item.note && (
-                  <span className="mt-2 block text-base font-display font-normal leading-snug tracking-normal text-black/60 md:text-lg">
+                  <span className="mt-3 block text-base font-display font-normal italic leading-snug tracking-normal text-black/60 md:text-lg">
                     {item.note}
                   </span>
                 )}

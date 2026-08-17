@@ -308,43 +308,58 @@ const rhythmPreset: ThemePreset = {
 };
 
 // ── Causation · Cause & Effect ───────────────────────────────────────────────
-// "Every cause has its effect." Filtered noise — wind / surf through a resonant
-// band. The one non-pitched engine: the keyboard gives rhythmic control while
-// the base settings shape color and motion. A scrolling terraced landscape.
+// "Every cause has its effect." A drawbar organ with an EDM edge: the additive
+// engine stacks harmonic partials like drawbars (rich, smooth, speaks
+// instantly, sustains at full weight), while a resonant filter with a short
+// envelope pluck and a fast shimmer LFO puts a synthetic bite on the front of
+// every note. An undulating grid of circles.
 const causationBase: SynthSettings = {
-  oscEngine: "noise",
-  oscWave: 0.5, // noise color: <0.34 brown, <0.67 pink, else white
-  oscTimbre: 0.5,
-  octave: 0, // non-pitched engine — kept for shape only
+  // Additive partial stack — the organ. Brightness up so the upper drawbars
+  // are actually out; timbre low keeps the even harmonics in the stack, which
+  // is where the fullness lives (high timbre thins it to odd-only, clarinet
+  // territory).
+  oscEngine: "harmonic",
+  oscWave: 0.62,
+  oscTimbre: 0.25,
+  octave: 0,
 
-  filterType: "bandpass",
-  filterCutoff: 1400,
-  filterResonance: 2.0,
-  filterEnvAmount: 0.45,
+  // The EDM edge lives here, not in the oscillator: moderate resonance and a
+  // filter envelope that snaps open ~1.6kHz above the corner on each strike,
+  // then settles. Reads as a squelchy pluck on the front of an otherwise
+  // smooth held tone.
+  filterType: "lowpass",
+  filterCutoff: 2000,
+  filterResonance: 2.2,
+  filterEnvAmount: 0.3,
 
-  attack: 0.04,
-  decay: 0.3,
-  sustain: 0.6,
-  release: 0.9,
+  // Organ articulation: speaks the moment the key goes down, holds at nearly
+  // full level for as long as it's held, gets out of the way quickly on
+  // release so runs stay clean.
+  attack: 0.012,
+  decay: 0.18,
+  sustain: 0.85,
+  release: 0.5,
 
+  // Fast, shallow cutoff shimmer — the rotary-speaker flutter that keeps a
+  // held chord alive.
   lfoShape: "sine",
-  lfoRate: 0.5,
-  lfoAmount: 0.12,
+  lfoRate: 5.6,
+  lfoAmount: 0.05,
 
-  cycEnvRate: 0.6,
-  cycEnvAmount: 0.0,
+  // Slow resonance swell underneath, out of step with the LFO so the two
+  // never settle into an audible pattern.
+  cycEnvRate: 0.35,
+  cycEnvAmount: 0.1,
 
   glide: 0.0,
 
-  delayTime: 0.3,
-  delayFeedback: 0.35,
-  delayWet: 0.18,
-  reverbWet: 0.4,
+  delayTime: 0.22,
+  delayFeedback: 0.3,
+  delayWet: 0.12,
+  reverbWet: 0.3,
 
-  // NoiseSynth reads much louder than the pitched engines even behind the
-  // limiter — start well below the ~-9/-10 pitched presets.
-  masterVolume: -17,
-  visualReactivity: 0.7,
+  masterVolume: -10,
+  visualReactivity: 0.85,
 };
 
 const causationPreset: ThemePreset = {
@@ -353,7 +368,8 @@ const causationPreset: ThemePreset = {
   blurb: "Every cause has its Effect; every Effect has its Cause; enerything happens according to Law; Chance is but a name for Law not recognixed; there are many planes of causation, but nothing escapes the Law",
   fragment: causationFragment,
   baseSettings: causationBase,
-  shaderMacros: [0.5, 0.4, 0.35, 0.4],
+  // x Glow · y Density · z Drift · w Echo — see causation.ts header.
+  shaderMacros: [0.4, 0.45, 0.4, 0.5],
 };
 
 // ── Gender ───────────────────────────────────────────────────────────────────
