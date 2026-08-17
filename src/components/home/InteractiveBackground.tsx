@@ -198,17 +198,17 @@ function WebGLCanvas({
         // Internal render scale = per-theme base × adaptive quality. Every
         // theme draws at a fraction of the internal buffer sized to what its
         // content actually resolves: causation's ray-marched terrain and
-        // polarity's gaussian splats have no hard edges; gender's output IS a
-        // 32-tap blur, so the upscale just adds another smoothing stage; mind
+        // polarity's gaussian splats have no hard edges; mind
         // is soft cellular noise; correspondence is soft metaballs but keeps
         // more pixels for its crisp divide line; rhythm's thin pendulum
         // strands need the most. Vibration is cheap AND has a hard-edged
-        // square — full resolution. Fragment cost scales with the square of
-        // these, so 0.6 ≈ one-third the pixels.
+        // square — full resolution, and gender's per-pixel stipple would smear
+        // into gray under any upscale, so it keeps full resolution too (its
+        // fbm field is cheap enough to afford it). Fragment cost scales with
+        // the square of these, so 0.6 ≈ one-third the pixels.
         const renderScaleForTheme = (t: ThemeId) =>
           t === "causation" ? 0.6
           : t === "polarity" ? 0.65
-          : t === "gender" ? 0.5
           : t === "mind" ? 0.6
           : t === "correspondence" ? 0.7
           : t === "rhythm" ? 0.8

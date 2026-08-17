@@ -208,7 +208,7 @@ export const projects: Project[] = [
       },
       {
         type: "text",
-        html: "The dashboard initially launched with support for the Ethereum protocol. Over the couse of 3+ years, the app evolved to support over 20 additional proof-of-stake protocols' mainnets and testnets.",
+        html: "The dashboard initially launched with support for the Ethereum protocol. Over the couse of my tenure, the app evolved to support over 20 additional proof-of-stake protocols' mainnets and testnets, detailed rewards reporting, RBAC team management, and click-to-stake flows.",
       },
       {
         type: "stats",
