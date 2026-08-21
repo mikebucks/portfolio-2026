@@ -1,7 +1,20 @@
-import type { Project, ProjectBlock } from "@/data/projects";
+import type { Project, ProjectBlock, ProjectGraphic } from "@/data/projects";
 import { cn } from "@/lib/utils";
+import { ChiselProcess } from "./graphics/ChiselProcess";
+import { ChiselStack } from "./graphics/ChiselStack";
+import { ChiselWorkflow } from "./graphics/ChiselWorkflow";
 import { ProjectMediaFigure } from "./ProjectMediaList";
 import { ProjectStatGrid } from "./ProjectStatGrid";
+
+/** Bespoke animated illustrations, keyed by a `graphic` block's `id`. */
+const GRAPHICS: Record<
+  ProjectGraphic["id"],
+  (props: { className?: string }) => React.ReactNode
+> = {
+  "chisel-process": ChiselProcess,
+  "chisel-stack": ChiselStack,
+  "chisel-workflow": ChiselWorkflow,
+};
 
 /**
  * The reading column — narrower than the article itself, so copy holds a ~75
@@ -119,6 +132,20 @@ export function ProjectDetail({
             />
           ) : block.type === "stats" ? (
             <ProjectStatGrid key={i} stats={block} className={gap} />
+          ) : block.type === "graphic" ? (
+            (() => {
+              const Graphic = GRAPHICS[block.id];
+              return (
+                <figure key={i} className={cn(gap, block.className)}>
+                  <Graphic />
+                  {block.caption && (
+                    <figcaption className="mt-3 font-mono text-xs text-black/50">
+                      {block.caption}
+                    </figcaption>
+                  )}
+                </figure>
+              );
+            })()
           ) : (
             <ProjectMediaFigure
               key={i}

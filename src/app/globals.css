@@ -237,3 +237,94 @@ html.lenis body {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+/* Travelling connector dot for the animated process graphics (see
+   src/components/projects/graphics). A small accent dot runs along a hairline
+   connector, fading in as it leaves one node and out as it reaches the next —
+   the openlogi.org "data packet" idiom, done in pure CSS.
+
+   Only two keyframe tracks exist (x → rightward, y → downward); the opposite
+   directions come from `animation-direction: reverse`, which works because the
+   opacity envelope is symmetric. Stagger dots with a negative delay via
+   `--flow-delay` so every connector is already mid-cycle on first paint. */
+@keyframes chisel-flow-x {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes chisel-flow-y {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.chisel-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  opacity: 0;
+  animation: 2.4s ease-in-out infinite;
+  animation-delay: var(--flow-delay, 0s);
+}
+
+.chisel-dot-x {
+  top: 50%;
+  left: 0%;
+  transform: translate(-50%, -50%);
+  animation-name: chisel-flow-x;
+}
+
+.chisel-dot-y {
+  left: 50%;
+  top: 0%;
+  transform: translate(-50%, -50%);
+  animation-name: chisel-flow-y;
+}
+
+/* Double tempo for the connectors that touch the Chisel bar — the faster,
+   denser traffic is what signals the gains from Chisel, so it follows those
+   connectors whatever their axis (vertical on desktop, horizontal in the
+   rotated mobile layout). */
+.chisel-dot-fast {
+  animation-duration: 1.2s;
+}
+
+.chisel-dot-reverse {
+  animation-direction: reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chisel-dot {
+    animation: none;
+  }
+
+  /* SMIL dots (ChiselStack's fans) can't be paused from CSS — hide them. */
+  .chisel-fan-dot {
+    display: none;
+  }
+}

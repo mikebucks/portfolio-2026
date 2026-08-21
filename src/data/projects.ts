@@ -84,9 +84,24 @@ export type ProjectStats = {
  * of showing as literal characters. All the media block types can be freely
  * interleaved with text, letting images be peppered in amongst the copy.
  */
+/**
+ * A bespoke animated illustration, rendered from a component instead of an
+ * image file. `id` picks the component out of the registry in ProjectDetail —
+ * data stays serializable and the component code lives with the other
+ * renderers under components/projects/graphics.
+ */
+export type ProjectGraphic = {
+  type: "graphic";
+  id: "chisel-process" | "chisel-stack" | "chisel-workflow";
+  caption?: string;
+  /** Per-item Tailwind classes for the block's wrapper — see ProjectMedia. */
+  className?: string;
+};
+
 export type ProjectBlock =
   | { type: "text"; html: string }
   | ProjectStats
+  | ProjectGraphic
   | ProjectMedia;
 
 export type Project = {
@@ -277,32 +292,29 @@ export const projects: Project[] = [
       //     </ol>
       //   `,
       // },
-      { 
-        type: "image", 
-        src: "/projects/chisel/chisel-process.png",
-        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
-        alt: "Chisel process then vs now" 
+      {
+        type: "graphic",
+        id: "chisel-process",
+        className: "my-8",
       },
       {
         type: "text",
         html: "Chisel codifies context into Claude skills that can design and build production-ready features directly in Figment's frontend mono-repo. Chisel's work is accessible enough for non-engineers and trustworthy enough to pass rigid infosec and coding standards.",
       },
-      { 
-        type: "image",
-        src: "/projects/chisel/chisel-stack.png",
-        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
-        alt: "Chisel stack",
+      {
+        type: "graphic",
+        id: "chisel-stack",
+        className: "my-8",
       },
       {
         type: "text",
         html: "Leveraging Figment's existing CI pipeline, Chisel pushes code the same way an engineer does, keeping a human in the loop throughout.",
       },
       {
-        type: "image",
-        src: "/projects/chisel/chisel-workflow.png",
-        className: "full-bleed my-8 max-md:[&_img]:rounded-none",
-        alt: "Chisel workflow"
-       },
+        type: "graphic",
+        id: "chisel-workflow",
+        className: "my-8",
+      },
       {
         type: "text",
         html: `
@@ -487,7 +499,10 @@ export function projectImages(project: Project, limit = 4): string[] {
   push(project.thumbnail);
 
   const media: ProjectMedia[] = project.content
-    ? project.content.filter((b): b is ProjectMedia => b.type !== "text")
+    ? project.content.filter(
+        (b): b is ProjectMedia =>
+          b.type === "image" || b.type === "video" || b.type === "grid",
+      )
     : (project.media ?? []);
 
   for (const m of media) {
