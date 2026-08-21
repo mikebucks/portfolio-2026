@@ -145,9 +145,13 @@ const MOBILE_LINKS: Link[] = [
 ];
 
 const SLOTS = 6;
-/** Seconds per hop; the full relay cycle is SLOTS × SLOT_SEC. */
-const SLOT_SEC = 1.3;
-const CYCLE = SLOTS * SLOT_SEC;
+/** Dot speed in px/s — every hop's duration is its path length over this, so
+ *  short gaps flick across while the big loop takes visibly longer. */
+const DOT_SPEED = 260;
+/** Floor so the shortest gap hop is still perceptible. */
+const MIN_HOP_SEC = 0.3;
+/** Beat of stillness at the end of each cycle before the relay restarts. */
+const REST_SEC = 0.5;
 
 function anchor(r: DOMRect, side: Side, base: DOMRect, dx = 0): [number, number] {
   const x = r.left - base.left;
@@ -235,17 +239,24 @@ function routePath(
   return roundedPath(pts);
 }
 
-type Net = { view: "desktop" | "mobile"; w: number; h: number; paths: { d: string; slot: number }[] };
+type NetPath = { d: string; t0: number; t1: number };
+type Net = {
+  view: "desktop" | "mobile";
+  w: number;
+  h: number;
+  /** Seconds per full relay cycle — the sum of the slot durations plus rest. */
+  cycle: number;
+  paths: NetPath[];
+};
 
-function RelayDot({ d, slot }: { d: string; slot: number }) {
-  const t0 = slot / SLOTS;
-  const t1 = (slot + 1) / SLOTS;
+function RelayDot({ path, cycle }: { path: NetPath; cycle: number }) {
+  const { d, t0, t1 } = path;
   const fade = (t1 - t0) * 0.25;
   const f = (n: number) => n.toFixed(4);
   return (
     <circle r="3" fill="var(--color-accent)" opacity="0" className="chisel-fan-dot">
       <animateMotion
-        dur={`${CYCLE}s`}
+        dur={`${cycle}s`}
         begin="0s"
         repeatCount="indefinite"
         calcMode="linear"
@@ -257,7 +268,7 @@ function RelayDot({ d, slot }: { d: string; slot: number }) {
         attributeName="opacity"
         values="0;0;1;1;0;0"
         keyTimes={`0;${f(t0)};${f(t0 + fade)};${f(t1 - fade)};${f(t1)};1`}
-        dur={`${CYCLE}s`}
+        dur={`${cycle}s`}
         begin="0s"
         repeatCount="indefinite"
       />
@@ -276,7 +287,7 @@ function FlowSvg({ net, view }: { net: Net | null; view: Net["view"] }) {
       {show?.paths.map((p, i) => (
         <Fragment key={i}>
           <path d={p.d} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
-          <RelayDot d={p.d} slot={p.slot} />
+          <RelayDot path={p} cycle={show.cycle} />
         </Fragment>
       ))}
     </svg>
@@ -352,26 +363,58 @@ export function ChiselWorkflow({ className }: { className?: string }) {
     const root = view === "desktop" ? desktop! : mobile!;
     const links = view === "desktop" ? DESKTOP_LINKS : MOBILE_LINKS;
     const base = root.getBoundingClientRect();
-    const paths: Net["paths"] = [];
+    const svg = root.querySelector("svg");
+    if (!svg) return;
+    // A scratch path in the live svg to read each route's real length —
+    // hop duration is length ÷ DOT_SPEED, so dot speed is constant and the
+    // short gap hops flick across while the loop takes its time.
+    const scratch = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    svg.appendChild(scratch);
+    const hops: { d: string; slot: number; dur: number }[] = [];
     for (const link of links) {
       const from = root.querySelector(`[data-flow-id="${link.from}"]`);
       const to = root.querySelector(`[data-flow-id="${link.to}"]`);
-      if (!from || !to) return;
-      paths.push({
-        d: routePath(
-          anchor(from.getBoundingClientRect(), link.fromSide, base),
-          link.fromSide,
-          anchor(to.getBoundingClientRect(), link.toSide, base, link.toDx),
-          link.toSide,
-          link.ext,
-        ),
+      if (!from || !to) {
+        scratch.remove();
+        return;
+      }
+      const d = routePath(
+        anchor(from.getBoundingClientRect(), link.fromSide, base),
+        link.fromSide,
+        anchor(to.getBoundingClientRect(), link.toSide, base, link.toDx),
+        link.toSide,
+        link.ext,
+      );
+      scratch.setAttribute("d", d);
+      hops.push({
+        d,
         slot: link.slot,
+        dur: Math.max(MIN_HOP_SEC, scratch.getTotalLength() / DOT_SPEED),
       });
     }
+    scratch.remove();
+    // Each slot opens when the previous slot's longest hop lands; parallel
+    // forks share a slot and simply finish at their own times.
+    const slotDur = Array<number>(SLOTS).fill(0);
+    for (const hop of hops)
+      slotDur[hop.slot] = Math.max(slotDur[hop.slot], hop.dur);
+    const slotStart: number[] = [];
+    let acc = 0;
+    for (let s = 0; s < SLOTS; s++) {
+      slotStart[s] = acc;
+      acc += slotDur[s];
+    }
+    const cycle = Math.round((acc + REST_SEC) * 100) / 100;
+    const paths: NetPath[] = hops.map((hop) => ({
+      d: hop.d,
+      t0: Math.round((slotStart[hop.slot] / cycle) * 1e4) / 1e4,
+      t1: Math.round(((slotStart[hop.slot] + hop.dur) / cycle) * 1e4) / 1e4,
+    }));
     const next: Net = {
       view,
       w: Math.round(base.width),
       h: Math.round(base.height),
+      cycle,
       paths,
     };
     setNet((prev) =>

@@ -40,8 +40,20 @@ const CHISEL_ROLES = "PD, PM, Eng, ELT";
 /** Seconds between neighbouring dots — negative delays keep them mid-cycle. */
 const STAGGER = 0.3;
 
+/** Seconds each hop owns in the THEN relay — the 7.2s cycle in globals.css
+ *  is 6 connectors × this. */
+const RELAY_SLOT_SEC = 1.2;
+const RELAY_SLOTS = 6;
+
 function delayStyle(i: number, offset = 0): CSSProperties {
   return { "--flow-delay": `${-i * STAGGER - offset}s` } as CSSProperties;
+}
+
+/** Negative delay landing connector `i` (1-based) in its relay slot. */
+function relayDelayStyle(i: number): CSSProperties {
+  return {
+    "--flow-delay": `${(i - 1 - RELAY_SLOTS) * RELAY_SLOT_SEC}s`,
+  } as CSSProperties;
 }
 
 function Dot({
@@ -49,6 +61,7 @@ function Dot({
   index,
   reverse,
   fast,
+  relay,
   offset,
 }: {
   axis: "x" | "y";
@@ -56,6 +69,8 @@ function Dot({
   reverse?: boolean;
   /** Double tempo — the Chisel-connector treatment. */
   fast?: boolean;
+  /** Sequential baton-pass — the THEN pipeline treatment. */
+  relay?: boolean;
   /** Extra seconds of (negative) delay, past the index stagger. */
   offset?: number;
 }) {
@@ -66,8 +81,9 @@ function Dot({
         axis === "x" ? "chisel-dot-x" : "chisel-dot-y",
         reverse && "chisel-dot-reverse",
         fast && "chisel-dot-fast",
+        relay && "chisel-dot-relay",
       )}
-      style={delayStyle(index, offset)}
+      style={relay ? relayDelayStyle(index) : delayStyle(index, offset)}
     />
   );
 }
@@ -84,12 +100,15 @@ function Line({
   axis,
   index,
   pair,
+  relay,
   className,
   style,
 }: {
   axis: "x" | "y";
   index: number;
   pair?: boolean;
+  /** Sequential baton-pass dot (see Dot) — the THEN pipeline. */
+  relay?: boolean;
   className?: string;
   style?: CSSProperties;
 }) {
@@ -103,7 +122,7 @@ function Line({
       )}
       style={style}
     >
-      <Dot axis={axis} index={index} fast={pair} />
+      <Dot axis={axis} index={index} fast={pair} relay={relay} />
       {pair && <Dot axis={axis} index={index} fast reverse offset={0.6} />}
     </div>
   );
@@ -119,21 +138,37 @@ function VLine(props: Omit<Parameters<typeof Line>[0], "axis">) {
 
 function StageCard({
   stage,
+  active,
+  pulseIndex,
   className,
   style,
 }: {
   stage: Stage;
+  /** Wear the live-step stroke permanently (every NOW card). */
+  active?: boolean;
+  /** Pulse the live-step stroke as relay hop N's dot arrives (THEN cards).
+   *  The first card has no incoming hop — it passes 0.5, lighting half a
+   *  slot before the cycle wraps so it's fully lit as the baton spawns. */
+  pulseIndex?: number;
   className?: string;
   style?: CSSProperties;
 }) {
+  const pulseStyle =
+    pulseIndex !== undefined
+      ? ({
+          "--flow-delay": `${(pulseIndex - 1 - RELAY_SLOTS) * RELAY_SLOT_SEC}s`,
+        } as CSSProperties)
+      : undefined;
   return (
     <div
       className={cn(
         "rounded-lg border px-3.5 py-2.5",
         stage.dark ? "border-ink bg-ink" : "border-black/10 bg-white",
+        active && "chisel-card-active",
+        pulseIndex !== undefined && "chisel-card-pulse",
         className,
       )}
-      style={style}
+      style={{ ...pulseStyle, ...style }}
     >
       <div
         className={cn(
@@ -231,14 +266,19 @@ export function ChiselProcess({ className }: { className?: string }) {
       <section className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
         <PanelLabel>THEN</PanelLabel>
 
-        {/* Desktop: left→right pipeline. */}
+        {/* Desktop: left→right pipeline. `relay` runs the dots one hop at a
+            time — the strictly sequential waterfall is THEN's whole point. */}
         <div className="mt-4 hidden items-stretch md:flex">
           {THEN.map((stage, i) => (
             <Fragment key={stage.title}>
               {i > 0 && (
-                <HLine index={i} className="w-6 shrink-0 self-center" />
+                <HLine index={i} relay className="w-6 shrink-0 self-center" />
               )}
-              <StageCard stage={stage} className="min-w-0 flex-1" />
+              <StageCard
+                stage={stage}
+                pulseIndex={i > 0 ? i : 0.5}
+                className="min-w-0 flex-1"
+              />
             </Fragment>
           ))}
         </div>
@@ -247,8 +287,8 @@ export function ChiselProcess({ className }: { className?: string }) {
         <div className="mt-4 md:hidden">
           {THEN.map((stage, i) => (
             <Fragment key={stage.title}>
-              {i > 0 && <VLine index={i} className="mx-auto h-7" />}
-              <StageCard stage={stage} />
+              {i > 0 && <VLine index={i} relay className="mx-auto h-7" />}
+              <StageCard stage={stage} pulseIndex={i > 0 ? i : 0.5} />
             </Fragment>
           ))}
         </div>
@@ -268,7 +308,7 @@ export function ChiselProcess({ className }: { className?: string }) {
                 {i > 0 && (
                   <HLine index={i} className="w-6 shrink-0 self-center" />
                 )}
-                <StageCard stage={stage} className="min-w-0 flex-1" />
+                <StageCard stage={stage} active className="min-w-0 flex-1" />
               </Fragment>
             ))}
           </div>
@@ -297,6 +337,7 @@ export function ChiselProcess({ className }: { className?: string }) {
             <Fragment key={stage.title}>
               <StageCard
                 stage={stage}
+                active
                 style={{ gridColumn: 1, gridRow: 2 * i + 1 }}
               />
               {i < NOW.length - 1 && (

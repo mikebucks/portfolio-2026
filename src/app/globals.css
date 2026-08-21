@@ -318,8 +318,101 @@ html.lenis body {
   animation-direction: reverse;
 }
 
+/* Relay variant: the dot owns one sixth of a shared 7.2s cycle (6 hops ×
+   1.2s — RELAY_SLOT_SEC in ChiselProcess must match) and hides for the rest,
+   so a chain of six connectors delayed one slot apart reads as a single
+   baton passed hop by hop — the THEN pipeline's strictly sequential
+   waterfall. */
+@keyframes chisel-relay-x {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  12.5% {
+    opacity: 1;
+  }
+  16.66% {
+    left: 100%;
+    opacity: 0;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes chisel-relay-y {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  12.5% {
+    opacity: 1;
+  }
+  16.66% {
+    top: 100%;
+    opacity: 0;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.chisel-dot-relay {
+  animation-duration: 7.2s;
+}
+
+.chisel-dot-x.chisel-dot-relay {
+  animation-name: chisel-relay-x;
+}
+
+.chisel-dot-y.chisel-dot-relay {
+  animation-name: chisel-relay-y;
+}
+
+/* The "this step is live" stroke: an ink ring outside the card's own border,
+   so it thickens the stroke without shifting layout and stays visible on the
+   dark cards. NOW's cards wear it permanently (everything is live at once);
+   THEN's cards pulse it in sync with the relay — rising while the baton
+   travels toward the card, fully lit at arrival (16.66% = one 1.2s slot of
+   the shared 7.2s cycle), fading just after the next hop leaves. */
+.chisel-card-active {
+  box-shadow: 0 0 0 1.5px var(--color-ink);
+}
+
+@keyframes chisel-card-pulse {
+  0% {
+    box-shadow: 0 0 0 1.5px rgba(8, 8, 10, 0);
+  }
+  8.33% {
+    box-shadow: 0 0 0 1.5px var(--color-ink);
+  }
+  16.66% {
+    box-shadow: 0 0 0 1.5px var(--color-ink);
+  }
+  23% {
+    box-shadow: 0 0 0 1.5px rgba(8, 8, 10, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(8, 8, 10, 0);
+  }
+}
+
+.chisel-card-pulse {
+  animation: chisel-card-pulse 7.2s ease-in-out infinite;
+  animation-delay: var(--flow-delay, 0s);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .chisel-dot {
+  .chisel-dot,
+  .chisel-card-pulse {
     animation: none;
   }
 

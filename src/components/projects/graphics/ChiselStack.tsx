@@ -14,8 +14,8 @@ import { GRAPHIC_LABEL } from "./shared";
  * Animated replacement for the static chisel-stack.png. The three layers —
  * CONTEXT, SKILLS, DELIVERY — run as columns (≥ md), and every card fans a
  * curved line into the next column, converging on its centre the way
- * openlogi.org's receiver diagram fans into the HID++ node. Orange dots
- * travel the curves left→right.
+ * openlogi.org's receiver diagram fans into the HID++ node. Grey dots travel
+ * the curves left→right, departing in a top→bottom stagger.
  *
  * Below md the columns stack as single-column sections joined by one plain
  * vertical line each, dot flowing downward — a fan adds nothing when every
@@ -73,6 +73,9 @@ const COLUMNS: { label: string; items: Item[] }[] = [
 type Fan = { w: number; h: number; d: string[] };
 
 const DOT_DUR = 2;
+/** Seconds between neighbouring dots' departures — paths are built in card
+ *  order, so the wave sweeps top → bottom through each fan. */
+const DOT_STAGGER = 0.15;
 
 export function ChiselStack({ className }: { className?: string }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -156,17 +159,15 @@ export function ChiselStack({ className }: { className?: string }) {
                     stroke="rgba(255,255,255,0.16)"
                     strokeWidth="1"
                   />
-                  {/* begin="0s" everywhere: the dots leave and arrive as one
-                      synchronized wave rather than staggered traffic. */}
                   <circle
                     r="3"
-                    fill="var(--color-accent)"
+                    fill="rgba(255,255,255,0.6)"
                     opacity="0"
                     className="chisel-fan-dot"
                   >
                     <animateMotion
                       dur={`${DOT_DUR}s`}
-                      begin="0s"
+                      begin={`${(i * DOT_STAGGER).toFixed(2)}s`}
                       repeatCount="indefinite"
                       path={d}
                     />
@@ -175,7 +176,7 @@ export function ChiselStack({ className }: { className?: string }) {
                       values="0;1;1;0"
                       keyTimes="0;0.25;0.75;1"
                       dur={`${DOT_DUR}s`}
-                      begin="0s"
+                      begin={`${(i * DOT_STAGGER).toFixed(2)}s`}
                       repeatCount="indefinite"
                     />
                   </circle>
