@@ -35,7 +35,7 @@ type Side = "left" | "right" | "top" | "bottom";
 
 type Step = {
   id: string;
-  /** Position in the relay, shown on the card. The terminal step has none. */
+  /** Position in the sequence, shown on the card. */
   num?: number;
   title: string;
   sub: string[];
@@ -99,6 +99,7 @@ const STEPS: Step[] = [
   },
   {
     id: "ready",
+    num: 7,
     title: "Ready for eng review",
     sub: ["PR flagged for human review"],
     lane: 1,
