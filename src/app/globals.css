@@ -288,7 +288,14 @@ html.lenis body {
   border-radius: 9999px;
   background: var(--color-accent);
   opacity: 0;
-  animation: 2.4s ease-in-out infinite;
+  /* Longhands on purpose — an `animation:` shorthand here breaks in
+     production. The shorthand carries no animation-name (variant classes
+     supply it), and when LightningCSS merges such a nameless shorthand with
+     the var() delay below it emits initial values instead (duration auto,
+     iteration-count 1), killing every dot in the minified build. */
+  animation-duration: 2.4s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
   animation-delay: var(--flow-delay, 0s);
 }
 
@@ -406,7 +413,11 @@ html.lenis body {
 }
 
 .chisel-card-pulse {
-  animation: chisel-card-pulse 7.2s ease-in-out infinite;
+  /* Longhands for the same LightningCSS reason as .chisel-dot above. */
+  animation-name: chisel-card-pulse;
+  animation-duration: 7.2s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
   animation-delay: var(--flow-delay, 0s);
 }
 

@@ -240,6 +240,7 @@ function routePath(
 }
 
 type NetPath = { d: string; t0: number; t1: number };
+
 type Net = {
   view: "desktop" | "mobile";
   w: number;
@@ -370,7 +371,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
     // short gap hops flick across while the loop takes its time.
     const scratch = document.createElementNS("http://www.w3.org/2000/svg", "path");
     svg.appendChild(scratch);
-    const hops: { d: string; slot: number; dur: number }[] = [];
+    const hops: { link: Link; d: string; dur: number }[] = [];
     for (const link of links) {
       const from = root.querySelector(`[data-flow-id="${link.from}"]`);
       const to = root.querySelector(`[data-flow-id="${link.to}"]`);
@@ -387,8 +388,8 @@ export function ChiselWorkflow({ className }: { className?: string }) {
       );
       scratch.setAttribute("d", d);
       hops.push({
+        link,
         d,
-        slot: link.slot,
         dur: Math.max(MIN_HOP_SEC, scratch.getTotalLength() / DOT_SPEED),
       });
     }
@@ -397,7 +398,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
     // forks share a slot and simply finish at their own times.
     const slotDur = Array<number>(SLOTS).fill(0);
     for (const hop of hops)
-      slotDur[hop.slot] = Math.max(slotDur[hop.slot], hop.dur);
+      slotDur[hop.link.slot] = Math.max(slotDur[hop.link.slot], hop.dur);
     const slotStart: number[] = [];
     let acc = 0;
     for (let s = 0; s < SLOTS; s++) {
@@ -405,10 +406,11 @@ export function ChiselWorkflow({ className }: { className?: string }) {
       acc += slotDur[s];
     }
     const cycle = Math.round((acc + REST_SEC) * 100) / 100;
+    const f = (t: number) => Math.round((t / cycle) * 1e4) / 1e4;
     const paths: NetPath[] = hops.map((hop) => ({
       d: hop.d,
-      t0: Math.round((slotStart[hop.slot] / cycle) * 1e4) / 1e4,
-      t1: Math.round(((slotStart[hop.slot] + hop.dur) / cycle) * 1e4) / 1e4,
+      t0: f(slotStart[hop.link.slot]),
+      t1: f(slotStart[hop.link.slot] + hop.dur),
     }));
     const next: Net = {
       view,
