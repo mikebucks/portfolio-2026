@@ -8,7 +8,7 @@ export const SOCIALS: Social[] = [
   { label: "LinkedIn", href: "https://www.linkedin.com/in/mikebucks/" },
   { label: "GitHub", href: "https://github.com/mikebucks" },
   { label: "SoundCloud", href: "https://soundcloud.com/michael-bucks-1/tracks" },
-  { label: "CV", href: "https://docs.google.com/document/d/10ycBRygqlRMbgf4g1WaoOMwA3bhDCgHf8LOMCPBNHpc" },
+  { label: "CV", href: "/MikeBucks2026.pdf" },
 ];
 
 export const CONTACT_EMAIL = "dangerbucks@gmail.com";
