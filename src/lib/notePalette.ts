@@ -23,14 +23,15 @@ import { KEYBOARD_NOTES } from "@/components/audio/keyboardMapping";
 export const NOTE_PALETTE = [
   "#FD7220", // a · D3  — the ding
   "#1B7F9E", // s · A3
-  "#2E4E8F", // d · A#3
+  "#E8C34A", // d · A#3 — light on purpose: A# is the piano roll's one black
+  //            key, and its marker dot has to read on near-black without help
   "#4FB0C6", // f · C4
   "#7A4FB5", // g · D4
   "#2FA35A", // h · E4
   "#C9A227", // j · F4
   "#D64550", // k · G4
   "#5C6672", // l · A4
-  "#E8C34A", // ; · C5
+  "#2E4E8F", // ; · C5 — swapped with A#3's old dark blue
   "#0F3D3E", // (no key) ramp tail
 ] as const;
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAudio } from "./AudioProvider";
 import { KEYBOARD_NOTES, shiftOctave } from "./keyboardMapping";
 import { dispatchKey } from "./SynthKeyCap";
-import { NOTE_PALETTE, noteColorIndex } from "@/lib/notePalette";
+import { keyColor } from "@/lib/notePalette";
 import {
   OCTAVE_SHIFT_MAX,
   OCTAVE_SHIFT_MIN,
@@ -20,10 +20,10 @@ import { visualBus } from "@/lib/visualEvents";
  * plus the octave shift controls. Deliberately small — it's an indicator you
  * can also play, not the main keyboard.
  *
- * The keys the home row currently reaches are tinted with their palette
- * colours, and that tinted region slides as the octave moves — the roll *is*
- * the octave indicator, with the numeric readout between the shift buttons as
- * the label. Any key — tinted or not — plays its exact written pitch on click.
+ * The keys the home row currently reaches each wear a tiny dot in their
+ * palette colour — like paper stickers on a practice keyboard — and that row
+ * of dots slides as the octave moves, so the roll *is* the octave indicator.
+ * Any key — marked or not — plays its exact written pitch on click.
  *
  * Playing takes one of two routes. A *mapped* note — one the home row
  * currently reaches — is played by dispatching the synthetic key events the
@@ -123,13 +123,16 @@ export function PianoRoll() {
     };
   }, []);
 
-  // Where the home row currently lands, and in what colour. noteColorIndex
-  // folds octaves, so a shifted D still reads as the ding's orange.
+  // Where the home row currently lands, and in what colour. The colour is the
+  // *key's* — keyColor(key), the same lookup the caps use — not the sounding
+  // pitch's: a pitch-based lookup goes wrong the moment the octave shift parks
+  // one key on another key's home note (`a` shifted up an octave sounds D4,
+  // which is g's own note, and the ding's dot would turn violet).
   const mappedColor = useMemo(() => {
     const m = new Map<string, string>();
-    for (const note of Object.values(KEYBOARD_NOTES)) {
+    for (const [key, note] of Object.entries(KEYBOARD_NOTES)) {
       const abs = shiftOctave(note, octave);
-      m.set(abs, NOTE_PALETTE[noteColorIndex(abs)]);
+      m.set(abs, keyColor(key));
     }
     return m;
   }, [octave]);
@@ -285,18 +288,24 @@ export function PianoRoll() {
               style={{
                 left: `${whiteIndex * WHITE_W}%`,
                 width: `${WHITE_W}%`,
+                // At rest every key is plain ivory; a mapped key is marked by
+                // its dot, not a tint. Struck, it floods with its colour.
                 backgroundColor: lit
                   ? (color ?? "#ffffff")
-                  : (color ?? "rgba(255,255,255,0.45)"),
-                // Untinted keys read as plain ivory; tinted ones sit dimmed
-                // until struck, then come up to full with the cap's glow.
-                filter: color && !lit ? "brightness(0.75)" : undefined,
+                  : "rgba(255,255,255,0.45)",
                 boxShadow: lit
                   ? `0 0 10px ${color ?? "#ffffff"}b0`
                   : undefined,
                 zIndex: lit ? 1 : undefined,
               }}
-            />
+            >
+              {color && (
+                <span
+                  className="pointer-events-none absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              )}
+            </button>
           );
         })}
         {BLACKS.map(({ note, whiteIndex }) => {
@@ -315,15 +324,22 @@ export function PianoRoll() {
               style={{
                 left: `${(whiteIndex + 1) * WHITE_W - WHITE_W * 0.35}%`,
                 width: `${WHITE_W * 0.7}%`,
-                backgroundColor: lit
-                  ? (color ?? "#ffffff")
-                  : (color ?? "#14161a"),
-                filter: color && !lit ? "brightness(0.2)" : undefined,
+                backgroundColor: lit ? (color ?? "#ffffff") : "#14161a",
                 boxShadow: lit
                   ? `0 0 10px ${color ?? "#ffffff"}b0`
                   : undefined,
               }}
-            />
+            >
+              {/* The one mapped black key (A#) carries a light palette colour
+                  by design (see NOTE_PALETTE), so its sticker dot reads on the
+                  dark key without any helper ring. */}
+              {color && (
+                <span
+                  className="pointer-events-none absolute bottom-[2px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+              )}
+            </button>
           );
         })}
       </div>

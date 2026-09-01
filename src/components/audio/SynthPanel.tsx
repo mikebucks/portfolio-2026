@@ -183,8 +183,8 @@ export function SynthPanel() {
             <SynthKeyCapRow />
           </div>
 
-          {/* The synth's whole register at a glance: the tinted span is where
-              the home row currently plays, and it slides with the octave
+          {/* The synth's whole register at a glance: the dotted keys are where
+              the home row currently plays, and the dots slide with the octave
               buttons below. Clickable, but the caps stay the main keyboard. */}
           <div className="mt-2">
             <PianoRoll />

@@ -483,8 +483,13 @@ function WebGLCanvas({
           }
           // Store colorNorm at note-on time — stable for the life of the voice.
           // One stop on the shared note palette per key, so the voice lights the
-          // background in the exact colour of the cap that was struck.
-          const colorNorm = noteColorNorm(e.note);
+          // background in the exact colour of the cap that was struck. Colour
+          // comes from sourceNote (the key as the player named it, before the
+          // octave transpose): looked up by sounding pitch instead, a shifted
+          // key that lands on another key's home note would steal that key's
+          // colour — `a` shifted up an octave sounds D4 and would light g's
+          // violet instead of the ding's orange.
+          const colorNorm = noteColorNorm(e.sourceNote);
           voices[target] = {
             colorNorm,
             vel: e.velocity,

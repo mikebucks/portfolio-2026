@@ -352,6 +352,7 @@ export function createSynthEngine(
       visualBus.emit({
         type: "note_on",
         note,
+        sourceNote: rawNote,
         frequency: freq,
         velocity,
         timestamp: performance.now(),

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KEYBOARD_NOTES } from "./keyboardMapping";
+import { KEYBOARD_NOTES, shiftOctave } from "./keyboardMapping";
 import { hexToRgb01, keyColor } from "@/lib/notePalette";
+import { useResolvedSynthSettings } from "@/lib/store";
 
 /**
  * A playable key cap: looks like a `<kbd>`, behaves like a key.
@@ -29,12 +30,13 @@ const SIZES: Record<Size, string> = {
 };
 
 // Two idle treatments, because the caps live on cream in the footer and on the
-// panel's dark glass. The border is always the key's own palette colour (set
-// inline — it's data, not a token); struck or hovered, the whole cap goes to
-// that colour, so the cap and the light the background throws match.
+// panel's dark glass. At rest the cap stays neutral — the only colour is the
+// tiny chip around the note name; struck or hovered, the whole cap goes to
+// the key's palette colour, so the cap and the light the background throws
+// match.
 const TONES: Record<Tone, string> = {
-  light: "text-black/70",
-  dark: "text-white/70",
+  light: "border-black/15 text-black/70",
+  dark: "border-white/50 text-white/70",
 };
 
 // Which ink stays legible on a given cap when it lights up. Rec. 709 luma on
@@ -80,7 +82,13 @@ export function SynthKeyCap({
   showNote?: boolean;
   className?: string;
 }) {
-  const note = KEYBOARD_NOTES[keyName];
+  const baseNote = KEYBOARD_NOTES[keyName];
+  // The label tells the truth: it's the pitch this key will actually sound
+  // under the current octave — the preset's own register plus the player's
+  // shift — not the resting mapping. Colour stays the key's own (keyColor is
+  // untransposed identity), so a cap keeps its hue while its number moves.
+  const octave = useResolvedSynthSettings().octave;
+  const note = baseNote ? shiftOctave(baseNote, octave) : undefined;
   const color = keyColor(keyName);
   const [active, setActive] = useState(false);
   // Hover wears the full lit look, so pointing at a cap and playing it are the
@@ -187,7 +195,7 @@ export function SynthKeyCap({
       // a palette entry picked per key, which Tailwind has no class for. One
       // look, three triggers: hover, pointer press, and the physical key all
       // light the cap identically — hovering previews exactly what playing
-      // does. At rest only the border wears the colour.
+      // does. At rest the cap is neutral; the note chip carries the colour.
       style={
         active || hovered
           ? {
@@ -196,7 +204,7 @@ export function SynthKeyCap({
               color: inkFor(color),
               boxShadow: `0 0 12px ${color}80`,
             }
-          : { borderColor: color }
+          : undefined
       }
       className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
         SIZES[size]
@@ -204,7 +212,22 @@ export function SynthKeyCap({
     >
       <kbd className="font-mono">{keyName}</kbd>
       {showNote && (
-        <span className="mt-1 text-[9px] tracking-wide opacity-60">{note}</span>
+        // The note name doubles as the key's colour swatch: a tiny chip in the
+        // palette colour at half strength, so it tags the key without shouting.
+        // Flex centering rather than padding — the mono font's baseline sits
+        // low in its em box, and padding alone leaves the label riding high.
+        // Lit, the whole cap is that colour already — the chip goes transparent
+        // and lets the cap's own ink through.
+        <span
+          className="mt-1 inline-flex  min-w-5 items-center justify-center rounded-full text-[8px] leading-none tracking-wide transition-colors duration-100"
+          style={
+            active || hovered
+              ? undefined
+              : { backgroundColor: `${color}80`, color: "#ffffff" }
+          }
+        >
+          {note}
+        </span>
       )}
     </button>
   );

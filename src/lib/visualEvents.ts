@@ -6,7 +6,15 @@
 
 export type NoteOnEvent = {
   type: "note_on";
+  /** The sounding pitch, after the engine's octave transpose ("D4"). */
   note: string;
+  /**
+   * The note as the player named it, before the transpose ("D3" for the `a`
+   * key at any octave). Colour belongs to this, not to `note`: a key keeps its
+   * palette colour wherever the octave shift parks it, even when the shifted
+   * pitch lands exactly on another key's home note.
+   */
+  sourceNote: string;
   frequency: number;
   velocity: number; // 0..1
   timestamp: number;

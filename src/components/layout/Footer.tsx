@@ -47,7 +47,9 @@ export function Footer() {
           <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
             <span className="inline-flex items-center gap-1">
               {["a", "s", "d", "f"].map((k) => (
-                <SynthKeyCap key={k} keyName={k} />
+                // tone="dark": the footer is near-black, and the default light
+                // treatment's black borders vanish on it.
+                <SynthKeyCap key={k} keyName={k} tone="dark" />
               ))}
               <span className="ml-1">makes me dance</span>
             </span>
