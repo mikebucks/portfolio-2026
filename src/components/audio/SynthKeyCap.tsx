@@ -25,15 +25,16 @@ type Tone = "light" | "dark";
 
 const SIZES: Record<Size, string> = {
   sm: "h-6 min-w-[1.5rem] rounded px-1.5 text-[11px]",
-  lg: "h-12 min-w-[2.75rem] flex-1 rounded-md px-2 text-sm",
+  lg: "h-12 min-w-[2.75rem] flex-1 rounded-md px-2 text-lg",
 };
 
 // Two idle treatments, because the caps live on cream in the footer and on the
-// panel's dark glass. Struck, both go to the key's own palette colour — that's
-// the whole point, so the cap and the light the background throws match.
+// panel's dark glass. The border is always the key's own palette colour (set
+// inline — it's data, not a token); struck or hovered, the whole cap goes to
+// that colour, so the cap and the light the background throws match.
 const TONES: Record<Tone, string> = {
-  light: "border-black/15 text-black/70",
-  dark: "border-white/20 text-white/70",
+  light: "text-black/70",
+  dark: "text-white/70",
 };
 
 // Which ink stays legible on a given cap when it lights up. Rec. 709 luma on
@@ -44,7 +45,13 @@ function inkFor(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#161616" : "#ffffff";
 }
 
-function dispatchKey(
+/**
+ * Fire a synthetic key event on `window` — the same path a physical press
+ * takes, so everything that listens for keys (the engine wiring, the caps' lit
+ * state) answers identically. Exported for the piano roll, which routes its
+ * mapped notes through here so the matching cap lights up.
+ */
+export function dispatchKey(
   type: "keydown" | "keyup",
   key: string,
   mods?: { shiftKey?: boolean; altKey?: boolean },
@@ -76,6 +83,11 @@ export function SynthKeyCap({
   const note = KEYBOARD_NOTES[keyName];
   const color = keyColor(keyName);
   const [active, setActive] = useState(false);
+  // Hover wears the full lit look, so pointing at a cap and playing it are the
+  // same picture. Tracked in React rather than CSS because the lit style is
+  // inline (per-key colour). Mouse only — a touch press is already `active`,
+  // and a sticky post-tap hover would leave the cap lit after the finger left.
+  const [hovered, setHovered] = useState(false);
 
   // The pointer handlers need to read "is this key already down?" without
   // re-binding, and the unmount cleanup needs it after the last render.
@@ -167,30 +179,28 @@ export function SynthKeyCap({
         if (e.key === "Enter" || e.key === " ") release();
       }}
       onBlur={release}
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") setHovered(true);
+      }}
+      onPointerLeave={() => setHovered(false)}
       // The lit look is inline because the colour is data, not a design token —
-      // a palette entry picked per key, which Tailwind has no class for. Hover
-      // takes the same colour on the border and letter only, so a cap previews
-      // the light its note will throw before you commit to playing it.
+      // a palette entry picked per key, which Tailwind has no class for. One
+      // look, three triggers: hover, pointer press, and the physical key all
+      // light the cap identically — hovering previews exactly what playing
+      // does. At rest only the border wears the colour.
       style={
-        active
+        active || hovered
           ? {
               backgroundColor: color,
               borderColor: color,
               color: inkFor(color),
               boxShadow: `0 0 12px ${color}80`,
             }
-          : { ["--cap" as string]: color }
+          : { borderColor: color }
       }
-      className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border border-white/30 text-white/60 font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
+      className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
         SIZES[size]
-      } ${
-        active
-          ? ""
-          : // `color:` prefix, not a bare var: Tailwind can't tell a colour from
-            // a width behind a custom property, and `border-[var(--cap)]` would
-            // compile to a border-width.
-            `${TONES[tone]} hover:border-[color:var(--cap)] hover:text-[color:var(--cap)]`
-      } ${className}`}
+      } ${active || hovered ? "" : TONES[tone]} ${className}`}
     >
       <kbd className="font-mono">{keyName}</kbd>
       {showNote && (
@@ -201,9 +211,13 @@ export function SynthKeyCap({
 }
 
 /**
- * The full home-row mapping as one playable strip. Used at size `lg` in the
- * synth panel; the footer shows a four-key excerpt instead.
+ * The full home-row mapping as a playable strip, split into equal rows of five
+ * so the caps line up in a grid instead of wrapping wherever the width says.
+ * Used at size `lg` in the synth panel; the footer shows a four-key excerpt
+ * instead.
  */
+const KEYS_PER_ROW = 5;
+
 export function SynthKeyCapRow({
   size = "lg",
   tone = "dark",
@@ -213,16 +227,26 @@ export function SynthKeyCapRow({
   tone?: Tone;
   showNote?: boolean;
 }) {
+  const keys = Object.keys(KEYBOARD_NOTES);
+  const rows: string[][] = [];
+  for (let i = 0; i < keys.length; i += KEYS_PER_ROW) {
+    rows.push(keys.slice(i, i + KEYS_PER_ROW));
+  }
+
   return (
-    <div className="flex flex-wrap gap-1" aria-label="Playable keys">
-      {Object.keys(KEYBOARD_NOTES).map((k) => (
-        <SynthKeyCap
-          key={k}
-          keyName={k}
-          size={size}
-          tone={tone}
-          showNote={showNote}
-        />
+    <div className="flex flex-col gap-1" aria-label="Playable keys">
+      {rows.map((row) => (
+        <div key={row[0]} className="flex gap-1">
+          {row.map((k) => (
+            <SynthKeyCap
+              key={k}
+              keyName={k}
+              size={size}
+              tone={tone}
+              showNote={showNote}
+            />
+          ))}
+        </div>
       ))}
     </div>
   );

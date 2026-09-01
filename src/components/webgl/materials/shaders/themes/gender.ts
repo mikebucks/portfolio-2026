@@ -38,7 +38,9 @@ uniform vec2  uPointerLag;
 uniform float uPointerImpulse;
 uniform vec2  uClickPos;
 uniform float uClickImpulse;
+uniform float uClickStrength;
 uniform float uNoteOn;
+uniform float uEnvelope;
 uniform float uVelocity;
 uniform float uReactivity;
 uniform vec4  uMacros;
@@ -101,8 +103,10 @@ void main() {
   // Pointer motion is deliberately NOT an energy source here: the cursor acts
   // spatially (the pull-apart below), and letting its impulse agitate the
   // grain and churn made the whole frame shimmer-blur on every mouse move.
+  // The envelope outlasts the note impulse, so a struck key agitates the
+  // terrain for the note's audible life instead of a sub-half-second blip.
   float energy = clamp(
-    uNoteOn * max(uVelocity, 0.4) + uClickImpulse * 0.8,
+    max(uNoteOn, uEnvelope * 0.75) * max(uVelocity, 0.4) + uClickImpulse * 0.8,
     0.0, 1.0
   ) * (0.5 + 0.5 * uReactivity);
 
@@ -156,10 +160,36 @@ void main() {
     ) * tear;
   }
 
+  // ── Note shock ────────────────────────────────────────────────────────────
+  // Every note also lands as a click placed by pitch (low → left, high →
+  // right; see InteractiveBackground). The strike point emits an expanding
+  // ring that shoves the dust outward, modulated by the same kind of noise as
+  // the tear so the shove scatters raggedly instead of reading as a clean
+  // lens. This is what makes a keypress visibly throw particles rather than
+  // merely hastening the ambient drift.
+  vec2 shock = vec2(0.0);
+  if (uClickImpulse > 0.004) {
+    vec2 c = uClickPos * 0.5;
+    c.x *= aspect;
+    vec2 toC = q - c;
+    float dc = max(length(toC), 1e-4);
+    // The impulse doubles as the wavefront clock: radius grows as it decays.
+    float front = (1.0 - uClickImpulse) * 0.5;
+    float ring = exp(-pow((dc - front) / 0.18, 2.0));
+    float rag = 0.5 + 0.5 * fbm(q * 5.0 + t);
+    float shove = ring * rag * uClickImpulse * uClickImpulse
+                * uClickStrength * (0.12 + 0.28 * mBoom)
+                * (0.5 + 0.5 * uReactivity);
+    shock = (toC / dc) * shove;
+    q += shock;
+  }
+
   // ── Churn ─────────────────────────────────────────────────────────────────
   // Two-pass domain warp that rearranges the interior. Rest amount from the
-  // Wobble macro; input and cursor proximity both agitate it further.
-  float churn = mix(0.5, 1.0, mWobble) + hit * mBoom * 1.8 + prox * 0.6;
+  // Wobble macro; input and cursor proximity both agitate it further. The
+  // input term keeps a Boom-independent floor — with a low Boom macro the old
+  // pure product scaled keypresses down to near-invisibility.
+  float churn = mix(0.5, 1.0, mWobble) + hit * (1.3 + mBoom * 2.5) + prox * 0.6;
   vec2 w1 = vec2(
     fbm(q * 1.8 + vec2(0.0, t)),
     fbm(q * 1.8 + vec2(5.2, -t * 0.8))
@@ -177,7 +207,7 @@ void main() {
   // tears the outline at full strength. The interior texture rides the strong
   // warp above, which is what keeps the terrain rearranging inside a stable
   // silhouette.
-  float r = length(q + w1 * (0.09 + 0.10 * hit * mBoom + 0.05 * prox));
+  float r = length(q + w1 * (0.09 + hit * (0.08 + 0.18 * mBoom) + 0.05 * prox));
   float body = 1.0 - smoothstep(R * 0.96, R * 1.06, r);
 
   // Interior terrain: broad light/dark drifts, with ridged creases folded in —
@@ -221,8 +251,15 @@ void main() {
   // crisp grain as the energy died — the stipple must look the same at every
   // energy level, with input expressed purely as the field moving faster
   // beneath it (uShaderTime ramp + churn above).
+  // Input slides the grain pattern itself along the churn's warp field — the
+  // dots physically travel with the terrain and drift back as the hit decays.
+  // This is a translation of the pattern, not a faster re-roll clock, so the
+  // stipple stays crisp at every energy level (see the constant-clock note
+  // below); it's what makes a keypress read as particles being thrown rather
+  // than the tone shifting underneath a static grain.
   float grainRate = 0.25;
   vec2 vp = vec2(vUv.x * aspect, vUv.y) * 1100.0;
+  vp += (w1 * 120.0 * hit) + shock * 1100.0;
   vec2 px = floor(vp);
   vec2 px2 = floor(vp / 2.0);
   float seed1 = floor(uTime * grainRate + rand(vec3(px, 0.0)));

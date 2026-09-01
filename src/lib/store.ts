@@ -128,8 +128,59 @@ export const useThemeStore = create<ThemeStore>()(
   ),
 );
 
+// ── Synth tweak store ──────────────────────────────────────────────────────
+// The player's own adjustments, layered over whichever preset is active. Two
+// kinds, both session-only (deliberately not persisted — a preset should sound
+// like itself on a fresh visit):
+//
+//   octaveOffset — a global transpose added to the preset's `octave`. Stored as
+//     an offset rather than an absolute register so switching themes keeps the
+//     player's shift while each preset still contributes its own home register
+//     (Vibration lives two octaves down; the offset rides on top of that).
+//
+//   overrides — absolute values for the handful of parameters the panel's
+//     sliders expose. A parameter absent from the map means "use the preset's
+//     value"; once the player touches a slider it holds their value across
+//     preset switches, so the sliders behave consistently no matter the theme.
+
+/** Bounds on the *effective* octave (preset + offset), keeping every mapped
+ * note inside D1–C7 — audible, and on the piano roll. */
+export const OCTAVE_SHIFT_MIN = -2;
+export const OCTAVE_SHIFT_MAX = 2;
+
+export type SynthOverrideKey =
+  | "masterVolume"
+  | "filterCutoff"
+  | "reverbWet"
+  | "delayWet"
+  | "delayFeedback";
+
+type SynthTweakState = {
+  octaveOffset: number;
+  overrides: Partial<Record<SynthOverrideKey, number>>;
+  setOctaveOffset: (offset: number) => void;
+  /** `null` clears the override, handing the parameter back to the preset. */
+  setOverride: (key: SynthOverrideKey, value: number | null) => void;
+};
+
+export const useSynthTweakStore = create<SynthTweakState>((set) => ({
+  octaveOffset: 0,
+  overrides: {},
+  setOctaveOffset: (octaveOffset) => set({ octaveOffset }),
+  setOverride: (key, value) =>
+    set((s) => {
+      const overrides = { ...s.overrides };
+      if (value === null) delete overrides[key];
+      else overrides[key] = value;
+      return { overrides };
+    }),
+}));
+
 /**
- * Hook: resolved SynthSettings for the active theme.
+ * Hook: resolved SynthSettings for the active theme, with the player's tweaks
+ * (octave shift, slider overrides) merged in. This is the one place preset and
+ * player meet — the engine and every UI readout consume the merged result, so
+ * they can't disagree.
  *
  * Selectors must return referentially stable values across calls; doing the
  * resolveSettings() call directly in the selector returns a fresh object on
@@ -138,7 +189,19 @@ export const useThemeStore = create<ThemeStore>()(
  */
 export function useResolvedSynthSettings(): SynthSettings {
   const theme = useThemeStore((s) => s.theme);
-  return useMemo(() => resolveSettings(theme), [theme]);
+  const octaveOffset = useSynthTweakStore((s) => s.octaveOffset);
+  const overrides = useSynthTweakStore((s) => s.overrides);
+  return useMemo(() => {
+    const base = resolveSettings(theme);
+    return {
+      ...base,
+      ...overrides,
+      octave: Math.min(
+        OCTAVE_SHIFT_MAX,
+        Math.max(OCTAVE_SHIFT_MIN, base.octave + octaveOffset),
+      ),
+    };
+  }, [theme, octaveOffset, overrides]);
 }
 
 /**

@@ -39,38 +39,57 @@ export type ThemePreset = {
 };
 
 // ── Mind · Mentalism ─────────────────────────────────────────────────────────
-// "The All is Mind." Crystalline FM pad through a soft, slow filter.
+// "The All is Mind." Dream bells: FM tuned a hair *off* the harmonic series —
+// harmonicity 2.98 instead of 3 — so the carrier and modulator partials beat
+// slowly against each other and every note shimmers like two thoughts
+// interfering. Struck-bell envelope (instant attack, long singing decay, a
+// whisper of sustain) an octave up in a crystalline register; the strike
+// blooms the filter open and a glacial cycling envelope keeps the tail's
+// resonance breathing long after the attack, so held chords evolve instead of
+// just fading. Long feedback echoes let each note answer itself into the
+// reverb. Polarity keeps the warm sustained-pad reading of FM; this is the
+// other pole of the same engine.
 const mindBase: SynthSettings = {
   oscEngine: "fm",
-  oscWave: 0.45,
-  oscTimbre: 0.35,
-  octave: 0,
+  // Low modulation index (≈4.5): glass, not clangor. The engine's fixed
+  // modulation envelope then drops the index to a third within 200ms, so the
+  // strike sparkles and the tail rings pure.
+  oscWave: 0.22,
+  oscTimbre: 0.62, // harmonicity 2.98 — the near-miss that makes the shimmer
+
+  // One octave up: the ding lands on D4. High enough to read as chimes, low
+  // enough that the octave-down shift still has somewhere to go.
+  octave: 1,
 
   filterType: "lowpass",
-  filterCutoff: 2600,
-  filterResonance: 0.9,
-  filterEnvAmount: 0.55,
+  filterCutoff: 3800,
+  filterResonance: 1.6,
+  filterEnvAmount: 0.35, // strike opens ~+1.9kHz, then falls with the decay
 
-  attack: 0.02,
-  decay: 0.35,
-  sustain: 0.5,
-  release: 1.0,
+  attack: 0.002,
+  decay: 0.9,
+  sustain: 0.12, // a held key fades to a whisper — bells, not organ
+  release: 2.2, // lifts slowly into the reverb rather than stopping
 
+  // Very slow drift, wide enough (±330Hz) to hear the space "think".
   lfoShape: "sine",
-  lfoRate: 1.2,
-  lfoAmount: 0.08,
+  lfoRate: 0.3,
+  lfoAmount: 0.14,
 
-  cycEnvRate: 1.4,
-  cycEnvAmount: 0.0,
+  // Resonance crawls ±1.8 over ~6s — the evolving tail. Deliberately far from
+  // the LFO's rate so the two never settle into a pattern.
+  cycEnvRate: 0.18,
+  cycEnvAmount: 0.3,
 
   glide: 0.0,
 
-  delayTime: 0.26,
-  delayFeedback: 0.28,
-  delayWet: 0.18,
-  reverbWet: 0.35,
+  // Each note echoes back at itself: long repeats, audible cascade.
+  delayTime: 0.42,
+  delayFeedback: 0.55,
+  delayWet: 0.34,
+  reverbWet: 0.5,
 
-  masterVolume: -12,
+  masterVolume: -10,
   visualReactivity: 0.8,
 };
 

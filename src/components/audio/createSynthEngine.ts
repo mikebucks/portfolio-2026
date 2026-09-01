@@ -242,10 +242,18 @@ export function createSynthEngine(
     const lfoVal = lfoSample(lfoPhase, current.lfoShape) * current.lfoAmount;
     const cycVal = Math.sin(cycPhase * Math.PI * 2) * current.cycEnvAmount;
 
+    // The envelope and LFO push the cutoff in absolute Hz, at depths tuned
+    // against preset-scale cutoffs (all ≥ 620 Hz). When the player drags the
+    // cutoff below that region, those additions would hold the filter open
+    // regardless — Mentalism's envelope alone parks it near 1.6 kHz — so they
+    // shrink in proportion once the base drops under 600 Hz. Above 600 Hz
+    // (every preset's home) this is exactly the old arithmetic.
+    const modScale = Math.min(1, current.filterCutoff / 600);
     const cutoff =
       current.filterCutoff +
-      fenv.value * current.filterEnvAmount * FILTER_ENV_DEPTH_HZ +
-      lfoVal * LFO_DEPTH_HZ;
+      (fenv.value * current.filterEnvAmount * FILTER_ENV_DEPTH_HZ +
+        lfoVal * LFO_DEPTH_HZ) *
+        modScale;
     const q = Math.max(0, current.filterResonance + cycVal * CYC_RES_DEPTH);
 
     // setTargetAtTime gives a smooth one-pole interpolation that hides the

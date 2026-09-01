@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useThemeStore, useUIStore } from "@/lib/store";
+import { PianoRoll } from "./PianoRoll";
 import { SynthKeyCapRow } from "./SynthKeyCap";
+import { SynthSliders } from "./SynthSliders";
 import {
   THEME_IDS,
   THEME_PRESETS,
@@ -141,6 +143,9 @@ export function SynthPanel() {
         ref={panelRef}
         role="dialog"
         aria-label="Synth controls"
+        // Suppresses the global :focus-visible ring inside the panel — see
+        // globals.css. The panel's own lit states carry the feedback instead.
+        data-focus-quiet
         // Closing is done when the slide is: unmount on the slide's end rather
         // than a timer, so the two can't drift apart. `translate`, not
         // `transform` — see the class list below. Guarded on the element itself,
@@ -174,8 +179,20 @@ export function SynthPanel() {
 
           {/* The same caps the footer shows, at playing size — a mouse or a
               touch screen gets the whole mapping, not just the letters. */}
-          <div className="mt-4">
+          <div className="mt-6">
             <SynthKeyCapRow />
+          </div>
+
+          {/* The synth's whole register at a glance: the tinted span is where
+              the home row currently plays, and it slides with the octave
+              buttons below. Clickable, but the caps stay the main keyboard. */}
+          <div className="mt-2">
+            <PianoRoll />
+          </div>
+
+          {/* Player-owned mix faders, constant across presets. */}
+          <div className="mt-6">
+            <SynthSliders />
           </div>
         </div>
 
@@ -204,11 +221,17 @@ function ThemePicker() {
     setTheme(others[Math.floor(Math.random() * others.length)]);
   };
 
+  // The same directional wipe as the header nav (nav-link), re-inked for the
+  // dark glass: the fill sweeps in white and the label flips dark. Active is
+  // the wipe at rest — hover and selection are one visual language.
+  const linkClass =
+    "nav-link [--nav-link-fill:#fff] [--nav-link-ink:#161616] text-center text-xs uppercase tracking-wider text-white/75 cursor-pointer";
+
   return (
     <div
       role="radiogroup"
       aria-label="Principle"
-      className="grid grid-cols-2 gap-1 p-1 rounded bg-black/40"
+      className="grid grid-cols-2 gap-1"
     >
       {THEME_IDS.map((id) => {
         const active = id === theme;
@@ -218,11 +241,7 @@ function ThemePicker() {
             role="radio"
             aria-checked={active}
             onClick={() => setTheme(id as ThemeId)}
-            className={`rounded-xs px-2 py-1.5 text-center text-xs uppercase tracking-wider transition ${
-              active
-                ? "bg-accent text-white shadow-[0_0_10px_rgba(255,255,255,0.08)]"
-                : "text-white/55 hover:bg-white/5 hover:text-white/85"
-            }`}
+            className={`${linkClass} ${active ? "is-active" : ""}`}
             title={THEME_PRESETS[id].blurb}
           >
             {THEME_PRESETS[id].label}
@@ -236,7 +255,7 @@ function ThemePicker() {
         type="button"
         onClick={roll}
         title="Pick a principle at random"
-        className="rounded-xs px-2 py-1.5 text-center text-xs uppercase tracking-wider transition text-white/55 hover:bg-white/5 hover:text-white/85"
+        className={linkClass}
       >
         Chance
       </button>

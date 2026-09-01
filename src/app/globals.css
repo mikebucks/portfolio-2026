@@ -197,7 +197,12 @@ html.lenis body {
 
    The label's colour flip is delayed to roughly the wipe's midpoint — flipped
    immediately it would be white on cream (invisible) while the fill is still
-   crossing. */
+   crossing.
+
+   Fill and ink are custom properties so other surfaces can wear the same wipe
+   in their own colours — the synth panel's principle nav runs it white-on-dark
+   (set --nav-link-fill / --nav-link-ink); the defaults are the header's
+   accent-and-white. */
 @utility nav-link {
   position: relative;
   isolation: isolate;
@@ -212,7 +217,7 @@ html.lenis body {
     inset: 0;
     z-index: -1;
     border-radius: inherit;
-    background: var(--color-accent);
+    background: var(--nav-link-fill, var(--color-accent));
     transform: scaleX(0);
     transform-origin: right center;
     /* Aggressive in/out: near-flat at both ends, near-vertical through the
@@ -222,7 +227,7 @@ html.lenis body {
 
   &:hover,
   &.is-active {
-    color: #fff;
+    color: var(--nav-link-ink, #fff);
   }
 
   &:hover::before,
@@ -236,6 +241,15 @@ html.lenis body {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 2px;
+}
+
+/* The synth panel is a play surface: its own states (lit caps, wipes, fills)
+   already answer every interaction, and the synthetic key events the caps and
+   roll dispatch leave :focus-visible parked on whatever was pressed last — a
+   ring that lands "on the wrong item" and reads as a bug. Quiet it here;
+   everything stays tabbable and the arrow/Enter/Space handlers still work. */
+[data-focus-quiet] :focus-visible {
+  outline: none;
 }
 
 /* Travelling connector dot for the animated process graphics (see
