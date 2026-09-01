@@ -104,7 +104,11 @@ void main() {
   vec2 mp = uPointer * 0.5 * vec2(aspect, 1.0);
 
   // ── Mono screen: the grid itself ──────────────────────────────────────────
-  float N = mix(60.0, 96.0, mDensity);
+  // Density range tuned for legibility with the hero text sitting on top: at
+  // the old 60–96 the crests were fat solid-white blobs the size of a glyph
+  // stroke and the headline drowned in them; finer dots turn the same wave
+  // into a halftone the eye reads as smooth tone, and the text pops back out.
+  float N = mix(80.0, 170.0, mDensity);
   // The wave is sampled at the cell center, not per-pixel, so each circle
   // swells and brightens as a unit — the grid reads as objects riding a wave,
   // not as a texture with dots stamped on it.
