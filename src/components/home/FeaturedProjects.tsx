@@ -3,25 +3,22 @@
 import type { MouseEvent } from "react";
 import { featuredProjects } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
-import { captureProjectOrigin } from "@/lib/projectTransition";
 import { navigate, projectPath } from "@/lib/appRoute";
 import { AllProjects } from "./AllProjects";
 
 export function FeaturedProjects() {
   const featured = featuredProjects;
 
-  // Same hand-off the "All projects" rows use: stash the clicked card's rect so
-  // the modal's cream cover grows out of the thumbnail rather than playing the
-  // default frame-expand. See projectTransition + ProjectModal.
+  // Client-side navigation so the modal plays its rise-from-the-bottom
+  // entrance instead of a hard load. See ProjectModal.
   function onCardClick(e: MouseEvent<HTMLAnchorElement>, slug: string) {
     // Modified clicks (new tab, etc.) and reduced-motion users keep the plain
     // anchor — /projects/<slug> serves the same page with the modal open, just
-    // without the grow.
+    // without the entrance.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (prefersReducedMotion()) return;
 
     e.preventDefault();
-    captureProjectOrigin(e.currentTarget);
     navigate(projectPath(slug));
   }
 

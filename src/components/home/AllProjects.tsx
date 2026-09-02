@@ -6,14 +6,13 @@ import { useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "rea
 import gsap from "gsap";
 import { otherProjects, projectImages } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
-import { captureProjectOrigin } from "@/lib/projectTransition";
 import { navigate, projectPath } from "@/lib/appRoute";
 
 // Menu-to-grid hover, adapted from the Codrops "Menu to Grid" interaction:
 // hovering a row slides a strip of preview thumbnails in from the right
 // (staggered, right-most first). Clicking blooms the strip and hands off to the
-// project modal, whose cream cover grows out of the clicked row (see
-// projectTransition).
+// project modal, whose cream cover rises from the bottom of the screen (see
+// ProjectModal).
 const REVEAL = { duration: 0.4 } as const;
 
 /**
@@ -182,13 +181,12 @@ export function AllProjects() {
   function onRowClick(e: ReactMouseEvent<HTMLAnchorElement>, slug: string) {
     // Let modified clicks (new tab, etc.) and reduced-motion users use the
     // plain anchor; /projects/<slug> serves the same page with the modal open,
-    // just without the grow.
+    // just without the entrance.
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
     if (prefersReducedMotion()) return;
 
     e.preventDefault();
     const row = e.currentTarget;
-    captureProjectOrigin(row);
 
     // Bloom the revealed strip as the cream cover is about to rise over it.
     gsap.to(row.querySelectorAll("[data-img]"), {
@@ -199,7 +197,7 @@ export function AllProjects() {
       overwrite: true,
     });
 
-    // Let the bloom read for a beat, then open the modal (its cover grows from `rect`).
+    // Let the bloom read for a beat, then open the modal.
     window.setTimeout(() => {
       navigate(projectPath(slug));
     }, 150);

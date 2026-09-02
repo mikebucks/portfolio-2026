@@ -122,8 +122,8 @@ body {
    the modal's React tree, and this way neither has to become stateful.
 
    The page doesn't just switch off: it scales down as it fades, on the same
-   curve and duration as the panel growing over it, so the two read as one
-   move — the page recedes, the case study takes its place. */
+   clock as the panel rising over it, so the two read as one move — the page
+   recedes, the case study slides up and takes its place. */
 [data-modal-hide] {
   transform-origin: 50% 50%;
   /* No `transform` and no `will-change` in the rest state, on purpose: either
@@ -151,8 +151,9 @@ body[data-project-modal="open"] [data-modal-hide] {
   opacity: 0;
   transform: scale(0.94);
   pointer-events: none;
-  /* OPEN_MS. */
-  transition-duration: 480ms;
+  /* OPEN_MS + the cover's expo.out, so the recede tracks the rise exactly. */
+  transition-duration: 550ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* The header's bar (cream, or white + blur before scroll) is painted on the

@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import gsap from "gsap";
 import { getProject } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { getLenisInstance } from "@/components/animation/lenisInstance";
-import { consumeProjectOrigin, type OriginRect } from "@/lib/projectTransition";
 import { currentRoute, navigate, onRouteChange } from "@/lib/appRoute";
 import { ProjectDetail } from "./ProjectDetail";
 
@@ -17,25 +17,30 @@ function slugFromUrl(): string | null {
 
 type Phase = "enter" | "open" | "leave";
 
-// Kept in sync with the longest CSS transition below (the border expand/retract).
-const OPEN_MS = 480;
+// The cover's rise from the bottom — same length and curve as the intro
+// sequence's cream wipe (0.55s expo.out), so opening a case study reads as the
+// same gesture as the site revealing itself on load.
+const OPEN_MS = 550;
 const CLOSE_MS = 320;
+// expo.out / expo.in as CSS curves, matching the GSAP eases the intro uses.
+const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
+const EASE_IN = "cubic-bezier(0.7, 0, 0.84, 0)";
+
+// How long after the cover starts rising the first content blocks begin their
+// cascade — mirrors the intro overlapping the headline into the tail of the
+// wipe rather than waiting for it to finish.
+const CASCADE_DELAY_S = 0.3;
 
 // The panel's cream, held short of opaque so the shader background bleeds
 // through it. The page's own content is faded out underneath (see the
 // `data-project-modal` effect below), so this is the shader and nothing else.
 const PANEL = "rgba(244, 241, 234, 0.95)";
-// Softens the shader behind the panel so long-form copy stays readable while
-// the background still reads through. Ramps up with the panel rather than
-// switching on, so it needs a length at both ends — `none` can't be
-// interpolated, `blur(0px)` can.
-const PANEL_BLUR = (open: boolean) => `blur(${open ? 10 : 0}px)`;
 
 /**
  * URL-routed project lightbox. `/projects/<slug>` opens a full-viewport cream
- * panel; the intro reads as the page's 10px cream frame thickening inward to
- * fill the screen, then the detail content rises into place. Driven by CSS
- * transitions (not a rAF ticker) so it plays reliably regardless of tab state.
+ * panel that rises from the bottom of the screen; the content blocks then
+ * cascade in top-to-bottom (offset + fade), and blocks below the fold play the
+ * same reveal as they scroll into view. Timing matches the initial hero intro.
  */
 export function ProjectModal() {
   // The hash's current target (source of truth).
@@ -43,9 +48,8 @@ export function ProjectModal() {
   // Mounted slug — lags `target` so the leave transition can play.
   const [slug, setSlug] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("enter");
-  // When opened from an "All projects" row, the row's rect the cover grows from
-  // (and collapses back into on close). Null for deep links / featured cards.
-  const [origin, setOrigin] = useState<OriginRect | null>(null);
+  // The detail's scroll surface — the cascade queries its [data-reveal] blocks.
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const sync = useCallback(() => setTarget(slugFromUrl()), []);
 
@@ -65,7 +69,6 @@ export function ProjectModal() {
     if (target && target !== slug) {
       setSlug(target);
       setPhase("enter");
-      setOrigin(consumeProjectOrigin());
     } else if (!target && slug) {
       setPhase("leave");
       const reduce = prefersReducedMotion();
@@ -136,13 +139,13 @@ export function ProjectModal() {
   // out while the panel is up. The panel is translucent so the shader reads
   // through it; without this the page sections would read through it too.
   // Released the moment the leave transition starts, so the page is back by the
-  // time the panel has finished collapsing. See globals.css for the rules this
-  // drives — including the matching durations that keep the page's retreat and
-  // the panel's growth on the same clock.
+  // time the panel has finished sliding away. See globals.css for the rules
+  // this drives — including the matching durations that keep the page's
+  // retreat and the panel's rise on the same clock.
   //
   // Keyed on the `open` phase rather than merely being mounted, so the page
-  // starts receding on the same frame the panel starts growing — the `enter`
-  // phase is the panel's committed collapsed state, before anything moves.
+  // starts receding on the same frame the panel starts rising — the `enter`
+  // phase is the panel's committed off-screen state, before anything moves.
   useEffect(() => {
     if (phase === "open") {
       document.body.dataset.projectModal = "open";
@@ -154,97 +157,127 @@ export function ProjectModal() {
     };
   }, [phase]);
 
+  // Park every content block in its pre-reveal state (offset down, invisible)
+  // the moment the detail mounts. The scroll surface itself is still at
+  // opacity 0 during `enter`, so this can never flash — it just guarantees the
+  // cascade starts from a committed hidden state.
+  useEffect(() => {
+    if (!slug || prefersReducedMotion()) return;
+    const root = scrollRef.current;
+    if (!root) return;
+    gsap.set(root.querySelectorAll("[data-reveal]"), {
+      opacity: 0,
+      y: 24,
+      force3D: true,
+    });
+  }, [slug]);
+
+  // The cascade. Once the cover is rising, blocks inside the initial viewport
+  // fly up into place top-to-bottom on the intro headline's timing (0.9s
+  // expo.out, 0.18s stagger, 24px offset). Everything below the fold waits on
+  // an IntersectionObserver and plays the same single-block reveal as it
+  // scrolls in — one motion vocabulary for the whole page.
+  useEffect(() => {
+    if (phase !== "open" || prefersReducedMotion()) return;
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const blocks = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-reveal]"),
+    );
+    const fold = window.innerHeight;
+    const initial = blocks.filter(
+      (el) => el.getBoundingClientRect().top < fold,
+    );
+    const below = blocks.filter((el) => !initial.includes(el));
+
+    const reveal = (targets: gsap.TweenTarget, delay = 0, stagger = 0) =>
+      gsap.to(targets, {
+        opacity: 1,
+        y: 0,
+        duration: 0.9,
+        ease: "expo.out",
+        delay,
+        stagger,
+        force3D: true,
+        overwrite: true,
+      });
+
+    reveal(initial, CASCADE_DELAY_S, 0.18);
+
+    let io: IntersectionObserver | null = null;
+    if (below.length) {
+      io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            reveal(entry.target);
+            io?.unobserve(entry.target);
+          }
+        },
+        // The panel is the scroll container; trigger slightly inside the
+        // bottom edge so a block is moving as it enters, not after. The huge
+        // top margin keeps anything scrolled PAST still "intersecting" — a
+        // fast jump can put a block above the viewport between observations,
+        // and without this it would never fire and stay invisible.
+        { root, rootMargin: "100000px 0px -10% 0px" },
+      );
+      below.forEach((el) => io?.observe(el));
+    }
+
+    return () => io?.disconnect();
+  }, [phase]);
+
   const project = slug ? getProject(slug) : null;
   if (!slug || !project) return null;
 
   const reduce = prefersReducedMotion();
   const isOpen = phase === "open";
-  // Grows out slower than it collapses back, matching the open/close feel.
-  const coverEase = "cubic-bezier(0.7, 0, 0.2, 1)";
-  const coverMs = phase === "leave" ? CLOSE_MS : OPEN_MS;
 
   return (
     <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true">
-      {origin && !reduce ? (
-        // Opened from a project row: a cream box grows out of that row to fill
-        // the viewport (and collapses back into it on close).
-        <div
-          aria-hidden
-          className="pointer-events-none fixed"
-          style={{
-            background: PANEL,
-            // Fades transparent → cream across the grow (and back out on close),
-            // so the row doesn't snap to a solid block the instant it's clicked.
-            opacity: isOpen ? 1 : 0,
-            top: isOpen ? 0 : origin.top,
-            left: isOpen ? 0 : origin.left,
-            width: isOpen ? "100vw" : origin.width,
-            height: isOpen ? "100vh" : origin.height,
-            borderRadius: isOpen ? 0 : 6,
-            backdropFilter: PANEL_BLUR(isOpen),
-            WebkitBackdropFilter: PANEL_BLUR(isOpen),
-            transition: `opacity ${coverMs}ms ${coverEase}, top ${coverMs}ms ${coverEase}, left ${coverMs}ms ${coverEase}, width ${coverMs}ms ${coverEase}, height ${coverMs}ms ${coverEase}, border-radius ${coverMs}ms ${coverEase}, backdrop-filter ${coverMs}ms ${coverEase}, -webkit-backdrop-filter ${coverMs}ms ${coverEase}`,
-          }}
-        />
-      ) : (
-        // Cream frame that thickens inward to fill the viewport (sits behind the
-        // scroll surface, which is transparent, so the detail reads on top of
-        // this single tinted layer — two stacked translucent creams would
-        // compound into an opaque one).
-        //
-        // An inset ring rather than a border: the four sides of a border meet at
-        // mitered corners, and now that the cream is translucent those joins
-        // antialias into faint diagonals across the panel. An inset box-shadow
-        // paints the whole ring as one region, so the tint stays even.
-        //
-        // The blur can't grow inward with the ring — backdrop-filter applies to
-        // the element's whole backdrop, not to where the shadow paints — so it
-        // ramps up evenly across the viewport over the same duration instead.
-        <div
-          aria-hidden
-          className="pointer-events-none fixed inset-0"
-          style={{
-            boxShadow: `inset 0 0 0 ${isOpen ? "100vmax" : "10px"} ${PANEL}`,
-            backdropFilter: PANEL_BLUR(isOpen),
-            WebkitBackdropFilter: PANEL_BLUR(isOpen),
-            transition: reduce
-              ? "none"
-              : `box-shadow ${OPEN_MS}ms ${coverEase}, backdrop-filter ${OPEN_MS}ms ${coverEase}, -webkit-backdrop-filter ${OPEN_MS}ms ${coverEase}`,
-          }}
-        />
-      )}
+      {/* Cream cover: rises from the bottom of the screen to fill the viewport
+          (and slides back down on close) — the intro's cream wipe, played in
+          reverse direction. Translucent, with a constant backdrop blur, so the
+          shader reads through it softened wherever it has covered. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0"
+        style={{
+          background: PANEL,
+          transform: isOpen ? "none" : "translateY(100%)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          willChange: "transform",
+          transition: reduce
+            ? "none"
+            : phase === "leave"
+              ? `transform ${CLOSE_MS}ms ${EASE_IN}`
+              : `transform ${OPEN_MS}ms ${EASE_OUT}`,
+        }}
+      />
 
       <div
+        ref={scrollRef}
         data-lenis-prevent
         // `bleed-root`: the width a `full-bleed` figure measures against. This
         // box excludes both scrollbars, so a bled image lands flush instead of
         // overflowing sideways the way 100vw would.
+        //
+        // The surface itself only gates visibility: it snaps on for the open
+        // (the blocks are individually hidden, the cascade is theirs to play)
+        // and fades as one on leave, ahead of the cover sliding away.
         className="absolute inset-0 overflow-y-auto bleed-root"
         style={{
           opacity: isOpen ? 1 : 0,
-          transition: reduce
-            ? "none"
-            : isOpen
-              ? "opacity 120ms linear 380ms"
-              : "opacity 140ms linear",
+          transition:
+            reduce || isOpen ? "none" : "opacity 140ms linear",
         }}
       >
-        <div
-          style={{
-            opacity: isOpen ? 1 : 0,
-            transform: isOpen ? "none" : "translateY(24px)",
-            transition: reduce
-              ? "none"
-              : isOpen
-                ? "opacity 260ms ease-out 220ms, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1) 220ms"
-                : "opacity 140ms ease-in, transform 140ms ease-in",
-          }}
-        >
-          {/* The wordmark at the top of the article is the way out — there's no
-              floating close button. It scrolls away with the content, so Escape
-              (bound above) stays the always-available exit. */}
-          <ProjectDetail project={project} onBack={close} />
-        </div>
+        {/* The wordmark at the top of the article is the way out — there's no
+            floating close button. It scrolls away with the content, so Escape
+            (bound above) stays the always-available exit. */}
+        <ProjectDetail project={project} onBack={close} />
       </div>
     </div>
   );

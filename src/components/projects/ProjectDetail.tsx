@@ -65,6 +65,10 @@ export function ProjectDetail({
 }) {
   const blocks = toBlocks(project);
 
+  // `data-reveal` marks each element as one step of the modal's entrance
+  // cascade (offset down + faded until ProjectModal reveals it — staggered on
+  // open for what's in the viewport, on scroll for everything below).
+
   return (
     <article className="mx-auto max-w-6xl gutter-x pt-14 pb-24">
       <header>
@@ -74,6 +78,7 @@ export function ProjectDetail({
           // instead of hard-navigating. -ml-2.5 cancels nav-link's own inline
           // padding, keeping the wordmark flush with the column like the header's.
           <a
+            data-reveal
             href="/projects"
             onClick={(e) => {
               e.preventDefault();
@@ -87,6 +92,7 @@ export function ProjectDetail({
         )}
 
         <h2
+          data-reveal
           className={cn(
             COLUMN,
             "text-[32px] font-semibold leading-[1.3] text-black md:text-[44px]",
@@ -95,6 +101,7 @@ export function ProjectDetail({
           {project.title}
         </h2>
         <p
+          data-reveal
           className={cn(
             COLUMN,
             "mt-2 text-2xl leading-[1.3] text-black/70 md:text-[28px]",
@@ -116,6 +123,7 @@ export function ProjectDetail({
             // markup — a <p> would be force-closed before a list.
             <div
               key={i}
+              data-reveal
               className={cn(
                 COLUMN,
                 gap,
@@ -131,12 +139,17 @@ export function ProjectDetail({
               dangerouslySetInnerHTML={{ __html: block.html }}
             />
           ) : block.type === "stats" ? (
-            <ProjectStatGrid key={i} stats={block} className={gap} />
+            // Wrapped rather than tagged: these components own their root
+            // classNames, and a wrapper keeps the reveal transform off any
+            // layout they do internally. The gap margin collapses through it.
+            <div key={i} data-reveal>
+              <ProjectStatGrid stats={block} className={gap} />
+            </div>
           ) : block.type === "graphic" ? (
             (() => {
               const Graphic = GRAPHICS[block.id];
               return (
-                <figure key={i} className={cn(gap, block.className)}>
+                <figure key={i} data-reveal className={cn(gap, block.className)}>
                   <Graphic />
                   {block.caption && (
                     <figcaption className="mt-3 font-mono text-xs text-black/50">
@@ -147,12 +160,13 @@ export function ProjectDetail({
               );
             })()
           ) : (
-            <ProjectMediaFigure
-              key={i}
-              media={block}
-              className={gap}
-              captionClassName="text-black/50"
-            />
+            <div key={i} data-reveal>
+              <ProjectMediaFigure
+                media={block}
+                className={gap}
+                captionClassName="text-black/50"
+              />
+            </div>
           );
         })}
       </section>
