@@ -46,6 +46,11 @@ uniform float uReactivity;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// is the planet's size (more grains on screen without re-seeding the grid),
+// y cutoff lets finer terrain through, z reverb widens the halo of escaping
+// dust, w delay adds a second, weaker wavefront behind each strike.
+uniform vec4  uSynth;
 
 ${NOTE_HUE_GLSL}
 
@@ -113,7 +118,9 @@ void main() {
   // Rises steeply off zero so a light keypress still lands.
   float hit = pow(energy, 0.6);
 
-  float R = mix(0.24, 0.36, mWidth);
+  // Every rim, limb and halo term below is in units of R, so the volume fader
+  // scales the whole figure coherently. (Not the stipple grid — see below.)
+  float R = mix(0.24, 0.36, mWidth) * exp2(uSynth.x * 0.35);
 
   // ── Pointer ───────────────────────────────────────────────────────────────
   // uPointer parks off-screen until the pointer first moves, so an untouched
@@ -175,7 +182,10 @@ void main() {
     float dc = max(length(toC), 1e-4);
     // The impulse doubles as the wavefront clock: radius grows as it decays.
     float front = (1.0 - uClickImpulse) * 0.5;
-    float ring = exp(-pow((dc - front) / 0.18, 2.0));
+    // The delay fader trails a second, weaker front behind the first — the
+    // strike repeating. Contributes exactly nothing at rest.
+    float ring = exp(-pow((dc - front) / 0.18, 2.0))
+               + uSynth.w * 0.55 * exp(-pow((dc - front * 0.55) / 0.18, 2.0));
     float rag = 0.5 + 0.5 * fbm(q * 5.0 + t);
     float shove = ring * rag * uClickImpulse * uClickImpulse
                 * uClickStrength * (0.12 + 0.28 * mBoom)
@@ -212,8 +222,11 @@ void main() {
 
   // Interior terrain: broad light/dark drifts, with ridged creases folded in —
   // the dark filament lines that make it read as crumpled rather than cloudy.
-  float tone = fbm(w * 2.2 - vec2(t * 0.15, t * 0.1));
-  float crease = pow(1.0 - abs(2.0 * fbm(w * 3.4 + vec2(t * 0.4, -t * 0.25)) - 1.0), 3.0);
+  // The cutoff fader is the spatial frequency let through: open gives tighter,
+  // more numerous creases and smaller voids. Same fbm calls, just scaled.
+  float det = exp2(uSynth.y * 0.8);
+  float tone = fbm(w * (2.2 * det) - vec2(t * 0.15, t * 0.1));
+  float crease = pow(1.0 - abs(2.0 * fbm(w * (3.4 * det) + vec2(t * 0.4, -t * 0.25)) - 1.0), 3.0);
 
   // Denser toward the rim, like the screenshot's dark limb.
   float limb = smoothstep(R * 0.55, R * 0.95, r) * body;
@@ -225,8 +238,11 @@ void main() {
 
   // Wisps: crease filaments allowed to leak past the rim into a halo band, so
   // dust appears to escape the planet.
-  float halo = (1.0 - smoothstep(R * 1.0, R * 1.4, r)) * (1.0 - body);
-  density = clamp(density + halo * crease * 0.8, 0.0, 1.0);
+  // The reverb fader is what hangs in the room after the source: a wider,
+  // denser band of dust drifting off the planet. Only adds outside the body.
+  float tail = exp2(uSynth.z * 0.8);
+  float halo = (1.0 - smoothstep(R * 1.0, R * (1.4 * tail), r)) * (1.0 - body);
+  density = clamp(density + halo * crease * (0.8 * tail), 0.0, 1.0);
 
   // Contrast: Drive pushes mid-tones apart so voids empty and drifts blacken.
   density = pow(density, mix(1.6, 0.95, mDrive));

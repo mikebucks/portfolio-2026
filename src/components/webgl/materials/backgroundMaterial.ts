@@ -66,6 +66,20 @@ export function createBackgroundMaterial(themeId: ThemeId = DEFAULT_THEME) {
       // formation (0 resting wave … 1 full). Computed in the render loop with a
       // hold + spring; ignored by every other theme.
       uFormMorph: { value: 0 },
+      // The synth panel's four faders as offsets from the active preset —
+      // x volume, y cutoff, z reverb, w delay — each -1..1 with 0 meaning
+      // "untouched". Eased in the render loop. Every theme reads it its own
+      // way (see each shader's header), and at rest every theme is exactly
+      // its preset look.
+      uSynth: { value: new THREE.Vector4(0, 0, 0, 0) },
+      // Rhythm only: the eased, continuous pendulum count the volume fader
+      // sets (the target is an even integer, 8..32; 26 at the preset).
+      uPendCount: { value: 26 },
+      // Rhythm only: x = the travelling wave's own phase clock, integrated in
+      // JS so the delay fader can change its rate without any column's phase
+      // ever stepping backward; y = the current rate factor, which the shader
+      // needs to re-evaluate lagged (trail) positions on the same clock.
+      uWaveClock: { value: new THREE.Vector2(0, 1) },
       // Per-voice color data for polyphonic audio reactivity (up to 4 notes).
       // FreqNorms: 0..1 log-scale normalized frequency, computed in JS.
       // Amts: envelope × velocity × reactivity strength per voice.

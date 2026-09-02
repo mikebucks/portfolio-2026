@@ -42,8 +42,18 @@ uniform float uVelocity;
 uniform float uReactivity;
 uniform vec4  uMacros;
 uniform float uDivideAngle;   // normal angle of the divide, stepped 45° per note
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// sets how many balls there are, y cutoff tightens and brightens the glint,
+// z reverb lets balls fuse from further apart, w delay lets the wavefront's
+// rings travel further before they die.
+uniform vec4  uSynth;
 
+// The swarm at rest. The loop below runs to BALLS_MAX and breaks at the live
+// count, so the volume fader can add or remove balls without a recompile —
+// and because the per-ball recurrences advance at the END of the body, every
+// ball below the count is exactly where it always was.
 const int BALLS = 220;
+const int BALLS_MAX = 252;
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -162,7 +172,8 @@ void main() {
   // number is what turns a field of separate spheres into flowing metal. Kept
   // small so balls stay distinct and only fuse when they genuinely touch, rather
   // than pooling the whole swarm into one sheet.
-  float k = 0.045 + 0.03 * mMass;
+  // The reverb fader widens it: a wetter field pools and smears.
+  float k = (0.045 + 0.03 * mMass) * (1.0 + uSynth.z * 0.6);
 
   // Smooth-minimum DISTANCE field of the swarm. The old field summed an inverse-
   // square falloff per ball, so overlapping balls stacked into independent domes
@@ -175,7 +186,10 @@ void main() {
   float sdf = 1e5;
   float R   = 0.0;
   vec2  G   = vec2(0.0);
-  for (int i = 0; i < BALLS; i++) {
+  // Volume fader: 188 balls at the bottom, 220 at the preset, 252 at the top.
+  int nBalls = BALLS + int(floor(uSynth.x * 32.0 + 0.5));
+  for (int i = 0; i < BALLS_MAX; i++) {
+    if (i >= nBalls) break;
     // sx == sin(t + i*stepX), cy == cos(t + i*stepY), u == fract(0.137 + i*phi)
     vec2 c = center + vec2(sx, cy) * amp;
     vec2 toPtr = ptr - c;
@@ -222,7 +236,9 @@ void main() {
   // pulse rippling across the metal, on the same equalized envelope as the swell.
   vec2 clickP = vec2((uClickPos.x * 0.5 + 0.5) * aspect, uClickPos.y * 0.5 + 0.5);
   float cd = distance(p, clickP);
-  sdf -= sin(cd * 26.0 - uTime * 6.0) * exp(-cd * 3.2) * pulse * 0.03 * tailScale;
+  // The delay fader slows the falloff so more of the rings survive the trip.
+  sdf -= sin(cd * 26.0 - uTime * 6.0) * exp(-cd * (3.2 - uSynth.w * 1.6))
+       * pulse * 0.03 * tailScale;
 
   // ── Relief ────────────────────────────────────────────────────────────────
   // Lift the flat distance field into 3D. Inside the body the surface stands z
@@ -253,7 +269,9 @@ void main() {
   vec3 L = normalize(vec3(-0.35, 0.55, 0.75));
   vec3 H = normalize(L + V);
   float diff = dot(nrm, L) * 0.5 + 0.5;              // half-Lambert, 0..1
-  float spec = pow(max(dot(nrm, H), 0.0), 42.0);     // sheen
+  // Cutoff fader: an open filter is a tight bright glint, a closed one a broad
+  // dull sheen.
+  float spec = pow(max(dot(nrm, H), 0.0), 42.0 * (1.0 + uSynth.y * 0.6)); // sheen
 
   // The divide is a line through the centre whose normal rotates with input:
   // every synth note turns it 45° clockwise, so it sweeps diagonal → horizontal
@@ -285,7 +303,7 @@ void main() {
   // the same upper-left key and both capped with the same white glint. diff (the
   // lit fraction) walks each from its shadow to its lit crown.
   float mid = (light + dark) * 0.5;   // mid grey — the white bead's shadow floor
-  float hi  = spec * 0.85;            // white glint, added over the body
+  float hi  = spec * 0.85 * (1.0 + uSynth.y * 0.7); // white glint, added over the body
 
   // White bead (dark side): a lit sphere rising to the light tone.
   float darkFig = mix(mid, light, diff) + hi;

@@ -27,6 +27,10 @@ uniform float uReactivity;
 uniform vec4  uMacros;
 uniform vec4 uNoteFreqNorms;
 uniform vec4 uNoteAmts;
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// packs the cells denser, y cutoff sharpens the ridges, z reverb lets the
+// cursor and click ripples wash further, w delay adds rings to the ripple.
+uniform vec4 uSynth;
 
 float ha(float n) { return fract(sin(n) * 713.5354); }
 
@@ -194,7 +198,8 @@ float whacky(vec3 p, float bloom) {
   float w = 0.0;
   float a = 1.0;
   // Bloom widens the contrast curve so cells look sharper / more crystalline.
-  float edge = mix(2.6, 4.6, bloom);
+  // The cutoff fader rides the same exponent: open is crystalline, closed is soft.
+  float edge = mix(2.6, 4.6, bloom) * (1.0 + uSynth.y * 0.30);
   for (int i = 0; i < 4; i++) {
     float x = pow(cellular(p).x, 3.14);
     v += a * x;
@@ -219,10 +224,13 @@ void main() {
   pointerUv.x *= uResolution.x / uResolution.y;
 
   float dist = distance(uv, pointerUv);
-  float falloff = exp(-dist * 3.5);
+  // Reverb fader: a slower falloff lets the disturbance wash further out.
+  float falloff = exp(-dist * (3.5 - uSynth.z * 1.4));
   // Echo macro lifts the wave amplitude so cursor leaves a stronger trail.
   float waveAmp = 0.25 + mEcho * 0.55;
-  float cursorWave = sin(dist * 16.0 - uTime * 2.4) * falloff * waveAmp / 0.25;
+  // Delay fader: more rings per unit distance — repeats, spatially.
+  float cursorWave = sin(dist * 16.0 * (1.0 + uSynth.w * 0.6) - uTime * 2.4)
+                   * falloff * waveAmp / 0.25;
 
   // ── Spatial click ripple ────────────────────────────────────────────────
   // A shockwave that emanates FROM the click point instead of lifting the whole
@@ -233,7 +241,7 @@ void main() {
   vec2 clickUv = uClickPos * 0.5 + 0.5;
   clickUv.x *= uResolution.x / uResolution.y;
   float cDist = distance(uv, clickUv);
-  float clickRadius = (1.0 - uClickImpulse) * 1.3;      // grows as it fades
+  float clickRadius = (1.0 - uClickImpulse) * (1.3 + uSynth.z * 0.6); // grows as it fades; reverb reaches further
   float ringD = (cDist - clickRadius) * 6.0;
   float ring = exp(-ringD * ringD);                     // gaussian shell
   float clickPop = exp(-cDist * 5.0);                   // hot core at origin
@@ -252,7 +260,8 @@ void main() {
   // cell field locally so the shockwave disturbs the noise, not just brightness.
   float z = uShaderTime * (1.0 + mDrift * 1.6) + cursorWave * 0.25 + clickWave * 0.3;
 
-  float v = whacky(vec3(uv, z), mBloom);
+  // Volume fader packs the cells denser — more thoughts at louder volume.
+  float v = whacky(vec3(uv * (1.0 + uSynth.x * 0.45), z), mBloom);
   v = clamp(v * mix(1.0, 1.55, pulse), 0.0, 1.0);
 
   // Localized brightness lift from the click, concentrated on the ring/core.

@@ -72,6 +72,11 @@ uniform float uViewTilt;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// adds rings to the torus, y cutoff pins the particles to pinpricks or blooms
+// them soft, z reverb brightens the wake each head tows, w delay staggers the
+// rings so the wavefront twists into a helix.
+uniform vec4  uSynth;
 
 ${NOTE_HUE_GLSL}
 
@@ -79,8 +84,11 @@ ${NOTE_HUE_GLSL}
 // same curve — the front and back of the surface land on top of each other, as
 // they do in any straight-on drawing of the shape — so twenty-eight reads as
 // fourteen nested loops per lobe. Overhead they separate into twenty-eight
-// spokes.
+// spokes. That is the resting count; the volume fader takes it from 20 up to
+// RINGS_MAX, and the ring loop runs to the fixed bound and breaks at the live
+// count so the worst case stays bounded.
 #define RINGS 28
+#define RINGS_MAX 36
 
 // Each stream is one head per ring, towing a wake that reaches the whole way
 // round the tube. One head, not several: the eye should be able to pick a
@@ -97,7 +105,8 @@ ${NOTE_HUE_GLSL}
 #define GHOST 5
 
 const float TAU = 6.283185307;
-const float DU = TAU / float(RINGS);
+// The gap between rings, TAU / count, is computed in main() from the live
+// ring count — at the resting 28 it is exactly what a constant here would be.
 // About five percent of a screen height between one particle and the next along
 // the stroke, which is also roughly the gap between neighbouring rings — so the
 // two families lay down a square-ish lattice rather than a set of stripes.
@@ -264,12 +273,16 @@ void main() {
   // of the shape. Stagger tips those circles into a helix; past a fraction of a
   // ring gap the wavefront stops being a curve at all and the form dissolves
   // into unrelated arcs, so the useful range is small.
-  float stagger = DU * mix(0.0, 0.55, mSpiral);
+  // The delay fader adds to the stagger: each ring repeats the one before it,
+  // late. Kept within the small useful range described above.
+  int rings = RINGS + int(floor(uSynth.x * 8.0 + 0.5));
+  float du = TAU / float(rings);
+  float stagger = du * (mix(0.0, 0.55, mSpiral) + uSynth.w * 0.30);
 
   // Every angle below is reached by rotating a unit vector through a fixed
   // increment. These six pairs are the only transcendentals in the shader —
   // nothing inside the loops calls one.
-  float cdu = cos(DU),        sdu = sin(DU);
+  float cdu = cos(du),        sdu = sin(du);
   float cst = cos(stagger),   sst = sin(stagger);
   float cdh = cos(-DA_HEAD),  sdh = sin(-DA_HEAD);
   float cdg = cos(-DA_GHOST), sdg = sin(-DA_GHOST);
@@ -283,8 +296,11 @@ void main() {
   // a bit over a hundredth of the figure across; an event swells them nearly
   // threefold and lets the skirt out into a glow. The two move together on
   // purpose: size alone reads as a zoom, glow alone reads as a fade.
+  // The cutoff fader rides the same inverse radius: open pins the particles to
+  // pinpricks, closed blooms them into soft blobs. exp2(0) == 1 at rest.
   float spread = mix(6400.0, 900.0, hit)
-               / (rad * rad * mix(1.0, 0.62, mBloom));
+               / (rad * rad * mix(1.0, 0.62, mBloom))
+               * exp2(uSynth.y * 1.2);
   gHalo = 0.04 + 0.36 * hit;
 
   // A ring runs from the origin out to 2A and never strays further from that
@@ -310,7 +326,8 @@ void main() {
   gUp = 0.0;
   gDn = 0.0;
 
-  for (int i = 0; i < RINGS; i++) {
+  for (int i = 0; i < RINGS_MAX; i++) {
+    if (i >= rings) break;
     // The ring at toroidal angle u, projected: centred on A, reaching from the
     // origin out to 2A.
     vec2 A = vec2(rad * cu, -rad * sinT * su);
@@ -340,7 +357,8 @@ void main() {
       // blobs would only fog the middle of the form.
       for (int k = 0; k < GHOST; k++) {
         float b = 1.0 - float(k) / float(GHOST);
-        splat(ca, sa, 0.035 + 0.075 * b, spread * 0.85);
+        // The reverb fader brightens the wake — the afterglow of the stroke.
+        splat(ca, sa, (0.035 + 0.075 * b) * (1.0 + uSynth.z * 1.6), spread * 0.85);
         float nca = ca * cdg - sa * sdg;
         sa = sa * cdg + ca * sdg;
         ca = nca;

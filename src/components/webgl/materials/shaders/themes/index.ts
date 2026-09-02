@@ -34,6 +34,14 @@
  *                        `shaderMacros`) — shape the look per theme
  *   uNoteFreqNorms vec4  per-voice color (optional, currently used by cellular)
  *   uNoteAmts      vec4
+ *   uSynth       vec4    the synth panel's faders as offsets from the active
+ *                        preset — x volume, y cutoff, z reverb, w delay — each
+ *                        -1..1 with 0 = untouched. Eased in the render loop.
+ *                        Every theme maps them its own way (see each header);
+ *                        at 0 every theme is exactly its preset look.
+ *   uPendCount   float   Rhythm only: eased pendulum count (volume fader)
+ *   uWaveClock   vec2    Rhythm only: x the travelling wave's own monotonic
+ *                        phase clock, y its current rate factor (delay fader)
  *
  * Coordinate note: gl_FragCoord is physical pixels, vUv and uPointer are
  * logical 0..1 / -1..1. Multiply uv.x by uResolution.x/uResolution.y for an

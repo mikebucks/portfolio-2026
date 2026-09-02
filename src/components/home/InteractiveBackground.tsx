@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import type * as THREE from "three";
-import { useThemeStore, useIntroStore } from "@/lib/store";
+import { useThemeStore, useIntroStore, useSynthTweakStore } from "@/lib/store";
 import { noteColorNorm } from "@/lib/notePalette";
+import { FADERS, faderDelta } from "@/lib/synthFaders";
 import {
   THEME_PRESETS,
+  resolveSettings,
   type ThemeId,
 } from "@/components/webgl/materials/shaders/themes";
 
@@ -614,6 +616,36 @@ function WebGLCanvas({
         let squareRot = 0;
         // Eased camera elevation for Polarity, fed to uViewTilt.
         let viewTilt = 0;
+
+        // ── Synth faders → shader ────────────────────────────────────────
+        // The panel's four faders each re-tune the active theme. Targets are
+        // the faders' offsets from the active preset (-1..1, 0 = untouched;
+        // see lib/synthFaders), recomputed only when the tweak store's
+        // `overrides` object or the theme changes — checked by reference in
+        // tick(), which already reads the theme store every frame. Live
+        // values ease toward the targets so a drag re-tunes rather than
+        // steps. Read from the store, not the audio engine: the engine only
+        // exists after audio unlock, and the faders should shape the picture
+        // whether or not a note has ever been played.
+        const synthTarget = [0, 0, 0, 0];
+        const synthLive = [0, 0, 0, 0];
+        // Rhythm's pendulum count: 8 at the volume fader's bottom, 26 at the
+        // preset, 32 at the top — mapped from the fader's offset, so the
+        // resting row is 26 whatever dB the preset sits at. The target is an
+        // even integer so the mandala's outside-in pairing stays mirror-
+        // symmetric at rest; the live value is continuous while it eases.
+        let pendTarget = 26;
+        let pendLive = 26;
+        // Rhythm's travelling-wave clock. Integrated here rather than derived
+        // from `phase` in the shader so the delay fader can change its RATE
+        // without any column's phase stepping backward — a wavelength change
+        // would whip the far columns. At rate factor 1 this equals the
+        // shader's old `phase * WAVE_SPEED` to float precision.
+        let wavePhase = 0;
+        const WAVE_SPEED = 1.5; // mirrors rhythm.ts
+        let lastOverrides: object | null = null;
+        let lastSynthTheme: ThemeId | null = null;
+        const roundEven = (x: number) => 2 * Math.round(x / 2);
         // Latches on the first painted frame so we reveal the canvas once.
         let firstFramePainted = false;
 
@@ -750,8 +782,75 @@ function WebGLCanvas({
           // Feed the active theme's fixed shader constants into uMacros.
           // Reading the store outside React keeps the render loop from
           // re-rendering on theme changes; the store update fires synchronously.
-          const sm = THEME_PRESETS[useThemeStore.getState().theme].shaderMacros;
+          const theme = useThemeStore.getState().theme;
+          const sm = THEME_PRESETS[theme].shaderMacros;
           u.uMacros.value.set(sm[0], sm[1], sm[2], sm[3]);
+
+          // Synth fader targets (see the block above). `overrides` is only
+          // ever replaced by setOverride, so its identity changes exactly
+          // when a fader moves; the merge below runs on those events only,
+          // never per frame. A theme swap snaps instead of easing: the
+          // offsets are measured against the NEW preset, and the old theme's
+          // values must not bleed into the new shader's first frames.
+          const ov = useSynthTweakStore.getState().overrides;
+          if (ov !== lastOverrides || theme !== lastSynthTheme) {
+            const snap = theme !== lastSynthTheme;
+            lastOverrides = ov;
+            lastSynthTheme = theme;
+            const base = resolveSettings(theme);
+            const merged = { ...base, ...ov };
+            for (let k = 0; k < 4; k++) {
+              synthTarget[k] = faderDelta(
+                FADERS[k].getT(merged),
+                FADERS[k].getT(base),
+              );
+            }
+            const dv = synthTarget[0];
+            pendTarget = roundEven(
+              Math.min(32, Math.max(8, 26 + (dv < 0 ? 18 * dv : 6 * dv))),
+            );
+            if (snap) {
+              for (let k = 0; k < 4; k++) synthLive[k] = synthTarget[k];
+              pendLive = pendTarget;
+            }
+            // A fader drag is user input — hold the full frame rate.
+            lastActivityAt = now;
+          }
+
+          // Ease the live values toward their targets, snapping the last
+          // hair so the idle governor can see them settle.
+          let synthMoving = false;
+          const kS = 1 - Math.exp(-dt / 0.25);
+          for (let k = 0; k < 4; k++) {
+            const d = synthTarget[k] - synthLive[k];
+            if (Math.abs(d) < 1e-3) synthLive[k] = synthTarget[k];
+            else {
+              synthLive[k] += d * kS;
+              synthMoving = true;
+            }
+          }
+          {
+            const d = pendTarget - pendLive;
+            if (Math.abs(d) < 1e-3) pendLive = pendTarget;
+            else {
+              pendLive += d * (1 - Math.exp(-dt / 0.3));
+              synthMoving = true;
+            }
+          }
+          u.uSynth.value.set(
+            synthLive[0], synthLive[1], synthLive[2], synthLive[3],
+          );
+          u.uPendCount.value = pendLive;
+
+          // Rhythm's wave clock: the same per-frame increment the shader's
+          // `phase` gets (uTime·0.78 + uShaderTime·drive), times WAVE_SPEED,
+          // times the delay fader's rate factor — delay up slows the crest so
+          // each column lags its neighbour longer. Always positive, so the
+          // wave's phase is monotonic whatever the fader does.
+          const drive = 2.6 * (0.55 + 0.9 * sm[2]);
+          const waveRate = Math.exp(-0.8 * synthLive[3]);
+          wavePhase += dt * (0.78 + rate * drive) * WAVE_SPEED * waveRate;
+          u.uWaveClock.value.set(wavePhase, waveRate);
 
           // Rhythm's mandala formation amount: a spring with a hold. Each note
           // refreshes an 0.9s hold (so even a very quick note keeps the figure
@@ -806,6 +905,7 @@ function WebGLCanvas({
             formHold > 0 ||
             Math.abs(formVel) > 0.01 ||
             viewTilt > 0.01 ||
+            synthMoving ||
             !firstFramePainted;
           if (active) {
             // Sample the frame rate for adaptive quality only at full rate —

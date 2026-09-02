@@ -45,6 +45,11 @@ uniform float uReactivity;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// is the dot count (more pipes speaking), y cutoff hardens the dots' edges,
+// z reverb widens the wavefront into a rolling swell, w delay sets the
+// ripples' wavelength — the distance between repeats.
+uniform vec4  uSynth;
 
 // Wave height of the field at a point, in roughly -1..1. Everything that can
 // disturb the grid funnels through here — ambient sources, the cursor, the
@@ -54,7 +59,9 @@ float waveAt(in vec2 c, in float t, in vec2 mp, in float pActive, in float echo)
   // Two fixed ripple sources at rule-of-thirds offsets, plus a slow diagonal
   // swell. Frequencies deliberately incommensurate so the interference pattern
   // never settles into a repeating beat.
-  float k = 6.2831 / 0.55;
+  // The delay fader stretches the wavelength; the cursor source below shares k
+  // so everything stays in registration.
+  float k = 6.2831 / (0.55 * exp2(uSynth.w * 0.6));
   float w = sin(length(c - vec2(-0.35, 0.22)) * k - t * 1.4)
           + 0.8 * sin(length(c - vec2(0.38, -0.28)) * k * 1.13 - t * 1.55)
           + 0.45 * sin(dot(c, vec2(0.66, 1.0)) * 4.2 + t * 0.8);
@@ -72,7 +79,11 @@ float waveAt(in vec2 c, in float t, in vec2 mp, in float pActive, in float echo)
   if (uClickImpulse > 0.001 && uClickStrength > 0.001) {
     vec2 cp = uClickPos * 0.5 * vec2(uResolution.x / uResolution.y, 1.0);
     float x = length(c - cp) - (1.0 - uClickImpulse) * 1.7;
-    float ring = exp(-x * x * 130.0) - 0.5 * exp(-(x + 0.14) * (x + 0.14) * 80.0);
+    // The reverb fader widens the crest and its trough into a rolling swell —
+    // one event, smeared. s == 1 at rest.
+    float s = exp2(uSynth.z);
+    float ring = exp(-x * x * (130.0 / s))
+               - 0.5 * exp(-(x + 0.14 * s) * (x + 0.14 * s) * (80.0 / s));
     w += ring * uClickImpulse * uClickStrength * (1.7 + echo * 1.3);
   }
 
@@ -108,7 +119,9 @@ void main() {
   // the old 60–96 the crests were fat solid-white blobs the size of a glyph
   // stroke and the headline drowned in them; finer dots turn the same wave
   // into a halftone the eye reads as smooth tone, and the text pops back out.
-  float N = mix(80.0, 170.0, mDensity);
+  // The volume fader scales the count — the grid is procedural, so more dots
+  // cost nothing. Floored so a quiet fader can't drop below the legible range.
+  float N = max(70.0, mix(80.0, 170.0, mDensity) * exp2(uSynth.x * 0.7));
   // The wave is sampled at the cell center, not per-pixel, so each circle
   // swells and brightens as a unit — the grid reads as objects riding a wave,
   // not as a texture with dots stamped on it.
@@ -130,7 +143,9 @@ void main() {
   radius = clamp(radius, 0.05, 0.47);
 
   // Anti-alias width: ~1.5px expressed in cell-local units.
-  float aa = clamp(1.5 * N / uResolution.y, 0.004, 0.2);
+  // The cutoff fader is a literal low-pass on the dots: closing it widens the
+  // edge until they blur into tone, opening it snaps them to hard print.
+  float aa = clamp(1.5 * N / uResolution.y * exp2(-uSynth.y * 1.5), 0.004, 0.2);
   float dotMask = smoothstep(radius + aa, radius - aa, length(g));
 
   // Crest bright, trough sunk toward the ground — the wave reads in value as

@@ -89,7 +89,7 @@ const mindBase: SynthSettings = {
   delayWet: 0.34,
   reverbWet: 0.5,
 
-  masterVolume: -10,
+  masterVolume: -4,
   visualReactivity: 0.8,
 };
 
@@ -134,7 +134,7 @@ const correspondenceBase: SynthSettings = {
   delayWet: 0.20,
   reverbWet: 0.40,
 
-  masterVolume: -10,
+  masterVolume: -4,
   visualReactivity: 0.75,
 };
 
@@ -217,7 +217,7 @@ const vibrationBase: SynthSettings = {
   delayWet: 0.06,
   reverbWet: 0.03,
 
-  masterVolume: -7,
+  masterVolume: -1,
   visualReactivity: 0.95,
 };
 
@@ -262,7 +262,7 @@ const polarityBase: SynthSettings = {
   delayWet: 0.18,
   reverbWet: 0.35,
 
-  masterVolume: -10,
+  masterVolume: -4,
   visualReactivity: 0.8,
 };
 
@@ -312,7 +312,7 @@ const rhythmBase: SynthSettings = {
   delayWet: 0.30,
   reverbWet: 0.45,
 
-  masterVolume: -9,
+  masterVolume: -3,
   visualReactivity: 0.8,
 };
 
@@ -377,7 +377,7 @@ const causationBase: SynthSettings = {
   delayWet: 0.12,
   reverbWet: 0.3,
 
-  masterVolume: -10,
+  masterVolume: -4,
   visualReactivity: 0.85,
 };
 
@@ -423,7 +423,7 @@ const genderBase: SynthSettings = {
   delayWet: 0.22,
   reverbWet: 0.18,
 
-  masterVolume: -10,
+  masterVolume: -7,
   visualReactivity: 0.9,
 };
 

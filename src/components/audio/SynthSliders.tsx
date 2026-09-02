@@ -1,7 +1,8 @@
 "use client";
 
 import { useResolvedSynthSettings, useSynthTweakStore } from "@/lib/store";
-import type { SynthOverrideKey, SynthSettings } from "@/lib/store";
+import type { SynthOverrideKey } from "@/lib/store";
+import { FADERS, clamp01 } from "@/lib/synthFaders";
 
 /**
  * The panel's four vertical faders. They edit the tweak store's overrides —
@@ -9,82 +10,10 @@ import type { SynthOverrideKey, SynthSettings } from "@/lib/store";
  * holds its position across preset switches, and one you haven't tracks the
  * preset. Double-click hands a fader back to the preset.
  *
- * The set is deliberately the parameters that are audible on *every* engine:
- * volume and the wet sends live on the master chain, and every voice runs
- * through the shared filter. Preset-specific character (envelopes, LFOs,
- * timbre) stays the preset's own.
- *
- * A fader is a macro, not necessarily one parameter. Delay is the example:
- * wet alone reads as "the note arrives late" once it crosses the dry signal
- * (and the preset's low feedback gives a single repeat), so the knob drives
- * wet — capped at an equal blend, the played note always speaks on time —
- * and feedback together: further up, more repeats, longer fade. Pedal logic.
- *
- * The wet caps stop the top of a send fader from crossfading the dry signal
- * away entirely — full-wet is a synthesis trick, not what a mix knob means.
+ * The faders themselves (what each one drives, and how its position maps to
+ * settings) live in lib/synthFaders — the background render loop reads the
+ * same table to let each fader re-tune the active shader.
  */
-
-type Fader = {
-  label: string;
-  /** Every override this fader writes; double-click clears them all. */
-  keys: SynthOverrideKey[];
-  /** Fader position for the current (merged) settings, 0..1. */
-  getT: (s: SynthSettings) => number;
-  /** The overrides to write for a fader position. */
-  apply: (t: number) => Partial<Record<SynthOverrideKey, number>>;
-  format: (s: SynthSettings) => string;
-};
-
-const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
-
-const CUT_MIN = 80;
-const CUT_MAX = 12000;
-const CUT_RATIO = CUT_MAX / CUT_MIN;
-
-const REV_WET_MAX = 0.85;
-
-const DLY_WET_MAX = 0.5;
-const DLY_FB_MIN = 0.1;
-const DLY_FB_MAX = 0.7; // well clear of runaway; ~10 audible repeats at the top
-
-const pct = (t: number) => `${Math.round(t * 100)}%`;
-
-const FADERS: Fader[] = [
-  {
-    label: "volume",
-    keys: ["masterVolume"],
-    getT: (s) => clamp01((s.masterVolume + 36) / 36),
-    apply: (t) => ({ masterVolume: -36 + t * 36 }),
-    format: (s) => `${Math.round(s.masterVolume)}dB`,
-  },
-  {
-    label: "cutoff",
-    keys: ["filterCutoff"],
-    getT: (s) => clamp01(Math.log(s.filterCutoff / CUT_MIN) / Math.log(CUT_RATIO)),
-    apply: (t) => ({ filterCutoff: Math.round(CUT_MIN * Math.pow(CUT_RATIO, t)) }),
-    format: (s) =>
-      s.filterCutoff >= 1000
-        ? `${(s.filterCutoff / 1000).toFixed(1)}k`
-        : `${Math.round(s.filterCutoff)}`,
-  },
-  {
-    label: "reverb",
-    keys: ["reverbWet"],
-    getT: (s) => clamp01(s.reverbWet / REV_WET_MAX),
-    apply: (t) => ({ reverbWet: t * REV_WET_MAX }),
-    format: (s) => pct(clamp01(s.reverbWet / REV_WET_MAX)),
-  },
-  {
-    label: "delay",
-    keys: ["delayWet", "delayFeedback"],
-    getT: (s) => clamp01(s.delayWet / DLY_WET_MAX),
-    apply: (t) => ({
-      delayWet: t * DLY_WET_MAX,
-      delayFeedback: DLY_FB_MIN + t * (DLY_FB_MAX - DLY_FB_MIN),
-    }),
-    format: (s) => pct(clamp01(s.delayWet / DLY_WET_MAX)),
-  },
-];
 
 export function SynthSliders() {
   const settings = useResolvedSynthSettings();

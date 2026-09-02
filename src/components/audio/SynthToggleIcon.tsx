@@ -21,10 +21,9 @@ const glyph = (visible: boolean, hiddenDeg: number): CSSProperties => ({
 });
 
 /**
- * The chip both synth-panel toggles wear: black circle at rest, flooding
- * white — the piano's "key colour" — on hover and while the panel is up,
- * with the same glow a lit key cap throws. Shared for the same reason the
- * icon below is: two toggles, one look.
+ * The chip both synth-panel toggles wear: white circle at rest, flooding
+ * black on hover and while the panel is up, with a soft glow. Shared for the
+ * same reason the icon below is: two toggles, one look.
  *
  * Callers add their own layout/interaction extras (cursor, pointer-events);
  * everything visual lives here. shrink-0 because, unlike the key caps, this
@@ -34,8 +33,8 @@ const glyph = (visible: boolean, hiddenDeg: number): CSSProperties => ({
 export function synthToggleChipClass(open: boolean) {
   return `flex h-10 w-10 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,color,box-shadow] duration-100 ${
     open
-      ? "border-white bg-white text-black shadow-[0_0_12px_#ffffff80]"
-      : "border-black bg-black text-white/90 hover:border-white hover:bg-white hover:text-black hover:shadow-[0_0_12px_#ffffff80]"
+      ? "border-black bg-black text-white shadow-[0_0_12px_#00000080]"
+      : "border-white bg-white text-black/90 hover:border-black hover:bg-black hover:text-white hover:shadow-[0_0_12px_#00000080]"
   }`;
 }
 

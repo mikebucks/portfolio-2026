@@ -54,6 +54,11 @@ uniform sampler2D uWave;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
+// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
+// is the strings' amplitude, y cutoff hardens the crisp band's edge, z reverb
+// softens the soft bands into a wash, w delay offsets each string in time
+// from the last so the five read as echoes of one another.
+uniform vec4  uSynth;
 
 ${NOTE_HUE_GLSL}
 
@@ -155,7 +160,9 @@ void main() {
   float excite = clamp(hit + uEnvelope * 0.6, 0.0, 1.5);
   // The sketch's own proportions: ~0.2 of frame height for the outer two
   // strings, half that for the tight one.
-  float amp = mix(0.15, 0.26, mWobble) * (1.0 + 0.35 * excite);
+  // The volume fader is the most literal control in the frame: loudness is
+  // amplitude.
+  float amp = mix(0.15, 0.26, mWobble) * (1.0 + 0.35 * excite) * (1.0 + uSynth.x * 0.45);
   float bend = pluck * 0.45 + strike * 0.22;
 
   // Cycles across the whole frame, matching the sketch's 30 / 50 / 2 radians
@@ -204,20 +211,27 @@ void main() {
   // bright bands, so its crest is what has to clear the dark shapes bounded by
   // hg and hb. Raising the two bright bands directly would only widen them
   // downward as well.
-  float hr = py - (wave(p.x * cyc        - t * 0.95) * amp * 1.35 * envR + mid             + bend);
-  float hg = py - (wave(p.x * cyc * 1.67 - t * 1.20) * amp * 0.5  * envG + mid + fan       + bend);
-  float hb = py - (wave(p.x * slow       - t * 0.85) * amp        * envB + mid - fan * 0.8 + bend * 0.6);
-  float hd = py - (wave(p.x * cyc * 2.60 - t * 1.45) * amp * 0.28 * envD + mid + fan * 1.9 + bend);
-  float he = py - (wave(p.x * slow * 0.6 + t * 0.55) * amp * 0.75 * envE + mid - fan * 2.1 + bend * 0.4);
+  // The delay fader offsets each string's clock one step further than the
+  // last, so the five become delayed copies of one another — an echo cascade.
+  // Exactly zero at rest.
+  float echo = uSynth.w * 0.30;
+  float hr = py - (wave(p.x * cyc        - t * 0.95)                 * amp * 1.35 * envR + mid             + bend);
+  float hg = py - (wave(p.x * cyc * 1.67 - (t - echo) * 1.20)        * amp * 0.5  * envG + mid + fan       + bend);
+  float hb = py - (wave(p.x * slow       - (t - echo * 2.0) * 0.85)  * amp        * envB + mid - fan * 0.8 + bend * 0.6);
+  float hd = py - (wave(p.x * cyc * 2.60 - (t - echo * 3.0) * 1.45)  * amp * 0.28 * envD + mid + fan * 1.9 + bend);
+  float he = py - (wave(p.x * slow * 0.6 + (t - echo * 4.0) * 0.55)  * amp * 0.75 * envE + mid - fan * 2.1 + bend * 0.4);
 
   // Drive tightens the edges; input softens them into a flare. The split is the
   // point — one crisp band reading as a shape against soft ones reading as
   // glow — but the soft exponent was low enough that its edge ran a fifth of
   // the frame, so the bands it bounds were mostly gradient. Roughly doubled, so
   // they still glow without losing their outline.
+  // The cutoff fader rides the crisp exponent (the image's top-end detail) and
+  // the reverb fader lowers the soft one, bleeding those bands into a wash
+  // around a dry, hard-edged signal. Two faders, two exponents — independent.
   float flare = 1.0 - 0.35 * mBoom * hit;
-  float sharpA = mix(900.0, 2000.0, mDrive) * flare;
-  float sharpB = mix(140.0, 320.0, mDrive) * flare;
+  float sharpA = mix(900.0, 2000.0, mDrive) * flare * (1.0 + uSynth.y * 0.5);
+  float sharpB = mix(140.0, 320.0, mDrive) * flare * (1.0 - uSynth.z * 0.45);
 
   float fr = band(hr, hg, sharpA);
   float fg = band(hg, hb, sharpB);
