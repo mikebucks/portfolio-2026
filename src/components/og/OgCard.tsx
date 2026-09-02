@@ -1,4 +1,5 @@
 import { OG, SITE } from "@/lib/siteMeta";
+import { PIANO_PATH, PIANO_VIEW_BOX } from "@/components/icons";
 
 /**
  * The 1200x630 link-preview card, shared by the site-wide OG route and the
@@ -56,14 +57,18 @@ export function OgCard({
           <span>Mike</span>
           <span style={{ fontWeight: 700 }}>Bucks</span>
         </div>
-        <div
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: 999,
-            backgroundColor: OG.accent,
-          }}
-        />
+        {/* The piano mark, matching the favicons and the synth toggles. A bare
+            <path d fill> because Satori's SVG support is a subset — no
+            currentColor inheritance, no <g> glyph composition. */}
+        <svg
+          width={36}
+          height={36}
+          viewBox={PIANO_VIEW_BOX}
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d={PIANO_PATH} fill={OG.ink} />
+        </svg>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>

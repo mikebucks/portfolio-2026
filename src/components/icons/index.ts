@@ -32,3 +32,4 @@ export {
   RECYCLE_IC3_VIEW_BOX,
 } from "./RecycleIC3";
 export { Close, CloseGlyph, CLOSE_VIEW_BOX } from "./Close";
+export { Piano, PianoGlyph, PIANO_PATH, PIANO_VIEW_BOX } from "./Piano";

@@ -21,21 +21,27 @@ import { useResolvedSynthSettings } from "@/lib/store";
  * keyboard.
  */
 
-type Size = "sm" | "lg";
-type Tone = "light" | "dark";
+type Size = "sm" | "md" | "lg";
+type Tone = "light" | "dark" | "solid";
 
 const SIZES: Record<Size, string> = {
   sm: "h-6 min-w-[1.5rem] rounded px-1.5 text-[11px]",
+  // md, unlike lg, doesn't flex-1: the hero row is a content-sized strip, not a
+  // panel-width grid, so the caps hold their own width.
+  md: "h-10 min-w-[2.5rem] rounded-md px-2 text-sm",
   lg: "h-12 min-w-[2.75rem] flex-1 rounded-md px-2 text-lg",
 };
 
-// Two idle treatments, because the caps live on cream in the footer and on the
-// panel's dark glass. At rest the cap stays neutral — the only colour is the
-// sticker dot in the corner; struck or hovered, the whole cap goes to the
-// key's palette colour, so the cap and the light the background throws match.
+// Three idle treatments, because the caps live on cream in the footer, on the
+// panel's dark glass, and straight on the hero's shader — where an outline-only
+// cap all but disappears, so `solid` gives it its own black plate. At rest the
+// cap stays neutral — the only colour is the sticker dot in the corner; struck
+// or hovered, the whole cap goes to the key's palette colour, so the cap and
+// the light the background throws match.
 const TONES: Record<Tone, string> = {
   light: "border-black/15 text-black/70",
   dark: "border-white/50 text-white/70",
+  solid: "border-black bg-black text-white/90",
 };
 
 // Which ink stays legible on a given cap when it lights up. Rec. 709 luma on
@@ -209,15 +215,15 @@ export function SynthKeyCap({
         SIZES[size]
       } ${active || hovered ? "" : TONES[tone]} ${className}`}
     >
-      {showNote && (
-        // The key's colour swatch: the same sticker dot the piano roll wears,
-        // parked in the cap's top-left corner. Lit, the cap floods with that
+      {/* {showNote && (
+        // The key's colour swatch — the same marking the piano roll wears as a
+        // bottom bar, worn here as a corner dot. Lit, the cap floods with that
         // colour and the dot simply dissolves into it.
         <span
-          className="pointer-events-none absolute right-2 bottom-2 h-1 w-1 rounded-full"
+          className="pointer-events-none absolute right-2 top-2 h-1 w-1 rounded-full"
           style={{ backgroundColor: color }}
         />
-      )}
+      )} */}
       <kbd className="font-mono">{keyName}</kbd>
       {showNote && (
         <span className="mt-1 text-[9px] tracking-wide opacity-60">{note}</span>

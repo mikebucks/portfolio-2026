@@ -3,33 +3,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useUIStore } from "@/lib/store";
-import {
-  CloseGlyph,
-  PhilosophersSealGlyph,
-  PHILOSOPHERS_SEAL_CENTER,
-  PHILOSOPHERS_SEAL_VIEW_BOX,
-} from "@/components/icons";
+import { SynthToggleIcon, synthToggleChipClass } from "./SynthToggleIcon";
 import { primeAudioContext } from "./primeAudioContext";
 
-// The two glyphs share the seal's (10,10) center and cross-fade through a
-// quarter turn in opposite directions, so opening reads as the mark rotating
-// into a cross rather than two icons cutting. Written as inline style rather
-// than utility classes because `transform-box: view-box` has to be explicit —
-// without it, older engines resolve the rotation about the SVG's border box
-// and the glyph swings off-center.
-const glyph = (visible: boolean, hiddenDeg: number) => ({
-  transformBox: "view-box" as const,
-  transformOrigin: `${PHILOSOPHERS_SEAL_CENTER}px ${PHILOSOPHERS_SEAL_CENTER}px`,
-  transform: `rotate(${visible ? 0 : hiddenDeg}deg)`,
-  opacity: visible ? 1 : 0,
-  transition:
-    "transform 320ms cubic-bezier(0.7, 0, 0.2, 1), opacity 200ms ease-out",
-});
-
 /**
- * The panel's only open/close control: a philosopher's seal that turns into a
- * close cross while the panel is up. Drawn inline rather than pulled from an
- * icon package.
+ * The panel's fixed open/close control: a piano key (SynthToggleIcon, shared
+ * with the hero row's toggle) that turns into a close cross while the panel
+ * is up.
  *
  * Pinned to the bottom-right of the viewport and portalled to <body>, for the
  * same reason the panel is: it renders from inside the <header>, whose
@@ -106,43 +86,12 @@ export function SynthToggleButton() {
           title={open ? "Close synth" : "Open synth"}
           className="pointer-events-auto cursor-pointer"
         >
-          <span
-            className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg backdrop-blur-md transition-[background-color,color,border-color] duration-300 ${
-              open
-                ? "bg-black/85 text-white hover:text-accent"
-                : "bg-white text-black hover:text-accent"
-            }`}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              // Fills the 40px chip rather than sitting inside it at 24: the
-              // seal was redrawn in Figma with the chip's padding baked into
-              // its box, so the mark only spans about 26 of its 40 units. At 24
-              // it would render a third smaller than the artwork; at 40 the ink
-              // lands exactly where the design puts it, and the chip stands in
-              // for the white plate the export draws under the mark.
-              width="40"
-              height="40"
-              viewBox={PHILOSOPHERS_SEAL_VIEW_BOX}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              {/* Both glyphs come from @/components/icons — they're drawn on
-                  the same 40-unit grid, which is what lets them share this one
-                  <svg> and rotate about a common center.
-
-                  paper="none" because this chip is the white plate the artwork
-                  was drawn on, and it's deliberately translucent — an opaque
-                  triangle would punch a solid wedge through the backdrop blur.
-                  Nothing in the mark needs it: only the inner circle's fill is
-                  load-bearing, knocking itself out of the solid square. */}
-              <PhilosophersSealGlyph paper="none" style={glyph(!open, 90)} />
-              <CloseGlyph style={glyph(open, -90)} />
-            </svg>
+          {/* The shared chip look — same black/white flood as the hero row's
+              toggle. Solid plates, so the old backdrop-blur went with them. */}
+          <span className={synthToggleChipClass(open)}>
+            {/* Size 40 fills the chip — the icon carries the chip's padding
+                inside its own box, so the ink lands where the design puts it. */}
+            <SynthToggleIcon open={open} size={40} />
           </span>
         </button>
       </div>

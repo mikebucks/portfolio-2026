@@ -20,10 +20,10 @@ import { visualBus } from "@/lib/visualEvents";
  * plus the octave shift controls. Deliberately small — it's an indicator you
  * can also play, not the main keyboard.
  *
- * The keys the home row currently reaches each wear a tiny dot in their
- * palette colour — like paper stickers on a practice keyboard — and that row
- * of dots slides as the octave moves, so the roll *is* the octave indicator.
- * Any key — marked or not — plays its exact written pitch on click.
+ * The keys the home row currently reaches each wear a bar of their palette
+ * colour across the bottom edge — like tape strips on a practice keyboard —
+ * and that band slides as the octave moves, so the roll *is* the octave
+ * indicator. Any key — marked or not — plays its exact written pitch on click.
  *
  * Playing takes one of two routes. A *mapped* note — one the home row
  * currently reaches — is played by dispatching the synthetic key events the
@@ -289,7 +289,7 @@ export function PianoRoll() {
                 left: `${whiteIndex * WHITE_W}%`,
                 width: `${WHITE_W}%`,
                 // At rest every key is plain ivory; a mapped key is marked by
-                // its dot, not a tint. Struck, it floods with its colour.
+                // its bottom bar, not a tint. Struck, it floods with its colour.
                 backgroundColor: lit
                   ? (color ?? "#ffffff")
                   : "rgba(255,255,255,0.45)",
@@ -301,7 +301,7 @@ export function PianoRoll() {
             >
               {color && (
                 <span
-                  className="pointer-events-none absolute bottom-[3px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
                   style={{ backgroundColor: color }}
                 />
               )}
@@ -331,11 +331,11 @@ export function PianoRoll() {
               }}
             >
               {/* The one mapped black key (A#) carries a light palette colour
-                  by design (see NOTE_PALETTE), so its sticker dot reads on the
-                  dark key without any helper ring. */}
+                  by design (see NOTE_PALETTE), so its bar reads on the dark
+                  key without any helper ring. */}
               {color && (
                 <span
-                  className="pointer-events-none absolute bottom-[2px] left-1/2 h-1 w-1 -translate-x-1/2 rounded-full"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
                   style={{ backgroundColor: color }}
                 />
               )}
