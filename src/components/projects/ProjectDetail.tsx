@@ -25,21 +25,6 @@ const GRAPHICS: Record<
 const COLUMN = "max-w-[49.5rem]";
 
 /**
- * Normalize a project into an ordered block list. Prefers the new `content`
- * field; otherwise falls back to the legacy `body` (rich-text paragraphs)
- * followed by the trailing `media` stack.
- */
-function toBlocks(project: Project): ProjectBlock[] {
-  if (project.content) return project.content;
-  return [
-    ...(project.body ?? []).map(
-      (html): ProjectBlock => ({ type: "text", html }),
-    ),
-    ...(project.media ?? []),
-  ];
-}
-
-/**
  * Vertical rhythm between blocks. Prose sits close to prose; anything touching
  * a full-width figure or stat grid gets the wide gap on both sides, so media
  * reads as a break in the column rather than another paragraph.
@@ -63,7 +48,7 @@ export function ProjectDetail({
   project: Project;
   onBack?: () => void;
 }) {
-  const blocks = toBlocks(project);
+  const blocks = project.content;
 
   // `data-reveal` marks each element as one step of the modal's entrance
   // cascade (offset down + faded until ProjectModal reveals it — staggered on

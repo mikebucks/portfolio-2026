@@ -125,23 +125,10 @@ export type Project = {
   role: string;
   summary: string;
   tags: string[];
-  /**
-   * Preferred authoring format: an ordered mix of copy and media. When present,
-   * this supersedes `body` + `media` on the detail page.
-   */
-  content?: ProjectBlock[];
+  /** The detail page: an ordered mix of copy and media blocks. */
+  content: ProjectBlock[];
   /** Used on featured cards and the projects index list. */
   thumbnail?: string;
-  /**
-   * Legacy copy paragraphs, rendered before `media`. Each string is rich text
-   * (inline HTML allowed). Prefer `content` for new projects.
-   */
-  body?: string[];
-  /**
-   * Legacy trailing media stack, rendered after `body`. Prefer `content` for
-   * new projects so media can be interleaved with copy.
-   */
-  media?: ProjectMedia[];
 };
 
 export const projects: Project[] = [
@@ -186,7 +173,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI, scrubbed industry jargon, and applied the same UI design system that had been proven with our institutional customers. <strong>We turned the complexity of staking crypto into trust in Figment's institutional pedigree</strong> that resonated with consumer crypto holders."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstaked Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every unnecessary piece of copy and UI, scrubbed industry jargon, and applied the same UI design system that had been proven with our institutional customers. <strong>We turned the complexity of staking crypto into trust in Figment's institutional pedigree</strong> that resonated with consumer crypto holders."
       },
       {
         type: "image",
@@ -194,7 +181,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>. As part of the process, it was necessary to create an entirely new product led growth discipline within Figment's highly b2b sales-driven product team."
+        html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>. As part of the process, it was necessary to create an entirely new product-led growth discipline within Figment's highly b2b sales-driven product team."
       },
       {
         type: "grid",
@@ -235,15 +222,14 @@ export const projects: Project[] = [
     thumbnail: "/projects/figment-dashboard/thumbnail.png",
     tags: ["react", "web3", "design"],
     summary: "Digital asset management for financial institutions",
-    media: [],
     content: [
       {
         type: "text",
-        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is how they monitor and manage the perfomance of billions of dollars in staked assets.",
+        html: "Figment is where the world's largest financial institutions stake their crypto holdings. Figment's dashboard is how they monitor and manage the performance of billions of dollars in staked assets.",
       },
       {
         type: "text",
-        html: "The dashboard initially launched with support for the Ethereum protocol. Over the couse of my tenure, the app evolved to support over 20 additional proof-of-stake protocols' mainnets and testnets, detailed rewards reporting, RBAC team management, and click-to-stake flows.",
+        html: "The dashboard initially launched with support for the Ethereum protocol. Over the course of my tenure, the app evolved to support over 20 additional proof-of-stake protocols' mainnets and testnets, detailed rewards reporting, RBAC team management, and click-to-stake flows.",
       },
       {
         type: "stats",
@@ -292,7 +278,7 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "<strong>Advanced design capability, rapid prototyping, and the abililty to iterate on a product don't need to be limited to specialists or gated tools</strong>. These systems should be available to any qualified teammate to participate in, learn from, and build on.",
+        html: "<strong>Advanced design capability, rapid prototyping, and the ability to iterate on a product don't need to be limited to specialists or gated tools</strong>. These systems should be available to any qualified teammate to participate in, learn from, and build on.",
       },
       {
         type: "text",
@@ -300,7 +286,7 @@ export const projects: Project[] = [
       },
       {
         type: "text",
-        html: `<strong>Chisel connects these formerly siloed systems and unlocks new capabilities</strong> for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and desgin groups.`,
+        html: `<strong>Chisel connects these formerly siloed systems and unlocks new capabilities</strong> for product, design, and eng teams. I implemented the pilot version for Figment, a crypto infrastructure company with a large engineering org and comparably tiny product and design groups.`,
       },
       // {
       //   type: "text",
@@ -373,7 +359,7 @@ export const projects: Project[] = [
      },
      { 
         type: "text", 
-        html: "My main roles on the project is branding, design, creative coding & frontend engineering. It's currently in the \"side project in progress\" state but we're making bits of progress every day in between our families and our day jobs."
+        html: "My main roles on the project are branding, design, creative coding & frontend engineering. It's currently in the \"side project in progress\" state but we're making bits of progress every day in between our families and our day jobs."
      }, 
 
       {
@@ -416,12 +402,18 @@ export const projects: Project[] = [
     role: "Product Design & Design Engineering",
     tags: ["design", "react/native", ""],
     summary: "The happy path for modern travelers",
-    body: [
-      "As Creative Technology Principal at Lyric, a premium short term rental operator, I designed and experimented with UIs for interfacing with the Lyric brand. From booking a stay to keyless access via our native iOS app, my team and I planned, designed & built the happy paths for modern travelers. My main duties at Lyric included UI/UX design and React/RN development.",
-    ],
-    media: [
+    content: [
+      {
+        type: "text",
+        html: "As Creative Technology Principal at Lyric, a premium short term rental operator, I designed and experimented with UIs for interfacing with the Lyric brand. From booking a stay to keyless access via our native iOS app, my team and I planned, designed & built the happy paths for modern travelers. My main duties at Lyric included UI/UX design and React/RN development.",
+      },
       { type: "image", src: "/projects/lyric/iosapp.png", alt: "Lyric React Native app" },
-      { type: "image", src: "/projects/lyric/intro-amination.gif", alt: "App intro animation" },
+      { 
+        type: "image", 
+        className: "max-w-md mx-auto",
+        src: "/projects/lyric/intro-amination.gif", 
+        alt: "App intro animation" 
+      },
       {
         type: "grid",
         columns: 3,
@@ -441,10 +433,11 @@ export const projects: Project[] = [
     role: "Design Leadership, Product Design, & Engineering",
     tags: ["design", "react/native", ""],
     summary: "UI consistency for a massive digital health ecosystem",
-    body: [
-      "As Director of Product Design at Vori Health I oversaw the research, design, and implementation of Vori's suite of digital products. My team and I crafted a universal design system and implemented a seamless tokenization flow where values from Figma automatically update our React component styles. Vori's design system has been universally applied to internal clinical apps as well as consumer web and native mobile apps. It's had a big impact on engineering velocity since there is very little translation needed between Figma and React.",
-    ],
-    media: [
+    content: [
+      {
+        type: "text",
+        html: "As Director of Product Design at Vori Health I oversaw the research, design, and implementation of Vori's suite of digital products. My team and I crafted a universal design system and implemented a seamless tokenization flow where values from Figma automatically update our React component styles. Vori's design system has been universally applied to internal clinical apps as well as consumer web and native mobile apps. It's had a big impact on engineering velocity since there is very little translation needed between Figma and React.",
+      },
       { type: "image", src: "/projects/vori/dashboard.jpg", alt: "Clinical dashboard" },
       { type: "image", src: "/projects/vori/onboarding.jpg", alt: "Patient onboarding" },
       { type: "image", src: "/projects/vori/onboarding2.jpg", alt: "Patient onboarding — continued" },
@@ -454,53 +447,56 @@ export const projects: Project[] = [
       { type: "image", src: "/projects/vori/token-automation.png", alt: "Figma-to-React token automation" },
     ],
   },
-  {
-    slug: "verse",
-    title: "Verse",
-    role: "Product Design & Design Engineering",
-    tags: ["design", "react/native", ""],
-    summary: "A highly interactive video storytelling platform",
-    body: [
-      "Verse is a highly interactive video storytelling platform. As Director of Product Development, I conceptualized, designed, and implemented many features in the Verse ecosystem including; custom embeddable interactive video players, immersive 360 video, clickable hotspots, and mobile-friendly UI. Check out some of the award-winning stories built on Verse.",
-    ],
-    media: [
-      { type: "image", src: "/projects/verse/editor1.jpg", alt: "Verse story editor" },
-      { type: "image", src: "/projects/verse/editor2.jpg", alt: "Verse story editor — interaction" },
-      { type: "image", src: "/projects/verse/pricing.jpg", alt: "Pricing page" },
-      { type: "image", src: "/projects/verse/settings.jpg", alt: "Settings" },
-    ],
-  },
+  // {
+  //   slug: "verse",
+  //   title: "Verse",
+  //   role: "Product Design & Design Engineering",
+  //   tags: ["design", "react/native", ""],
+  //   summary: "A highly interactive video storytelling platform",
+  //   content: [
+  //     {
+  //       type: "text",
+  //       html: "Verse is a highly interactive video storytelling platform. As Director of Product Development, I conceptualized, designed, and implemented many features in the Verse ecosystem including; custom embeddable interactive video players, immersive 360 video, clickable hotspots, and mobile-friendly UI. Check out some of the award-winning stories built on Verse.",
+  //     },
+  //     { type: "image", src: "/projects/verse/editor1.jpg", alt: "Verse story editor" },
+  //     { type: "image", src: "/projects/verse/editor2.jpg", alt: "Verse story editor — interaction" },
+  //     { type: "image", src: "/projects/verse/pricing.jpg", alt: "Pricing page" },
+  //     { type: "image", src: "/projects/verse/settings.jpg", alt: "Settings" },
+  //   ],
+  // },
   {
     slug: "google-pride",
     title: "Google Pride",
     role: "Design Engineering",
     tags: ["design", "react/native", ""],
     summary: "An award winning interactive documentary",
-    body: [
-      "Partnering with Stink Studios NY to build Google's #ShowUp platform, I lead the frontend development as well as created a CSS motion design language with an extremely talented team of designers and developers. We built an interactive map taking visitors on a documentary-style journey through the LGBTQ communities in several American cities. The campaign has ended but you can read about its success and see the work here, here and here.",
-    ],
-    media: [
+    content: [
+      {
+        type: "text",
+        html: `Partnering with Stink Studios NY to build Google's #ShowUp platform, I led the frontend development as well as created a CSS motion design language with an extremely talented team of designers and developers. We built an interactive map taking visitors on a documentary-style journey through the LGBTQ communities in several American cities. The campaign has ended but you can read about its success and see the work <a href="https://www.stinkstudios.com/work/google-showup">here</a>, <a href="https://thefwa.com/cases/showup-p2">here</a> and <a href="https://www.awwwards.com/sites/showup">here</a>.`,
+      },
       { type: "image", src: "/projects/google-pride/home.jpg", alt: "#ShowUp landing" },
       { type: "image", src: "/projects/google-pride/ny.jpg", alt: "New York chapter" },
       { type: "image", src: "/projects/google-pride/la.jpg", alt: "Los Angeles chapter" },
       { type: "image", src: "/projects/google-pride/vid.jpg", alt: "Documentary video chapter" },
     ],
   },
-  {
-    slug: "google-open-source",
-    title: "Google Open Source",
-    role: "Design Engineering",
-    tags: ["design", "react/native", ""],
-    summary: "A home for Google's 10k+ open source projects",
-    body: [
-      "I had the privilege of being the sole developer on the .com offering from Google's Open Source team. It uses Angular, Canvas, and loads of CSS motion design to strike a balance between the simplicity of web standards and the modern web.",
-    ],
-    media: [
-      { type: "image", src: "/projects/google-open-source/home.jpg", alt: "Google Open Source home" },
-      { type: "image", src: "/projects/google-open-source/projects.jpg", alt: "Projects directory" },
-      { type: "image", src: "/projects/google-open-source/cloud.jpg", alt: "Cloud chapter" },
-    ],
-  },
+  // {
+  //   slug: "google-open-source",
+  //   title: "Google Open Source",
+  //   role: "Design Engineering",
+  //   tags: ["design", "react/native", ""],
+  //   summary: "A home for Google's 10k+ open source projects",
+  //   content: [
+  //     {
+  //       type: "text",
+  //       html: "I had the privilege of being the sole developer on the .com offering from Google's Open Source team. It uses Angular, Canvas, and loads of CSS motion design to strike a balance between the simplicity of web standards and the modern web.",
+  //     },
+  //     { type: "image", src: "/projects/google-open-source/home.jpg", alt: "Google Open Source home" },
+  //     { type: "image", src: "/projects/google-open-source/projects.jpg", alt: "Projects directory" },
+  //     { type: "image", src: "/projects/google-open-source/cloud.jpg", alt: "Cloud chapter" },
+  //   ],
+  // },
 ];
 
 export function getProject(slug: string) {
@@ -543,12 +539,10 @@ export function projectImages(project: Project, limit = 4): string[] {
 
   push(project.thumbnail);
 
-  const media: ProjectMedia[] = project.content
-    ? project.content.filter(
-        (b): b is ProjectMedia =>
-          b.type === "image" || b.type === "video" || b.type === "grid",
-      )
-    : (project.media ?? []);
+  const media = project.content.filter(
+    (b): b is ProjectMedia =>
+      b.type === "image" || b.type === "video" || b.type === "grid",
+  );
 
   for (const m of media) {
     if (m.type === "image") push(m.src);
