@@ -45,7 +45,22 @@ export type ProjectMedia =
       type: "grid";
       items: { src: string; alt?: string; width?: number; height?: number }[];
       columns?: 2 | 3;
+      /**
+       * Cell shape. "square" (default) crops every image to a uniform square —
+       * right for a wall of mixed-ratio shots. "natural" keeps each image's own
+       * ratio, for tall screenshots that must not crop; pair images with
+       * matching ratios so the row's bottom edge stays level.
+       */
+      aspect?: "square" | "natural";
       caption?: string;
+      /**
+       * Per-block Tailwind classes on the grid's <figure> — same contract as
+       * the image/video `className`. Most useful for capping a grid that would
+       * otherwise run the full panel width: `max-w-2xl mx-auto`. The grid div
+       * is the figure's direct child, so its defaults are reachable with a
+       * child variant — `[&>div]:gap-2` tightens the default `gap-4`.
+       */
+      className?: string;
     };
 
 /**
@@ -136,11 +151,11 @@ export const projects: Project[] = [
     role: "Product Design, Engineering, & Growth",
     thumbnail: "/projects/figment-dapp/thumbnail.png",
     tags: ["react", "web3", "design"],
-    summary: "A consumer swing for B2B crypto infrastructure",
+    summary: "Turning institutional complexity into consumer trust",
     content: [
       {
         type: "text",
-        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving mostly large financial institutions, I redesigned a nascent consumer decentraized app that had been hiding in Ledger Wallet's marketplace. The goal of the redesign was to <strong>open Figment's institutional-grade infrastructure to a wider audience of self-custody crypto holders</strong>."
+        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving large financial institutions, I redesigned a nascent consumer dApp that had been hiding in Ledger Wallet's marketplace. The original design was not performing. The goal of the redesign was to <strong>dramatically simplify the UI for a self-custody audience</strong>."
       },
       {
         type: "stats",
@@ -171,7 +186,7 @@ export const projects: Project[] = [
       },
       { 
         type: "text",
-        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI, scrubbed the dApp of industry jargon, and applied the same UI design system that had been proven with our institutional customers. <strong>We turned the complexity of staking crypto into trust in Figment's institutional pedigree</strong> that resonated with consumer crypto holders."
+        html: "While there were competitor dApps already claiming this territory, we knew the amount of unstated Ethereum held on Ledger devices was massive. It was worth the swing. A team of 2 (myself and a PM) took a scrappy approach to the project. We stripped away every uneccessary piece of copy and UI, scrubbed industry jargon, and applied the same UI design system that had been proven with our institutional customers. <strong>We turned the complexity of staking crypto into trust in Figment's institutional pedigree</strong> that resonated with consumer crypto holders."
       },
       {
         type: "image",
@@ -180,6 +195,15 @@ export const projects: Project[] = [
       { 
         type: "text",
         html: "What started as a side quest quickly turned into a meaningful line of business for Figment. Pre-redesign the amount of staked ETH was near zero. <strong>After a year in the Ledger Wallet marketplace, that number had grown to over $500,000,000</strong>. As part of the process, it was necessary to create an entirely new product led growth discipline within Figment's highly b2b sales-driven product team."
+      },
+      {
+        type: "grid",
+        aspect: "natural",
+        className: "max-w-4xl mx-auto [&>div]:gap-12",
+        items: [
+          { src: "/projects/figment-dapp/mobile-stake.png", alt: "Mobile Ethereum Staking" },
+          { src: "/projects/figment-dapp/mobile-cards.png", alt: "Mobile Why Figment Cards" },
+        ],
       },
       { 
         type: "text",
@@ -201,10 +225,6 @@ export const projects: Project[] = [
       {
         type: "image",
         src: "/projects/figment-dapp/eth-stake.png"
-      },
-      {
-        type: "image",
-        src: "/projects/figment-dapp/eth-why-stake.png"
       },
     ],
   },
@@ -335,12 +355,27 @@ export const projects: Project[] = [
     thumbnail: "/projects/book-of-idra/thumbnail.png",
     tags: ["web3", "creative-coding", "design", "branding"],
     summary: "What does the future of creative writing look like?",
-    body: [
-      "Book of Idra is a web3 experiment in collaborative storytelling. Token holders work together to craft a fictional story through consensus. Characters, locations, and entire worlds await their discovery.",
-    ],
-    media: [
-      { type: "image", src: "/projects/book-of-idra/homepage.jpg", alt: "Book of Idra homepage" },
-      { type: "image", src: "/projects/book-of-idra/angel-descriptions.jpg", alt: "The four celestial orders" },
+    content: [
+      {
+        type: "text",
+        html: "Book of Idra is a web3 experiment in collaborative storytelling. Token holders work together to craft a fictional story through consensus. Characters, locations, and entire worlds await their discovery.",
+      },
+      { 
+        type: "image", 
+        className: "max-w-3xl mx-auto", 
+        src: "/projects/book-of-idra/homepage.jpg", 
+        alt: "Book of Idra homepage" 
+      },
+      
+      { 
+        type: "text", 
+        html: "Book of Idra is a collaboration between myself and a close friend. We wanted to do something interesting with NFTs beyond the hyper-saturated profile pic investment craze. We're writing a fictional story through consensus-based collaboration on a token-gated dApp."
+     },
+     { 
+        type: "text", 
+        html: "My main roles on the project is branding, design, creative coding & frontend engineering. It's currently in the \"side project in progress\" state but we're making bits of progress every day in between our families and our day jobs."
+     }, 
+
       {
         type: "grid",
         items: [
@@ -350,8 +385,18 @@ export const projects: Project[] = [
           { src: "/projects/book-of-idra/angel4.jpg", alt: "Angel 4" },
         ],
       },
-      { type: "image", src: "/projects/book-of-idra/logos.png", alt: "Logo explorations" },
-      { type: "image", src: "/projects/book-of-idra/pentamorph.jpg", alt: "Pentamorph app" },
+      { 
+        type: "image", 
+        className: "max-w-lg mx-auto",
+        src: "/projects/book-of-idra/logos.png", 
+        alt: "Logo explorations" 
+      },
+      { 
+        type: "video", 
+        src: "/projects/book-of-idra/Pentamorph.mp4", 
+        alt: "Pentamorph", 
+        autoplay: true, 
+      },
       { type: "image", src: "/projects/book-of-idra/bg-ring.jpg", alt: "Background ring illustration" },
     ],
   },

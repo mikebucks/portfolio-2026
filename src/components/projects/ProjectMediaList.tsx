@@ -19,10 +19,9 @@ export function ProjectMediaFigure({
   // so a frame (padding, background, border) encloses the caption too. They
   // come last, after the caller's layout classes, so an item can override them.
   // To reach the media itself, use a child variant: `[&_img]:rounded-none`.
-  const itemClassName = m.type === "grid" ? undefined : m.className;
 
   return (
-    <figure className={cn(className, itemClassName)}>
+    <figure className={cn(className, m.className)}>
       {m.type === "image" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -61,7 +60,10 @@ export function ProjectMediaFigure({
               alt={item.alt ?? ""}
               width={item.width}
               height={item.height}
-              className="aspect-square w-full h-auto object-cover rounded"
+              className={cn(
+                "w-full h-auto rounded",
+                m.aspect !== "natural" && "aspect-square object-cover",
+              )}
             />
           ))}
         </div>
