@@ -214,7 +214,7 @@ export function SynthKeyCap({
         // parked in the cap's top-left corner. Lit, the cap floods with that
         // colour and the dot simply dissolves into it.
         <span
-          className="pointer-events-none absolute left-2 top-2 h-1 w-1 rounded-full"
+          className="pointer-events-none absolute right-2 bottom-2 h-1 w-1 rounded-full"
           style={{ backgroundColor: color }}
         />
       )}
