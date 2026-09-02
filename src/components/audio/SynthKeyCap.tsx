@@ -31,9 +31,8 @@ const SIZES: Record<Size, string> = {
 
 // Two idle treatments, because the caps live on cream in the footer and on the
 // panel's dark glass. At rest the cap stays neutral — the only colour is the
-// tiny chip around the note name; struck or hovered, the whole cap goes to
-// the key's palette colour, so the cap and the light the background throws
-// match.
+// sticker dot in the corner; struck or hovered, the whole cap goes to the
+// key's palette colour, so the cap and the light the background throws match.
 const TONES: Record<Tone, string> = {
   light: "border-black/15 text-black/70",
   dark: "border-white/50 text-white/70",
@@ -195,7 +194,7 @@ export function SynthKeyCap({
       // a palette entry picked per key, which Tailwind has no class for. One
       // look, three triggers: hover, pointer press, and the physical key all
       // light the cap identically — hovering previews exactly what playing
-      // does. At rest the cap is neutral; the note chip carries the colour.
+      // does. At rest the cap is neutral; the corner dot carries the colour.
       style={
         active || hovered
           ? {
@@ -206,28 +205,22 @@ export function SynthKeyCap({
             }
           : undefined
       }
-      className={`inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
+      className={`relative inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
         SIZES[size]
       } ${active || hovered ? "" : TONES[tone]} ${className}`}
     >
+      {showNote && (
+        // The key's colour swatch: the same sticker dot the piano roll wears,
+        // parked in the cap's top-left corner. Lit, the cap floods with that
+        // colour and the dot simply dissolves into it.
+        <span
+          className="pointer-events-none absolute left-2 top-2 h-1 w-1 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      )}
       <kbd className="font-mono">{keyName}</kbd>
       {showNote && (
-        // The note name doubles as the key's colour swatch: a tiny chip in the
-        // palette colour at half strength, so it tags the key without shouting.
-        // Flex centering rather than padding — the mono font's baseline sits
-        // low in its em box, and padding alone leaves the label riding high.
-        // Lit, the whole cap is that colour already — the chip goes transparent
-        // and lets the cap's own ink through.
-        <span
-          className="mt-1 inline-flex  min-w-5 items-center justify-center rounded-full text-[8px] leading-none tracking-wide transition-colors duration-100"
-          style={
-            active || hovered
-              ? undefined
-              : { backgroundColor: `${color}80`, color: "#ffffff" }
-          }
-        >
-          {note}
-        </span>
+        <span className="mt-1 text-[9px] tracking-wide opacity-60">{note}</span>
       )}
     </button>
   );
