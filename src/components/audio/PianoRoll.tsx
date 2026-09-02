@@ -292,7 +292,7 @@ export function PianoRoll() {
                 // its bottom bar, not a tint. Struck, it floods with its colour.
                 backgroundColor: lit
                   ? (color ?? "#ffffff")
-                  : "rgba(255,255,255,0.45)",
+                  : "rgba(255,255,255,0.75)",
                 boxShadow: lit
                   ? `0 0 10px ${color ?? "#ffffff"}b0`
                   : undefined,

@@ -165,9 +165,9 @@ function VSlider({
       >
         {/* Track and fill wear the octave buttons' clothes — same dark wash,
             same corner radius — so the panel's controls read as one family. */}
-        <div className="absolute inset-y-0 left-1/2 w-2.5 -translate-x-1/2 rounded-xs bg-black/40" />
+        <div className="absolute inset-y-0 left-1/2 w-4 -translate-x-1/2 rounded-xs bg-black/40" />
         <div
-          className="absolute bottom-0 left-1/2 w-2.5 -translate-x-1/2 rounded-xs bg-white"
+          className="absolute bottom-0 left-1/2 w-4 -translate-x-1/2 rounded-xs bg-white"
           style={{ height: `${t * 100}%` }}
         />
         {/* <div
