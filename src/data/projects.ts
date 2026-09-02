@@ -142,7 +142,7 @@ export const projects: Project[] = [
     content: [
       {
         type: "text",
-        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving large financial institutions, I redesigned a nascent consumer dApp that had been hiding in Ledger Wallet's marketplace. The original design was not performing. The goal of the redesign was to <strong>dramatically simplify the UI for a self-custody audience</strong>."
+        html: "While leading Product Design at Figment, a proof-of-stake infrastructure company serving large financial institutions, I redesigned a nascent consumer dApp that had been hiding in Ledger Wallet's marketplace. The original design was not performing so the goal of the redesign was to <strong>dramatically simplify the UI for a non-institutional audience</strong>."
       },
       {
         type: "stats",
