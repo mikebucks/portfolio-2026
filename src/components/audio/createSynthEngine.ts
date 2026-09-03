@@ -606,18 +606,46 @@ function harmonicPartials(wave: number, timbre: number): number[] {
  *
  * PluckSynth isn't Monophonic, so it can't be wrapped by PolySynth. Round-
  * robin a small voice pool ourselves.
+ *
+ * attackNoise is the excitation length in periods of the note — how hard the
+ * string is hit. Tone's Noise starts its pink-noise buffer at a random offset,
+ * so a burst under ~2 periods is a random sliver and the note's weight varies
+ * a few dB from strike to strike; 3–4 periods average that out. Timbre maps
+ * 0..1 → 0.3..6 periods (6 at D3 is ~40 ms — still a pluck, with a little
+ * more chiff on the front). The far larger strike-to-strike swing is the
+ * subsonic one, handled by the highpass below.
  */
+const karplusAttackNoise = (timbre: number) => 0.3 + timbre * 5.7;
 function buildKarplus(Tone: Tone, s: SynthSettings): VoiceHandle {
   const VOICES = 6;
-  const out = new Tone.Gain(0.7);
+  // Makeup gain, same idea as the FM voice's. PluckSynth excites its comb
+  // filter with a few periods of pink noise and no amp envelope, so its output
+  // sits ~10 dB under the subtractive engines at the same masterVolume. Lifted
+  // here so a Karplus preset can share the others' volume range and the master
+  // limiter (-1 dB) still catches the pluck transient.
+  const out = new Tone.Gain(2.0);
+
+  // Subsonic trap. A comb filter resonates at every multiple of the note's
+  // frequency, 0 Hz included, and its lowpass makes DC the strongest of them —
+  // so whatever offset the random pink-noise burst happens to carry rings on
+  // as an inaudible blob up to 12 dB louder than the note itself (measured at
+  // the master, 60 Hz split). Nobody hears it, but the limiter does: it ducked
+  // every pluck by a random amount, which read as a soft, inconsistent voice.
+  // 30 Hz, 4th order: ~1 dB at D1 (the lowest reachable note), -60 dB by 5 Hz.
+  const hp = new Tone.Filter({
+    type: "highpass",
+    frequency: 30,
+    rolloff: -24,
+  }).connect(out);
+
   const pool: ToneNS.PluckSynth[] = [];
   for (let i = 0; i < VOICES; i++) {
     const p = new Tone.PluckSynth({
-      attackNoise: 0.2 + s.oscTimbre * 1.8,
+      attackNoise: karplusAttackNoise(s.oscTimbre),
       dampening: 1500 + (1 - s.oscWave) * 4500,
       resonance: 0.7 + s.oscWave * 0.28,
     });
-    p.connect(out);
+    p.connect(hp);
     pool.push(p);
   }
   let cursor = 0;
@@ -645,13 +673,14 @@ function buildKarplus(Tone: Tone, s: SynthSettings): VoiceHandle {
     },
     apply: (next) => {
       for (const v of pool) {
-        v.attackNoise = 0.2 + next.oscTimbre * 1.8;
+        v.attackNoise = karplusAttackNoise(next.oscTimbre);
         v.dampening = 1500 + (1 - next.oscWave) * 4500;
         v.resonance = 0.7 + next.oscWave * 0.28;
       }
     },
     dispose: () => {
       for (const v of pool) v.dispose();
+      hp.dispose();
       out.dispose();
     },
   };

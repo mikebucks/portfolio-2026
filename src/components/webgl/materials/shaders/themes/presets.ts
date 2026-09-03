@@ -280,16 +280,27 @@ const polarityPreset: ThemePreset = {
 
 // ── Rhythm ───────────────────────────────────────────────────────────────────
 // "All things rise and fall." A rack of pendulum bobs swings in perfect unison
-// while a wave travels up and down the row. Plucked Karplus strings — long tail,
-// watery delay — so each key reads as a bob struck. Notes drive the swing.
+// while a wave travels up and down the row. Plucked Karplus strings — short,
+// staccato tail, watery delay — so each key reads as a bob struck. Notes drive
+// the swing.
+//
+// Loudness lives in the excitation here, not the tail: PluckSynth feeds its
+// string a burst of noise per strike (attackNoise × the note's period), so
+// timbre is the throttle on how hard the bob is hit. Kept the resonance
+// (oscWave) where it was so the pluck stays a pluck — the decay is the
+// character, it just needed to arrive with more weight. (Strike-to-strike
+// consistency comes from the engine's subsonic trap, not from the burst.)
 const rhythmBase: SynthSettings = {
   oscEngine: "karplus",
   oscWave: 0.7,
-  oscTimbre: 0.4,
+  oscTimbre: 0.6, // ≈3.7 periods of noise — a harder strike, same decay
+
   octave: 0,
 
+  // The pluck's bite is its loudness; the old 3.2 kHz corner (with the master
+  // EQ's high shelf behind it) was trimming exactly that.
   filterType: "lowpass",
-  filterCutoff: 3200,
+  filterCutoff: 4800,
   filterResonance: 0.6,
   filterEnvAmount: 0.0,
 
@@ -312,7 +323,9 @@ const rhythmBase: SynthSettings = {
   delayWet: 0.30,
   reverbWet: 0.45,
 
-  masterVolume: -3,
+  // Measured at the master against the other presets (60 Hz–12 kHz band,
+  // five strikes each): -1 sits the pluck level with Gender and Cause & Effect.
+  masterVolume: -1,
   visualReactivity: 0.8,
 };
 

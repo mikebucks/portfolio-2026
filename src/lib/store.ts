@@ -140,8 +140,9 @@ export const useThemeStore = create<ThemeStore>()(
 //
 //   overrides — absolute values for the handful of parameters the panel's
 //     sliders expose. A parameter absent from the map means "use the preset's
-//     value"; once the player touches a slider it holds their value across
-//     preset switches, so the sliders behave consistently no matter the theme.
+//     value". The map is cleared whenever the theme changes (see the
+//     subscription below the store), so every preset opens at its own
+//     defaults and a slider you moved belongs to the theme you moved it on.
 
 /** Bounds on the *effective* octave (preset + offset), keeping every mapped
  * note inside D1–C7 — audible, and on the piano roll. */
@@ -175,6 +176,14 @@ export const useSynthTweakStore = create<SynthTweakState>((set) => ({
       return { overrides };
     }),
 }));
+
+// A theme change hands every slider back to the new preset. Done here, at the
+// store level, rather than in the theme buttons so it holds for every path
+// that changes the theme — the panel's picker, the "chance" roll, cycleTheme,
+// and the persisted-theme rehydrate on load (a no-op then: nothing is set yet).
+useThemeStore.subscribe((s, prev) => {
+  if (s.theme !== prev.theme) useSynthTweakStore.setState({ overrides: {} });
+});
 
 /**
  * Hook: resolved SynthSettings for the active theme, with the player's tweaks

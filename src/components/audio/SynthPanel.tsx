@@ -170,28 +170,18 @@ export function SynthPanel() {
         {/* The panel is now viewport-tall, so the controls take the slack and
             scroll on their own — data-lenis-prevent keeps the smooth-scroll
             instance from stealing the wheel and scrolling the page instead. */}
-        <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto">
+        <div data-lenis-prevent className="flex flex-col gap-8 min-h-0 flex-1 overflow-y-auto">
           <ThemePicker />
-
-          {/* <p className="mt-4 text-xs leading-snug text-white/60">
-            {preset.blurb}
-          </p> */}
 
           {/* The same caps the footer shows, at playing size — a mouse or a
               touch screen gets the whole mapping, not just the letters. */}
-          <div className="mt-6">
+          <div className="flex flex-col gap-2 ">
             <SynthKeyCapRow />
-          </div>
-
-          {/* The synth's whole register at a glance: the dotted keys are where
-              the home row currently plays, and the dots slide with the octave
-              buttons below. Clickable, but the caps stay the main keyboard. */}
-          <div className="mt-2">
             <PianoRoll />
           </div>
 
           {/* Player-owned mix faders, constant across presets. */}
-          <div className="mt-6">
+          <div className="">
             <SynthSliders />
           </div>
         </div>
