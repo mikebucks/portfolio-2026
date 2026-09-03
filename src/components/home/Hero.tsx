@@ -28,7 +28,7 @@ export function Hero() {
           start at the same left edge as every other section's content, so it
           hangs off a 1600px column that centers past that width rather than
           off the gutter itself. */}
-      <div className="mx-auto w-full max-w-[1600px]">
+      <div className="mx-auto w-full max-w-[1600px] -mt-11">
         <div className="max-w-200">
           {/* Only the type blends — see the section note. */}
           <div className="relative z-10 mix-blend-difference">
