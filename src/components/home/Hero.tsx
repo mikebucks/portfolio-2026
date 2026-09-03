@@ -1,7 +1,6 @@
 "use client";
 
 import { CyclingWord } from "@/components/home/CyclingWord";
-import { HeroSynthKeys } from "@/components/audio/HeroSynthKeys";
 
 export function Hero() {
   // The intro reveal (eyebrow + headline + keys flying up) is driven centrally
@@ -45,20 +44,22 @@ export function Hero() {
               // text-balance and -webkit-font-smoothing: antialiased both break
               // mix-blend-difference on large text in iOS Safari. Drop the former
               // and override the latter for this blended element.
+              //
+              // Sized to the viewport, not to breakpoints: the widest line the
+              // slot can show ("Digital Product Designer", in Inter 600 at
+              // tracking-tighter) measures 10.52em, so 90vw / 10.52 makes that
+              // line span 90% of the viewport — capped at the layout's 1600px
+              // column, the same ceiling the centering div above hits, so the
+              // headline stops growing where the rest of the page does. Sizing
+              // to the widest word rather than the current one is what keeps
+              // the headline from re-scaling on each roll. nowrap, because the
+              // 800px column above would otherwise fold the line. Re-measure
+              // the ratio if the font, weight or tracking changes.
               style={{ WebkitFontSmoothing: "auto" }}
-              className="mt-2 -ml-[4px] text-3xl md:text-5xl lg:text-7xl font-semibold leading-[1.2] tracking-tight"
+              className="mt-2 -ml-[4px] whitespace-nowrap text-[length:calc(min(85vw,1600px)/10.52)] font-semibold leading-[1.15] tracking-tighter"
             >
               Digital Product <CyclingWord />
-              <br />
-              for the Agentic Era
             </h1>
-          </div>
-
-          {/* Outside the blend on purpose: the caps light in their own palette
-              colours, which difference would invert against the shader.
-              [data-intro] folds it into the intro stagger after the headline. */}
-          <div data-intro="synth-keys" className="relative z-10 mt-4">
-            <HeroSynthKeys />
           </div>
         </div>
       </div>

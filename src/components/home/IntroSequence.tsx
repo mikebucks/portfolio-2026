@@ -35,8 +35,7 @@ export function IntroSequence() {
     if (!overlay) return;
 
     const header = document.querySelector<HTMLElement>("[data-intro-header]");
-    // Eyebrow + headline + synth keys, in document order (stagger reveals
-    // eyebrow first, keys last).
+    // Eyebrow + headline, in document order (stagger reveals eyebrow first).
     const headline = Array.from(
       document.querySelectorAll<HTMLElement>("[data-intro]"),
     );

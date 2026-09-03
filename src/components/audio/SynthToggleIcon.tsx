@@ -41,7 +41,7 @@ export function synthToggleChipClass(open: boolean) {
 /**
  * The face both synth-panel toggles wear: a piano key that rotates into a
  * close cross while the panel is up. One component so the fixed corner
- * button and the hero row's circle can never drift apart — same mark, same
+ * button and any future sibling can never drift apart — same mark, same
  * cross, same quarter-turn.
  *
  * Drawn on the close cross's 40-unit grid; the piano's own grid is 30 units

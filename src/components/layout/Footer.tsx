@@ -45,25 +45,16 @@ export function Footer() {
         </div>
         <div className="flex flex-wrap items-end justify-between gap-y-6">
           <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
-            <span className="inline-flex items-center gap-1">
-              {["a", "s", "d", "f"].map((k) => (
-                // tone="dark": the footer is near-black, and the default light
-                // treatment's black borders vanish on it.
-                <SynthKeyCap key={k} keyName={k} tone="dark" />
-              ))}
-              <span className="ml-1">makes me dance</span>
-            </span>
-            <span> · &copy; {year}</span>
-          </div>
-          <div
+            
+            <span>&copy; Mike Bucks {year} · </span>
+
+            <div
             aria-hidden
             className="pointer-events-none ml-auto flex shrink-0 items-center text-neutral-400"
           >
             <BucksUnltd size={40} />
-            <NoTrash size={40} />
             <Sigil size={40} />
-            <RecycleIC3 size={40} />
-            <span className="h-10 w-10 ml-1" />
+          </div>
           </div>
         </div>
       </div>

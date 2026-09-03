@@ -26,14 +26,14 @@ type Tone = "light" | "dark" | "solid";
 
 const SIZES: Record<Size, string> = {
   sm: "h-6 min-w-[1.5rem] rounded px-1.5 text-[11px]",
-  // md, unlike lg, doesn't flex-1: the hero row is a content-sized strip, not a
+  // md, unlike lg, doesn't flex-1: the toggle strip is a content-sized row, not a
   // panel-width grid, so the caps hold their own width.
   md: "h-10 min-w-[2.5rem] rounded-md px-2 text-sm",
   lg: "h-12 min-w-[2.75rem] flex-1 rounded-md px-2 text-lg",
 };
 
 // Three idle treatments, because the caps live on cream in the footer, on the
-// panel's dark glass, and straight on the hero's shader — where an outline-only
+// panel's dark glass, and fixed over the page's shader — where an outline-only
 // cap all but disappears, so `solid` gives it its own black plate. At rest the
 // cap stays neutral — the only colour is the sticker dot in the corner; struck
 // or hovered, the whole cap goes to the key's palette colour, so the cap and
