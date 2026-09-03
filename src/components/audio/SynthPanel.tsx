@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import gsap from "gsap";
+import { prefersReducedMotion } from "@/lib/device";
 import { useThemeStore, useUIStore } from "@/lib/store";
 import { PianoRoll } from "./PianoRoll";
 import { SynthKeyCapRow } from "./SynthKeyCap";
@@ -36,6 +38,8 @@ export function SynthPanel() {
   const [mounted, setMounted] = useState(open);
   const [entered, setEntered] = useState(false);
   const enteredRef = useRef(false);
+  // Whether the content cascade has played in and not yet out — see below.
+  const shownRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
@@ -63,6 +67,60 @@ export function SynthPanel() {
       cancelAnimationFrame(inner);
     };
   }, [open]);
+
+  // The content cascade. The <aside> slides on CSS (below); its blocks —
+  // theme picker, keys + piano roll, faders, blurb — fly up into place
+  // top-to-bottom on the intro headline's timing (0.9s expo.out, 0.18s
+  // stagger, 24px offset), the same vocabulary as the project modal, starting
+  // once the slide is well under way. Closing runs the same cascade backwards
+  // and faster, inside the slide-out, so the panel empties as it leaves.
+  // Layout effect: the hidden start state must land before the first paint of
+  // the entered panel, or the blocks flash at full opacity for a frame.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const blocks = panel.querySelectorAll<HTMLElement>("[data-panel-reveal]");
+    if (prefersReducedMotion()) {
+      gsap.set(blocks, { opacity: 1, y: 0 });
+      return;
+    }
+    // Fresh mount: the blocks have never shown, so there is nothing to run
+    // out — park them at the cascade's start state and wait for `entered`.
+    if (!entered && !shownRef.current) {
+      gsap.set(blocks, { opacity: 0, y: 24 });
+      return;
+    }
+    shownRef.current = entered;
+    const tween = entered
+      ? gsap.fromTo(
+          blocks,
+          { opacity: 0, y: 24 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.9,
+            ease: "expo.out",
+            delay: 0.12,
+            stagger: 0.18,
+            force3D: true,
+            overwrite: true,
+          },
+        )
+      : gsap.to(blocks, {
+          opacity: 0,
+          y: 12,
+          duration: 0.22,
+          ease: "power2.in",
+          stagger: { each: 0.04, from: "end" },
+          force3D: true,
+          overwrite: true,
+        });
+    return () => {
+      tween.kill();
+    };
+    // `mounted` is a dependency so the parking branch runs on the render that
+    // first puts the panel (and its blocks) in the tree, not the one before.
+  }, [mounted, entered]);
 
   useEffect(() => {
     if (!open) return;
@@ -170,23 +228,29 @@ export function SynthPanel() {
         {/* The panel is now viewport-tall, so the controls take the slack and
             scroll on their own — data-lenis-prevent keeps the smooth-scroll
             instance from stealing the wheel and scrolling the page instead. */}
+        {/* [data-panel-reveal] marks the cascade's blocks, in reveal order. */}
         <div data-lenis-prevent className="flex flex-col gap-8 min-h-0 flex-1 overflow-y-auto">
-          <ThemePicker />
+          <div data-panel-reveal>
+            <ThemePicker />
+          </div>
 
           {/* The same caps the footer shows, at playing size — a mouse or a
               touch screen gets the whole mapping, not just the letters. */}
-          <div className="flex flex-col gap-2 ">
+          <div data-panel-reveal className="flex flex-col gap-2">
             <SynthKeyCapRow />
             <PianoRoll />
           </div>
 
           {/* Player-owned mix faders, constant across presets. */}
-          <div className="">
+          <div data-panel-reveal>
             <SynthSliders />
           </div>
         </div>
 
-        <footer className="mt-4 shrink-0 text-xs leading-snug text-white/60">
+        <footer
+          data-panel-reveal
+          className="mt-4 shrink-0 text-xs leading-snug text-white/60"
+        >
           {preset.blurb}
         </footer>
       </aside>
