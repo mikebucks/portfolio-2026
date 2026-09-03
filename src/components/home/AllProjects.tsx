@@ -231,7 +231,9 @@ export function AllProjects() {
           const images = projectImages(p);
 
           return (
-            <li key={p.slug}>
+            // data-reveal: scroll-in rise, observed by the featured section's
+            // useScrollReveal — this list renders inside its column.
+            <li key={p.slug} data-reveal>
               {/* Each row carries the panel now, so it has to reach as wide as
                   the panel used to: the negative margin puts its border box on
                   the wrapper's, and the matching padding puts its CONTENT box
@@ -275,10 +277,10 @@ export function AllProjects() {
                     positioned, so it would otherwise paint over static siblings
                     regardless of DOM order. */}
                 <div className="relative min-w-0 flex-1 flex flex-col gap-2 py-6">
-                  <div className="truncate text-2xl font-semibold leading-tight tracking-tight text-black">
+                  <div className="truncate text-3xl font-semibold leading-tight tracking-tighter text-black">
                     {p.title}
                   </div>
-                  <div className="truncate text-sm text-black/80 leading-snug">
+                  <div className="truncate text-md text-black/80 leading-snug">
                     {p.summary}
                   </div>
                 </div>

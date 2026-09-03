@@ -1,13 +1,171 @@
 "use client";
 
-import type { MouseEvent } from "react";
+import { useLayoutEffect, useRef, type MouseEvent } from "react";
+import gsap from "gsap";
 import { featuredProjects } from "@/data/projects";
 import { prefersReducedMotion } from "@/lib/device";
 import { navigate, projectPath } from "@/lib/appRoute";
+import { useScrollReveal } from "@/components/animation/useScrollReveal";
 import { AllProjects } from "./AllProjects";
+
+// Hover zoom on the thumbnail. Everything above 1 is the room the parallax
+// below has to move in: the image overflows the card by (SCALE - 1) / 2 on
+// each edge — 2.5% at 1.05.
+const HOVER_SCALE = 1.05;
+// How far the pointer can slide the image, as a percentage of its own size
+// on each axis, at the card's edge. Deliberately well inside the overflow:
+// the drift should register as depth, not as the picture moving. Must stay
+// at or below (HOVER_SCALE - 1) / 2 * 100 or an edge shows.
+const PARALLAX_MAX_PCT = 1.5;
+
+// Card copy roll — the cycling word's departure-board move (see CyclingWord):
+// each line sits in a clipped slot, rolls up into it from below with a little
+// overshoot on hover, and leaves up through the top. Same figures as the word
+// so the two read as one gesture.
+const ROLL = 0.35; // one line's travel through its slot
+const ROLL_STAGGER = 0.1; // title leads, summary follows
+const ROLL_PARK = 105; // yPercent: fully below the slot
 
 export function FeaturedProjects() {
   const featured = featuredProjects;
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Scroll-in transition on the case-study blocks' timing (0.9s expo.out,
+  // 0.18s stagger), so the section reads as a page transition of its own:
+  // the featured cards grow into place, the index rows rise. Targets are the
+  // `[data-reveal]` items here AND inside AllProjects (it renders in this
+  // section's column), so one observer covers both.
+  useScrollReveal(sectionRef);
+
+  // Thumbnail zoom + parallax. GSAP owns the image transform for motion users
+  // so the zoom and the pointer-driven drift can share it — a CSS hover scale
+  // and an inline GSAP translate would each clobber the other. The image
+  // slides AGAINST the pointer on both axes (pointer toward a corner → image
+  // away from it), which is the whole trick: the image is already zoomed, so
+  // it has that overflow to move through without ever exposing an edge.
+  useLayoutEffect(() => {
+    const root = sectionRef.current;
+    if (!root || prefersReducedMotion()) return;
+
+    // The copy roll is hover-only, so it's gated on a pointer that can hover.
+    // Touch users can't hover, so their copy stays where the markup ships it:
+    // visible. The rest state is only ever committed from inside this branch,
+    // so no device can lose the copy without the roll that brings it back.
+    const hoverCapable = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+
+    const cleanups: Array<() => void> = [];
+    const ctx = gsap.context(() => {
+      root.querySelectorAll<HTMLElement>("[data-card]").forEach((card) => {
+        const img = card.querySelector<HTMLElement>("img");
+        if (!img) return;
+
+        const copy = card.querySelector<HTMLElement>("[data-copy]");
+        const lines = card.querySelectorAll<HTMLElement>("[data-copy-line]");
+        if (hoverCapable && copy) {
+          gsap.set(copy, { autoAlpha: 0 });
+          gsap.set(lines, { yPercent: ROLL_PARK });
+        }
+
+        const rollIn = () => {
+          if (!hoverCapable || !copy) return;
+          // Re-park below the slot unless a line is still mid-roll — a quick
+          // out-and-back then reverses the exit rather than restarting it,
+          // which is what the gesture should look like.
+          lines.forEach((line) => {
+            if ((gsap.getProperty(line, "yPercent") as number) < 0) {
+              gsap.set(line, { yPercent: ROLL_PARK });
+            }
+          });
+          gsap.to(copy, { autoAlpha: 1, duration: ROLL, overwrite: true });
+          gsap.to(lines, {
+            yPercent: 0,
+            duration: ROLL,
+            ease: "back.out(1.3)",
+            stagger: ROLL_STAGGER,
+            overwrite: true,
+          });
+        };
+        const rollOut = () => {
+          if (!hoverCapable || !copy) return;
+          gsap.to(lines, {
+            yPercent: -ROLL_PARK,
+            duration: ROLL,
+            ease: "power2.in",
+            stagger: ROLL_STAGGER,
+            overwrite: true,
+          });
+          // The scrim holds until the last line has cleared the slot.
+          gsap.to(copy, {
+            autoAlpha: 0,
+            duration: ROLL,
+            delay: ROLL_STAGGER,
+            overwrite: true,
+          });
+        };
+
+        // The drift is a pair of quickTos, and xPercent/yPercent belong to
+        // them ALONE. No other tween on the image may name either: the
+        // enter/leave tweens below run with `overwrite: "auto"`, which kills
+        // any competing tween of the same property — and a quickTo whose
+        // tween has been killed is dead for good. So leave resets the drift
+        // through the drift itself.
+        const quick = { duration: 0.6, ease: "power3" } as const;
+        const driftX = gsap.quickTo(img, "xPercent", quick);
+        const driftY = gsap.quickTo(img, "yPercent", quick);
+
+        const enter = () => {
+          gsap.to(img, {
+            scale: HOVER_SCALE,
+            duration: 0.7,
+            ease: "expo.out",
+            overwrite: "auto",
+          });
+          rollIn();
+        };
+        const move = (e: globalThis.MouseEvent) => {
+          const { left, top, width, height } = card.getBoundingClientRect();
+          // -0.5 at the left/top edge, +0.5 at the right/bottom.
+          const x = (e.clientX - left) / width - 0.5;
+          const y = (e.clientY - top) / height - 0.5;
+          driftX(-x * 2 * PARALLAX_MAX_PCT);
+          driftY(-y * 2 * PARALLAX_MAX_PCT);
+        };
+        const leave = () => {
+          gsap.to(img, {
+            scale: 1,
+            duration: 0.7,
+            ease: "power4",
+            overwrite: "auto",
+          });
+          driftX(0);
+          driftY(0);
+          rollOut();
+        };
+
+        card.addEventListener("mouseenter", enter);
+        card.addEventListener("mousemove", move);
+        card.addEventListener("mouseleave", leave);
+        // Keyboard users on a hover-capable device have no hover: tabbing onto
+        // a card rolls its copy in the same way.
+        card.addEventListener("focusin", rollIn);
+        card.addEventListener("focusout", rollOut);
+        cleanups.push(() => {
+          card.removeEventListener("mouseenter", enter);
+          card.removeEventListener("mousemove", move);
+          card.removeEventListener("mouseleave", leave);
+          card.removeEventListener("focusin", rollIn);
+          card.removeEventListener("focusout", rollOut);
+        });
+      });
+    }, root);
+
+    return () => {
+      cleanups.forEach((fn) => fn());
+      ctx.revert();
+    };
+  }, []);
 
   // Client-side navigation so the modal plays its rise-from-the-bottom
   // entrance instead of a hard load. See ProjectModal.
@@ -24,6 +182,7 @@ export function FeaturedProjects() {
 
   return (
     <section
+      ref={sectionRef}
       id="projects"
       // `relative` WITHOUT a z-index, deliberately. A z-index here would open a
       // stacking context and scope every descendant's z-index inside it — a card
@@ -90,6 +249,9 @@ export function FeaturedProjects() {
         {featured.map((p) => (
           <li
             key={p.slug}
+            // Scroll-in: the card grows into place (see useScrollReveal); the
+            // index rows below rise instead.
+            data-reveal="scale"
             // The hovered card lifts above its neighbours so its cream ring —
             // drawn 10px outside its own box, over whatever is next to it —
             // isn't painted over by the card that follows it in the DOM. The
@@ -112,16 +274,22 @@ export function FeaturedProjects() {
             className="relative z-0 overflow-hidden ring-0 ring-accent/0 transition-[border-radius,box-shadow] duration-300 ease-[cubic-bezier(0.05,0,0,1)] hover:z-[101] hover:ring-[10px] hover:ring-accent hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.55),0_14px_32px_-12px_rgba(0,0,0,0.45)] md:mix-blend-luminosity hover:mix-blend-normal"
           >
             <a
+              data-card
               href={projectPath(p.slug)}
               onClick={(e) => onCardClick(e, p.slug)}
               className="group relative block aspect-[16/11] bg-white/5"
             >
               {p.thumbnail && (
+                // Zoom and parallax are GSAP-driven (see the effect above);
+                // no CSS hover transform here or the two would fight. And no
+                // will-change: it pinned four ~5MB textures as permanent
+                // compositor layers for a gain GSAP already provides by
+                // promoting the image for the duration of its tweens.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={p.thumbnail}
                   alt=""
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.05,0,0,1)] group-hover:scale-[1.05]"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               )}
 
@@ -162,13 +330,31 @@ export function FeaturedProjects() {
                   minus 10px under 1684px and a full gutter over it, and the
                   gutter itself steps 20px → 32px at 40rem — so the target is
                   10px, then 22px, then 32px. Vertical padding is free to be a
-                  design value, so it stays one. */}
-              <div className="absolute inset-x-0 bottom-0 [--scrim-fade:5rem] pt-[var(--scrim-fade)] pb-4 md:pb-8 px-[var(--bleed)] flex flex-col gap-2 bg-[linear-gradient(to_top,#fff_0%,rgba(244,241,234,0.9)_calc(100%_-_var(--scrim-fade)),rgba(244,241,234,0)_100%)]">
-                <div className="text-2xl font-semibold text-black leading-tight tracking-tight">
-                  {p.title}
+                  design value, so it stays one.
+
+                  On hover-capable devices the whole block is hidden at rest and
+                  rolls in on hover (data-copy / data-copy-line, driven by the
+                  effect above). Each line's outer div is the clipping slot,
+                  the inner one is what moves — so a line mid-roll shears off
+                  at the slot edge like the cycling word's letters. The markup
+                  ships everything visible and unmoved; only the effect parks
+                  it, so touch and reduced-motion users never lose the copy. */}
+              <div
+                data-copy
+                className="absolute inset-x-0 bottom-0 [--scrim-fade:5rem] pt-[var(--scrim-fade)] pb-4 md:pb-8 px-[var(--bleed)] flex flex-col gap-2 bg-[linear-gradient(to_top,#fff_0%,rgba(244,241,234,0.9)_calc(100%_-_var(--scrim-fade)),rgba(244,241,234,0)_100%)]"
+              >
+                <div className="overflow-hidden">
+                  <div
+                    data-copy-line
+                    className="text-3xl font-semibold text-black leading-tight tracking-tighter"
+                  >
+                    {p.title}
+                  </div>
                 </div>
-                <div className="text-sm text-black/80 leading-snug">
-                  {p.summary}
+                <div className="overflow-hidden">
+                  <div data-copy-line className="text-md text-black/80 leading-snug">
+                    {p.summary}
+                  </div>
                 </div>
               </div>
             </a>
