@@ -56,7 +56,7 @@ export function Hero() {
               // 800px column above would otherwise fold the line. Re-measure
               // the ratio if the font, weight or tracking changes.
               style={{ WebkitFontSmoothing: "auto" }}
-              className="mt-2 -ml-[4px] whitespace-nowrap text-[length:calc(min(85vw,1600px)/10.52)] font-semibold leading-[1.15] tracking-tighter"
+              className="mt-2 -ml-[4px] whitespace-nowrap text-[length:calc(min(91vw,1600px)/10.52)] font-semibold leading-[1.15] tracking-tighter"
             >
               Digital Product <CyclingWord />
             </h1>

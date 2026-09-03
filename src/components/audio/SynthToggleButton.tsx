@@ -14,18 +14,76 @@ const STRIP_KEYS = ["a", "s", "d", "f"];
 
 // Offset from the intro's headlinePlay cue to the strip starting to blob in.
 // The H1's fly-up starts 0.45s after the cue and runs 0.9s of expo.out (see
-// IntroSequence), so by 1.05s it has all but landed — the strip is the last
-// thing to arrive, and it should read as arriving *after* the headline, not
-// alongside it. Well clear of the word roll too, which waits until 1.9s.
-const AFTER_HEADLINE = 1.05;
+// IntroSequence), so its motion is mostly spent by 0.6s: the strip starts
+// then, still the last thing to arrive, but on the headline's heels rather
+// than after a pause. Clear of the word roll, which waits until 1.9s.
+const AFTER_HEADLINE = 0.6;
 
-// Properties the blob-in animates, cleared once it lands so the chips rest
-// on their stylesheet values (and so a killed timeline can't strand one
+// Properties the blob animates, cleared once it lands so the chips rest on
+// their stylesheet values (and so a killed timeline can't strand one
 // half-scaled or invisible). `transition` is in the list because the seal
 // wears [data-modal-hide], whose stylesheet transition on opacity/transform
 // would otherwise chase every frame GSAP writes and smear the spring into a
 // slow fade; it's switched off for the duration and handed back after.
 const BLOB_PROPS = "transform,transformOrigin,opacity,visibility,filter,transition";
+
+// The dot a chip blobs out of and back into: small, soft-edged, invisible.
+const PARKED = {
+  scale: 0.3,
+  autoAlpha: 0,
+  filter: "blur(6px)",
+  transformOrigin: "50% 50%",
+  transition: "none",
+} as const;
+
+// Chips blob in the way Spotlight's search field does on macOS: each springs
+// up from a small, soft-edged dot and settles with a little overshoot, one
+// after another. Two tracks at once, same stagger. Only the scale springs:
+// the opacity and blur clear on a short plain ease, so the chip reads as
+// solid by the time the spring is still settling — a blob firming up, not a
+// photo coming into focus — and the opacity never overshoots past 1 and dips
+// back, which the elastic would do to it.
+function blobIn(tl: gsap.core.Timeline, items: Element[], at = 0) {
+  tl.to(
+    items,
+    { scale: 1, duration: 0.9, ease: "elastic.out(1, 0.55)", stagger: 0.09 },
+    at,
+  );
+  tl.to(
+    items,
+    {
+      autoAlpha: 1,
+      filter: "blur(0px)",
+      duration: 0.3,
+      ease: "power2.out",
+      stagger: 0.09,
+    },
+    at,
+  );
+}
+
+// The same move backwards: the chip pulls in on itself and softens away into
+// the dot. Quicker than the arrival, with a wind-up (back.in) instead of the
+// spring — a settle needs time to read, a departure doesn't — and the fade
+// trails the shrink so the chip is still solid as it starts to pull in.
+function blobOut(tl: gsap.core.Timeline, items: Element[], at = 0) {
+  tl.to(
+    items,
+    { scale: 0.3, duration: 0.35, ease: "back.in(2.5)", stagger: 0.06 },
+    at,
+  );
+  tl.to(
+    items,
+    {
+      autoAlpha: 0,
+      filter: "blur(6px)",
+      duration: 0.25,
+      ease: "power2.in",
+      stagger: 0.06,
+    },
+    at + 0.1,
+  );
+}
 
 /**
  * The panel's fixed open/close control: a piano key (SynthToggleIcon) that
@@ -48,17 +106,21 @@ export function SynthToggleButton() {
   const stripRef = useRef<HTMLDivElement>(null);
   const sealRef = useRef<HTMLButtonElement>(null);
 
-  // The strip's part in the page-load intro: the last thing to arrive, after
-  // the headline. Each chip blobs out of nothing the way Spotlight's search
-  // field does on macOS — springs up from a small, soft-edged dot and settles
-  // with a little overshoot — one after another from the right: the seal
-  // first, then F, D, S, A.
+  // Reduced motion: no blobbing in either direction, states just swap.
+  // Checked inline rather than via @/lib/device for the same HMR reason as
+  // CyclingWord.
+  const reducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // The strip's part in the page-load intro: the last thing to arrive, on the
+  // headline's heels. The chips blob in one after another from the right:
+  // the seal first, then F, D, S, A.
   //
   // This can't live in IntroSequence's master timeline: the strip is
   // portalled, so it isn't in the DOM when that timeline is built. Instead it
   // parks itself hidden here (before paint, so there's no flash of chips
   // ahead of the cream lifting) and waits on the same headlinePlay cue the
-  // word roll uses, offsetting from it to land after the H1.
+  // word roll uses, offsetting from it to follow the H1.
   //
   // Keyed on `mounted` because the portal only renders after the first
   // effect — the refs are empty until then.
@@ -69,47 +131,22 @@ export function SynthToggleButton() {
     if (!strip || !seal) return;
 
     // Cue already past (re-mount after the intro played) or reduced motion:
-    // rest state, no animation. Checked inline rather than via @/lib/device
-    // for the same HMR reason as CyclingWord.
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (useIntroStore.getState().headlinePlay || reduced) return;
+    // rest state, no animation.
+    if (useIntroStore.getState().headlinePlay || reducedMotion()) return;
 
-    // Right to left: seal, then the caps in reverse document order.
-    const items = [seal, ...Array.from(strip.children).reverse()];
-
-    gsap.set(items, {
-      scale: 0.3,
-      autoAlpha: 0,
-      filter: "blur(6px)",
-      transformOrigin: "50% 50%",
-      transition: "none",
-    });
+    const caps = Array.from(strip.children);
+    gsap.set([seal, ...caps], PARKED);
 
     let tl: gsap.core.Timeline | null = null;
     const play = () => {
+      // The caps only arrive if the panel isn't up by now — while it is,
+      // they stay parked (the open effect below owns them), and the seal
+      // comes in alone. Read at play time, not mount, for exactly that case.
+      const capsIn = !useUIStore.getState().synthPanelOpen;
+      // Right to left: seal, then the caps in reverse document order.
+      const items = capsIn ? [seal, ...[...caps].reverse()] : [seal];
       tl = gsap.timeline({ delay: AFTER_HEADLINE });
-      // Two tracks at once, same stagger. Only the scale springs: the opacity
-      // and blur clear on a short plain ease, so the chip reads as solid by
-      // the time the spring is still settling — a blob firming up, not a
-      // photo coming into focus — and the opacity never overshoots past 1
-      // and dips back, which the elastic would do to it.
-      tl.to(items, {
-        scale: 1,
-        duration: 0.9,
-        ease: "elastic.out(1, 0.55)",
-        stagger: 0.09,
-      });
-      tl.to(
-        items,
-        {
-          autoAlpha: 1,
-          filter: "blur(0px)",
-          duration: 0.3,
-          ease: "power2.out",
-          stagger: 0.09,
-        },
-        0,
-      );
+      blobIn(tl, items);
       tl.set(items, { clearProps: BLOB_PROPS });
     };
 
@@ -123,9 +160,62 @@ export function SynthToggleButton() {
     return () => {
       unsub();
       tl?.kill();
-      gsap.set(items, { clearProps: BLOB_PROPS });
+      gsap.set([seal, ...caps], { clearProps: BLOB_PROPS });
     };
   }, [mounted]);
+
+  // While the panel is up the caps are redundant — its keyboard has the same
+  // keys, bigger — so they leave: the arrival played backwards, A first this
+  // time, each chip pulling into its dot from left to right. Closing brings
+  // them back the way they first came, F to A. The seal stays put throughout:
+  // it's the close control.
+  //
+  // Skips the first run (mount): a panel already open just parks the caps,
+  // no departure to show; and the intro effect above is what brings them in
+  // when it's closed.
+  const capsTl = useRef<gsap.core.Timeline | null>(null);
+  const openSeen = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!mounted) return;
+    const strip = stripRef.current;
+    if (!strip) return;
+    const caps = Array.from(strip.children);
+
+    if (openSeen.current === null) {
+      openSeen.current = open;
+      if (open) gsap.set(caps, PARKED);
+      return;
+    }
+    if (openSeen.current === open) return;
+    openSeen.current = open;
+
+    // Whatever the caps were doing — a blob the other way, or still arriving
+    // with the intro — stops here; killing their tweens also lifts them out
+    // of the intro timeline, so it can't bring them back under an open panel.
+    capsTl.current?.kill();
+    gsap.killTweensOf(caps);
+
+    if (reducedMotion()) {
+      if (open) gsap.set(caps, PARKED);
+      else gsap.set(caps, { clearProps: BLOB_PROPS });
+      return;
+    }
+
+    const tl = gsap.timeline({ onComplete: () => (capsTl.current = null) });
+    if (open) {
+      gsap.set(caps, { transformOrigin: "50% 50%", transition: "none" });
+      blobOut(tl, caps);
+      // Parked chips keep their inline dot: that's what hides them.
+    } else {
+      gsap.set(caps, PARKED);
+      blobIn(tl, [...caps].reverse());
+      // Landed chips rest on the stylesheet. A step on the timeline, not a
+      // set() fired from onComplete — a tween created inside a callback
+      // isn't reliably rendered by the timeline that's completing.
+      tl.set(caps, { clearProps: BLOB_PROPS });
+    }
+    capsTl.current = tl;
+  }, [mounted, open]);
 
   if (!mounted) return null;
 
