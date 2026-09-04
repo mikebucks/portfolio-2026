@@ -17,13 +17,15 @@ const HOVER_SCALE = 1.05;
 const PARALLAX_MAX_PCT = 1.5;
 
 // Scroll-driven card scale. A card is full size and square-cornered once its
-// top edge reaches the header's bottom; the further down the viewport it sits,
-// the smaller and rounder it is. Progress is 0 at the header line and 1 at the
-// viewport's bottom edge, both figures below scale linearly with it. The
-// radius is written in the card's own (unscaled) pixels, so what's SEEN is
-// radius × scale — at the bottom, 96 × 0.7 ≈ 67px on the card's shrunken box.
-const SCROLL_SCALE_RANGE = 0.3; // 1 at the top line → 0.7 at the bottom
-const SCROLL_RADIUS_MAX = 49; // px, unscaled
+// top edge reaches the finish line — a third of the way down the viewport
+// below the header — and stays that way above it; the further below the line
+// it sits, the smaller and rounder it is. Progress is 0 at the finish line and
+// 1 at the viewport's bottom edge, both figures below scale linearly with it.
+// The radius is written in the card's own (unscaled) pixels, so what's SEEN is
+// radius × scale — at the bottom, 91 × 0.7 ≈ 64px on the card's shrunken box.
+const SCROLL_FINISH = 0.33; // fraction of the viewport (below the header)
+const SCROLL_SCALE_RANGE = 0.3; // 1 at the finish line → 0.7 at the bottom
+const SCROLL_RADIUS_MAX = 91; // px, unscaled
 
 const ROLL = 0.35; // one line's travel through its slot
 const ROLL_STAGGER = 0.1; // title leads, summary follows
@@ -49,10 +51,11 @@ export function Projects() {
 
     const update = () => {
       const topLine = headerOffset();
-      const span = Math.max(1, window.innerHeight - topLine);
+      const finish = topLine + (window.innerHeight - topLine) * SCROLL_FINISH;
+      const span = Math.max(1, window.innerHeight - finish);
       stages.forEach((stage) => {
         const box = (stage.parentElement ?? stage).getBoundingClientRect();
-        const p = gsap.utils.clamp(0, 1, (box.top - topLine) / span);
+        const p = gsap.utils.clamp(0, 1, (box.top - finish) / span);
         stage.style.transform = `scale(${1 - SCROLL_SCALE_RANGE * p})`;
         stage.style.borderRadius = `${SCROLL_RADIUS_MAX * p}px`;
       });
@@ -200,7 +203,7 @@ export function Projects() {
       id="projects"
       className="relative gutter-x"
     >
-      <div className="mx-auto max-w-[1600px]">
+      <div className="mx-auto mb-24 max-w-[1600px]">
 
       <ul className="[--bleed:calc(var(--gutter)_-_20px)] grid md:grid-cols-2 gap-[10px] pt-[10px] pb-[1px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_40px)]">
         {projects.map((p, i) => {
