@@ -41,17 +41,16 @@ export function Footer() {
               </li>
             ))}
           </ul>
-          <span className="font-mono text-xs text-white/60">Built with humanity</span>
+          <span className="font-mono text-xs text-white/60 text-right">Built with humanity</span>
         </div>
         <div className="flex flex-wrap items-end justify-between gap-y-6">
-          <div className="flex flex-col gap-2 font-mono text-xs text-white/60 md:flex-row md:items-center">
+          <div className="flex flex-row items-center font-mono text-xs text-white/60">
             
             <span>&copy; Mike Bucks {year} · </span>
-
             <div
-            aria-hidden
-            className="pointer-events-none ml-auto flex shrink-0 items-center text-neutral-400"
-          >
+              aria-hidden
+              className="pointer-events-none ml-auto flex shrink-0 items-center text-neutral-400"
+            >
             <BucksUnltd size={40} />
             <Sigil size={40} />
           </div>
