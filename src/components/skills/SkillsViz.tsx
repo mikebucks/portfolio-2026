@@ -15,11 +15,14 @@ function FullViz() {
             </p>
             <div>
               {skills.map((skill) => (
-                <div key={skill.name} className="flex flex-row lg:flex-col items-center lg:items-start justify-between gap-1 pt-2 pb-3 border-b-1 border-white/[.06]">
+                <div 
+                  key={skill.name} 
+                  className="flex flex-row lg:flex-col items-center lg:items-start gap-1 pt-2 pb-3 border-b-1 border-white/[.06]"
+                >
                   <span className="min-w-45 text-lg text-white/90 shrink-0 truncate">
                     {skill.name}
                   </span>
-                  <div className="flex gap-2 w-full">
+                  <div className="flex gap-2 w-full justify-end lg:justify-start">
                     {Array.from({ length: 10 }, (_, i) => (
                       <div
                         key={i}
