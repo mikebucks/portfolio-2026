@@ -16,15 +16,19 @@ import { headerOffset } from "@/components/animation/lenisInstance";
 const HOVER_SCALE = 1.05;
 const PARALLAX_MAX_PCT = 1.5;
 
-// Scroll-driven card scale. A card is full size and square-cornered once its
-// top edge reaches the finish line — a third of the way down the viewport
+// Scroll-driven card scale. A card is at its largest and square-cornered once
+// its top edge reaches the finish line — a third of the way down the viewport
 // below the header — and stays that way above it; the further below the line
 // it sits, the smaller and rounder it is. Progress is 0 at the finish line and
 // 1 at the viewport's bottom edge, both figures below scale linearly with it.
-// The radius is written in the card's own (unscaled) pixels, so what's SEEN is
-// radius × scale — at the bottom, 91 × 0.7 ≈ 64px on the card's shrunken box.
+// The rest scale is per card: grown about its centre until its outer edge meets
+// the row's edge (10px inside the cream frame, or the row's max width). With
+// the columns pulled in 12.5% that's 1.25 on desktop; 1 on mobile, where there
+// is no room. The radius is written in the card's own (unscaled) pixels, so
+// what's SEEN is radius × scale — at the bottom, 91 × 0.7 ≈ 64px.
 const SCROLL_FINISH = 0.33; // fraction of the viewport (below the header)
-const SCROLL_SCALE_RANGE = 0.3; // 1 at the finish line → 0.7 at the bottom
+const SCROLL_SCALE_MIN = 0.7; // at the bottom
+const SCROLL_SCALE_MAX = 1.2; // cap on the rest scale
 const SCROLL_RADIUS_MAX = 91; // px, unscaled
 
 const ROLL = 0.35; // one line's travel through its slot
@@ -47,16 +51,20 @@ export function Projects() {
     if (!root || prefersReducedMotion()) return;
 
     const stages = Array.from(root.querySelectorAll<HTMLElement>("[data-stage]"));
-    if (!stages.length) return;
+    const row = stages[0]?.closest("ul");
+    if (!stages.length || !row) return;
 
     const update = () => {
       const topLine = headerOffset();
       const finish = topLine + (window.innerHeight - topLine) * SCROLL_FINISH;
       const span = Math.max(1, window.innerHeight - finish);
-      stages.forEach((stage) => {
+      const edge = row.getBoundingClientRect();
+      stages.forEach((stage, i) => {
         const box = (stage.parentElement ?? stage).getBoundingClientRect();
         const p = gsap.utils.clamp(0, 1, (box.top - finish) / span);
-        stage.style.transform = `scale(${1 - SCROLL_SCALE_RANGE * p})`;
+        const room = i % 2 ? edge.right - box.right : box.left - edge.left;
+        const rest = Math.min(SCROLL_SCALE_MAX, 1 + (2 * room) / box.width);
+        stage.style.transform = `scale(${rest - (rest - SCROLL_SCALE_MIN) * p})`;
         stage.style.borderRadius = `${SCROLL_RADIUS_MAX * p}px`;
       });
     };
@@ -205,7 +213,7 @@ export function Projects() {
     >
       <div className="mx-auto mb-24 max-w-[1600px]">
 
-      <ul className="[--bleed:calc(var(--gutter)_-_20px)] grid md:grid-cols-2 gap-[10px] pt-[10px] pb-[1px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_40px)]">
+      <ul className="[--bleed:calc(var(--gutter)_-_20px)] grid md:grid-cols-2 gap-[10px] pt-[10px] md:pt-16 pb-[1px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_40px)]">
         {projects.map((p, i) => {
           // Projects without a dedicated thumbnail lead with their first
           // case-study image instead (projectImages puts the thumbnail first
@@ -223,7 +231,7 @@ export function Projects() {
                 "--z": i % 2 ? 1 : 2,
               } as CSSProperties
             }
-            className="relative md:row-(--row) md:col-(--col) md:aspect-[16/12.65] md:last:aspect-auto md:odd:left-[12.5%] md:even:right-[12.5%]"
+            className="relative md:row-(--row) md:col-(--col) md:aspect-[16/15.4] md:last:aspect-auto md:odd:left-[12.5%] md:even:right-[12.5%]"
           >
             <div
               data-stage
