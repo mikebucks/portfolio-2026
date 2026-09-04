@@ -12,8 +12,16 @@ const ACCESS_KEY = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY ?? "";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-const fieldClass =
-  "w-full rounded-md border border-black/15 bg-white/40 px-4 py-3 text-black placeholder-black/40 outline-none transition-colors focus:bg-white";
+// Each card is a rounded outline whose big grey prompt doubles as the label.
+// Focusing or filling the primary field shrinks the prompt to a small black
+// caption. Focus also lifts the card the way a hovered project card lifts:
+// solid white and the same 10px accent ring on the same ease.
+const cardClass =
+  "relative flex flex-col rounded-md bg-white/70 p-4 ring-0 ring-accent/0 transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.05,0,0,1)] has-[:focus]:z-10 has-[:focus]:bg-white has-[:focus]:ring-[10px] has-[:focus]:ring-accent md:p-6";
+const promptClass =
+  "block h-6 md:h-[1.875rem] uppercase leading-none tracking-tighter text-black/40 transition-[font-size,color] duration-200 text-md md:text-2xl group-has-[:focus]:text-base group-has-[:focus]:text-black group-has-[:is(input,textarea):not(:placeholder-shown)]:text-base group-has-[:is(input,textarea):not(:placeholder-shown)]:text-black";
+const bigInputClass =
+  "mt-4 w-full bg-transparent text-2xl tracking-tight text-black md:text-3xl";
 
 export function ContactSection() {
   const [status, setStatus] = useState<Status>("idle");
@@ -165,7 +173,7 @@ export function ContactSection() {
         ) : (
           <div ref={formWrapRef}>
             {/* Form */}
-            <form onSubmit={handleSubmit} className="max-w-xl">
+            <form onSubmit={handleSubmit}>
             {/* Honeypot */}
             <input
               type="checkbox"
@@ -176,54 +184,61 @@ export function ContactSection() {
               aria-hidden="true"
             />
 
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <label className="block">
-                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
+            {/* data-focus-quiet: the card's orange border is the focus ring,
+                so the global focus-visible outline on the field is silenced. */}
+            <div className="grid gap-4 md:grid-cols-2" data-focus-quiet>
+              <div className="flex flex-col gap-4">
+                <div className={`${cardClass} group flex-1`}>
+                  <label htmlFor="contact-name" className={promptClass}>
                     Name
-                  </span>
+                  </label>
                   <input
+                    id="contact-name"
                     type="text"
                     name="name"
                     required
                     autoComplete="name"
-                    className={fieldClass}
-                    placeholder="Your name"
+                    placeholder=" "
+                    className={bigInputClass}
                   />
-                </label>
-                <label className="block">
-                  <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
+                </div>
+
+                <div className={`${cardClass} group flex-1`}>
+                  <label htmlFor="contact-email" className={promptClass}>
                     Email
-                  </span>
+                  </label>
                   <input
+                    id="contact-email"
                     type="email"
                     name="email"
                     required
                     autoComplete="email"
-                    className={fieldClass}
-                    placeholder="you@example.com"
+                    placeholder=" "
+                    className={bigInputClass}
                   />
-                </label>
+                </div>
               </div>
-              <label className="block">
-                <span className="mb-2 block font-mono text-xs uppercase tracking-widest text-black/60">
+
+              <div className={`${cardClass} group`}>
+                <label htmlFor="contact-message" className={promptClass}>
                   Message
-                </span>
+                </label>
                 <textarea
+                  id="contact-message"
                   name="message"
                   required
-                  rows={5}
-                  className={`${fieldClass} resize-y`}
-                  placeholder="Tell me about your project…"
+                  rows={6}
+                  placeholder=" "
+                  className={`${bigInputClass} flex-1 resize-none`}
                 />
-              </label>
+              </div>
             </div>
 
-            <div className="mt-6 flex items-center gap-4">
+            <div className="mt-6 mx-1 flex items-center justify-end gap-4">
               <button
                 type="submit"
                 disabled={status === "submitting"}
-                className="rounded-full bg-accent px-6 py-3 font-mono text-xs uppercase tracking-widest text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+                className="nav-link -ml-2.5 cursor-pointer font-mono text-xs uppercase tracking-widest text-black/80 disabled:opacity-50"
               >
                 {status === "submitting" ? "Sending…" : "Send message"}
               </button>
