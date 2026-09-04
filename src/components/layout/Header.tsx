@@ -144,13 +144,13 @@ export function Header() {
       // transition on `transform` would fight GSAP's per-frame writes.
       className={cn("fixed w-full gutter-x bg-cream backdrop-blur-sm transition-[background-color,padding] duration-400",
       // The scrolled bar outranks the cream frame bars (z-100), the unscrolled
-      // one doesn't. A hovered featured card takes z-101 to get its ring out
+      // one doesn't. A hovered project card takes z-101 to get its ring out
       // from under that frame, and a card scrolled up behind the nav would
       // otherwise paint over it. Only the scrolled bar can afford the
       // promotion: it's opaque bg-cream, so covering the frame's 10px rails
       // across its own height is seamless. Unscrolled it's bg-white/80 over the
       // hero — there it stays under the frame so the cream edge reads
-      // continuous, which is safe because the featured row can't reach the top
+      // continuous, which is safe because the project cards can't reach the top
       // of a 100svh hero.
       scrolled ? "z-[110] py-3" : "z-30 py-5")}>
       {/* Contents fade out behind the translucent project modal; the bar's own

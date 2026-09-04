@@ -190,7 +190,7 @@ export function SynthPanel() {
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem + 56px)",
         right: "calc(env(safe-area-inset-right, 0px) + 10px)",
       }}
-      // z-[105]: above a hovered featured card (z-101, which itself outranks
+      // z-[105]: above a hovered project card (z-101, which itself outranks
       // the cream frame bars at z-100) so the panel never gets painted over by
       // the card's promoted hover ring; below the scrolled header (z-110) and
       // the project modal (z-120). Same layer as the toggle chip (z-105) — the

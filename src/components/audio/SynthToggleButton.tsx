@@ -248,8 +248,8 @@ export function SynthToggleButton() {
     <div
       aria-hidden={false}
       style={{ bottom: "calc(2.5rem + env(safe-area-inset-bottom, 0px))" }}
-      // z-105 rather than the 50 it used to hold: a hovered featured card takes
-      // z-101 (see FeaturedProjects) and would otherwise slide over the seal as
+      // z-105 rather than the 50 it used to hold: a hovered project card takes
+      // z-101 (see Projects) and would otherwise slide over the seal as
       // the pointer crossed the row. Above the cream frame bars (100) too, which
       // costs nothing — the bars are inset+10px and the seal clears them. Still
       // under the scrolled header (110) and the project modal (120), where it's

@@ -23,7 +23,7 @@
 @utility gutter-x {
   /* Published as a variable, not just applied: a child that breaks out of the
      gutter has to undo exactly this much, and inheriting the value is what
-     keeps the two from drifting at the breakpoint. See the featured-projects
+     keeps the two from drifting at the breakpoint. See the projects
      row, which cancels it with a negative margin and adds it back to its own
      max-width so its cap still measures the same column as the text above it. */
   --gutter: 1.25rem;

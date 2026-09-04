@@ -33,7 +33,7 @@ export function setLenisWaker(fn: (() => void) | null) {
  * by the padding delta on the most common click of all: a nav link pressed while
  * still sitting at the top of the page.
  */
-function headerOffset(): number {
+export function headerOffset(): number {
   const value = getComputedStyle(document.documentElement).getPropertyValue(
     "--section-scroll-offset",
   );

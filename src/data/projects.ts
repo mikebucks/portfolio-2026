@@ -127,7 +127,7 @@ export type Project = {
   tags: string[];
   /** The detail page: an ordered mix of copy and media blocks. */
   content: ProjectBlock[];
-  /** Used on featured cards and the projects index list. */
+  /** Leads the project's card; optional — see projectImages for the fallback. */
   thumbnail?: string;
 };
 
@@ -503,26 +503,13 @@ export function getProject(slug: string) {
   return projects.find((p) => p.slug === slug);
 }
 
-/** How many leading projects are treated as "featured" cards. */
-export const FEATURED_COUNT = 4;
-
-/** The featured cards shown up top under "Recently shipped". */
-export const featuredProjects = projects.slice(0, FEATURED_COUNT);
-
 /**
- * Everything else — the long index. Excludes the featured projects so they
- * aren't immediately repeated now that both live on the same page.
- */
-export const otherProjects = projects.slice(FEATURED_COUNT);
-
-/**
- * Collect a project's image srcs, in reading order, for the hover-reveal strip
- * and the click Flip. Pulls the thumbnail first, then any images from `content`
- * (new format) or `media` (legacy) — including grid items — deduped. Videos
- * contribute their poster if present.
+ * Collect a project's image srcs, in reading order. Pulls the thumbnail first,
+ * then any images from `content` (new format) or `media` (legacy) — including
+ * grid items — deduped. Videos contribute their poster if present.
  *
- * Capped at four: the strip is the only consumer, and a fifth thumbnail is what
- * starts squeezing the truncating title column on a laptop.
+ * The project cards ask for one: the thumbnail when there is one, otherwise
+ * the first case-study image.
  */
 export function projectImages(project: Project, limit = 4): string[] {
   const out: string[] = [];

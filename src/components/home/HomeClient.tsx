@@ -1,7 +1,7 @@
 "use client";
 
 import { Hero } from "./Hero";
-import { FeaturedProjects } from "./FeaturedProjects";
+import { Projects } from "./Projects";
 import { InteractiveBackground } from "./InteractiveBackground";
 import { IntroSequence } from "./IntroSequence";
 import { AboutSection } from "@/components/about/AboutSection";
@@ -23,7 +23,7 @@ export function HomeClient() {
           mix-blend-difference against the shader. */}
       <div data-modal-hide="page">
         <Hero />
-        <FeaturedProjects />
+        <Projects />
         <AboutSection />
         <ContactSection />
       </div>
