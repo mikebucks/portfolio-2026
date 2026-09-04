@@ -5,21 +5,21 @@ import { SKILLS, GROUPS, type ProjectSkill } from "@/data/skills";
 
 function FullViz() {
   return (
-    <div className="grid grid-cols-12 gap-4">
+    <div className="flex flex-col lg:flex-row">
       {GROUPS.map(({ key, label }) => {
         const skills = SKILLS.filter((s) => s.group === key);
         return (
-          <div key={key} className="break-inside-avoid mb-8 col-span-12 md:col-span-6 xl:col-span-4">
-            <p className="font-mono text-xs uppercase tracking-[0.14em] text-white/60 mb-3 pb-2 border-b border-white/[0.06]">
+          <div key={key} className="break-inside-avoid flex-1">
+            <p className="font-mono text-xs uppercase tracking-[0.14em] text-white/60 py-4 border-b border-white/[0.06]">
               {label}
             </p>
-            <div className="space-y-[9px]">
+            <div>
               {skills.map((skill) => (
-                <div key={skill.name} className="flex items-center gap-3">
+                <div key={skill.name} className="flex flex-row lg:flex-col items-center lg:items-start justify-between gap-1 pt-2 pb-3 border-b-1 border-white/[.06]">
                   <span className="min-w-45 text-lg text-white/90 shrink-0 truncate">
                     {skill.name}
                   </span>
-                  <div className="flex gap-1.5 w-full">
+                  <div className="flex gap-2 w-full">
                     {Array.from({ length: 10 }, (_, i) => (
                       <div
                         key={i}

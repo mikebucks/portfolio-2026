@@ -1,18 +1,10 @@
 import { ArrowUpRight } from "lucide-react";
 import { SOCIALS } from "@/data/socials";
-import { SynthKeyCap } from "@/components/audio/SynthKeyCap";
-import { BucksUnltd, NoTrash, RecycleIC3, Sigil } from "@/components/icons";
+import { BucksUnltd, Sigil } from "@/components/icons";
 
 export function Footer() {
   const year = new Date().getFullYear();
   return (
-    // The bottom padding is load-bearing for more than the footer: the synth
-    // toggle is a fixed element that parks itself on this exact inset (see
-    // SynthToggleButton), so at full scroll it lands on the marks row below.
-    // Change it here and change it there. The safe-area term keeps the last row
-    // clear of the home indicator and the floating address bar on iOS
-    // (viewport-fit=cover); the fixed cream frame bar is inset+10px, so this
-    // 2.5rem sits comfortably above it.
     <footer
       data-modal-hide
       style={{
