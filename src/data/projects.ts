@@ -301,7 +301,6 @@ export const projects: Project[] = [
       {
         type: "graphic",
         id: "chisel-process",
-        className: "my-8",
       },
       {
         type: "text",
@@ -310,7 +309,6 @@ export const projects: Project[] = [
       {
         type: "graphic",
         id: "chisel-stack",
-        className: "my-8",
       },
       {
         type: "text",
@@ -319,7 +317,6 @@ export const projects: Project[] = [
       {
         type: "graphic",
         id: "chisel-workflow",
-        className: "my-8",
       },
       {
         type: "text",

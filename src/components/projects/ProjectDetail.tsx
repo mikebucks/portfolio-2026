@@ -24,14 +24,9 @@ const GRAPHICS: Record<
  */
 const COLUMN = "max-w-[49.5rem]";
 
-/**
- * Vertical rhythm between blocks. Prose sits close to prose; anything touching
- * a full-width figure or stat grid gets the wide gap on both sides, so media
- * reads as a break in the column rather than another paragraph.
- */
-function gapBefore(block: ProjectBlock, prev: ProjectBlock | undefined) {
-  if (!prev) return "";
-  return block.type === "text" && prev.type === "text" ? "mt-8" : "mt-14";
+/** Vertical rhythm between blocks — one gap for everything. */
+function gapBefore(prev: ProjectBlock | undefined) {
+  return prev ? "mt-14" : "";
 }
 
 /**
@@ -101,7 +96,7 @@ export function ProjectDetail({
 
       <section className="mt-10 border-t border-black/10 pt-10 md:mt-14 md:pt-14">
         {blocks.map((block, i) => {
-          const gap = gapBefore(block, blocks[i - 1]);
+          const gap = gapBefore(blocks[i - 1]);
 
           return block.type === "text" ? (
             // A <div> (not <p>) so block-level rich text like <ol>/<ul> is valid
