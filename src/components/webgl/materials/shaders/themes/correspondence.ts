@@ -1,7 +1,7 @@
 /**
  * Correspondence — grayscale metaballs over a light/dark divide; tones swap
- * across the line. Cursor only steers the balls; clicks/notes swell them and
- * rotate the divide. The drift clock never reacts to input.
+ * across the line. Cursor steers the balls and swells the ones near it;
+ * clicks/notes swell them all and rotate the divide. The drift clock never reacts to input.
  * Macros: x ball radius, y orbit speed, z tone contrast, w wavefront lift.
  */
 export const correspondenceFragment = /* glsl */ `
@@ -111,6 +111,10 @@ void main() {
     float rf = mix(1.0, 3.4, sz)
              * mix(growSmall, growBig, smoothstep(0.55, 1.0, sz));
     float ri = radius * rScale * rf;
+
+    // Swell as the cursor nears: +40% at the pointer, half at ~0.18 screen heights.
+    vec2 nearPtr = ptr - c;
+    ri *= 1.0 + 0.4 / (1.0 + dot(nearPtr, nearPtr) * 30.0);
 
     vec2  pc  = p - c;
     float len = sqrt(dot(pc, pc)) + 1e-6;
