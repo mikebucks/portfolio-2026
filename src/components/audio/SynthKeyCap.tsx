@@ -24,7 +24,7 @@ const SIZES: Record<Size, string> = {
 // `solid`: outline-only caps vanish over the shader.
 const TONES: Record<Tone, string> = {
   light: "border-black/15 text-black/70",
-  dark: "border-white/50 text-white/70",
+  dark: "border-white/50 text-white/70 shadow-[0_0_2px_rgba(0,0,0,.75)]",
   solid: "border-black bg-black text-white/90",
 };
 
@@ -166,23 +166,13 @@ export function SynthKeyCap({
               backgroundColor: color,
               borderColor: color,
               color: inkFor(color),
-              // boxShadow: `0 0 12px ${color}80`,
             }
           : undefined
       }
-      className={`relative inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
+      className={`relative inline-flex touch-none cursor-pointer select-none flex-col items-center justify-center border font-mono uppercase leading-none hover:shadow-none transition-[background-color,border-color,color,box-shadow] duration-100 ${
         SIZES[size]
       } ${active || hovered ? "" : TONES[tone]} ${className}`}
     >
-      {/* {showNote && (
-        // The key's colour swatch — the same marking the piano roll wears as a
-        // bottom bar, worn here as a corner dot. Lit, the cap floods with that
-        // colour and the dot simply dissolves into it.
-        <span
-          className="pointer-events-none absolute right-2 top-2 h-1 w-1 rounded-full"
-          style={{ backgroundColor: color }}
-        />
-      )} */}
       <kbd className="font-mono">{keyName}</kbd>
       {showNote && (
         <span className="mt-1 text-[9px] tracking-wide opacity-60">{note}</span>
@@ -210,9 +200,9 @@ export function SynthKeyCapRow({
   }
 
   return (
-    <div className="flex flex-col gap-1" aria-label="Playable keys">
+    <div className="flex flex-col gap-2" aria-label="Playable keys">
       {rows.map((row) => (
-        <div key={row[0]} className="flex gap-1">
+        <div key={row[0]} className="flex gap-2">
           {row.map((k) => (
             <SynthKeyCap
               key={k}
