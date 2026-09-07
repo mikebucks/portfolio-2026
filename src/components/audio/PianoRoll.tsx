@@ -234,18 +234,21 @@ export function PianoRoll() {
               title={note}
               data-roll-note={note}
               {...keyHandlers(note)}
-              className="absolute top-0 h-full cursor-pointer transition-[background-color,box-shadow] duration-100"
-              style={{
-                left: `${whiteIndex * WHITE_W}%`,
-                width: `${WHITE_W}%`,
-                backgroundColor: lit
-                  ? (color ?? "#ffffff")
-                  : "rgba(255,255,255,0.75)",
-                boxShadow: lit
-                  ? `0 0 10px ${color ?? "#ffffff"}b0`
-                  : undefined,
-                zIndex: lit ? 1 : undefined,
-              }}
+              // Hover: mapped keys take their colour, the rest go solid white.
+              className="absolute top-0 h-full cursor-pointer bg-[var(--rest)] hover:bg-[var(--hover)] transition-[background-color,box-shadow] duration-100"
+              style={
+                {
+                  left: `${whiteIndex * WHITE_W}%`,
+                  width: `${WHITE_W}%`,
+                  "--rest": "rgba(255,255,255,0.75)",
+                  "--hover": color ?? "#ffffff",
+                  backgroundColor: lit ? (color ?? "#ffffff") : undefined,
+                  boxShadow: lit
+                    ? `0 0 10px ${color ?? "#ffffff"}b0`
+                    : undefined,
+                  zIndex: lit ? 1 : undefined,
+                } as React.CSSProperties
+              }
             >
               {color && (
                 <span
@@ -268,15 +271,20 @@ export function PianoRoll() {
               title={note}
               data-roll-note={note}
               {...keyHandlers(note)}
-              className="absolute top-0 z-10 h-[57%] cursor-pointer transition-[background-color,box-shadow] duration-100"
-              style={{
-                left: `${(whiteIndex + 1) * WHITE_W - WHITE_W * 0.35}%`,
-                width: `${WHITE_W * 0.7}%`,
-                backgroundColor: lit ? (color ?? "#ffffff") : "#14161a",
-                boxShadow: lit
-                  ? `0 0 10px ${color ?? "#ffffff"}b0`
-                  : undefined,
-              }}
+              // Hover: mapped keys take their colour, the rest go solid black.
+              className="absolute top-0 z-10 h-[57%] cursor-pointer bg-[var(--rest)] hover:bg-[var(--hover)] transition-[background-color,box-shadow] duration-100"
+              style={
+                {
+                  left: `${(whiteIndex + 1) * WHITE_W - WHITE_W * 0.35}%`,
+                  width: `${WHITE_W * 0.7}%`,
+                  "--rest": "#14161a",
+                  "--hover": color ?? "#000000",
+                  backgroundColor: lit ? (color ?? "#ffffff") : undefined,
+                  boxShadow: lit
+                    ? `0 0 10px ${color ?? "#ffffff"}b0`
+                    : undefined,
+                } as React.CSSProperties
+              }
             >
               {color && (
                 <span
