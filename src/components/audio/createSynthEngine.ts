@@ -267,6 +267,11 @@ export function createSynthEngine(
   // rawNote → note actually sounded. Octave can change mid-hold.
   const sounding = new Map<string, string>();
 
+  // A note released in the same instant it was struck is silent; a swept
+  // key still gets its attack.
+  const MIN_HOLD = 0.04;
+  const attackAt = new Map<string, number>();
+
   return {
     noteOn(rawNote, velocity = 0.8) {
       const note = transpose(rawNote);
@@ -275,6 +280,7 @@ export function createSynthEngine(
       sounding.set(rawNote, note);
 
       const t = Tone.now();
+      attackAt.set(note, t);
       voice.triggerAttack(note, t, velocity);
 
       fenv.stage = "attack";
@@ -297,7 +303,8 @@ export function createSynthEngine(
       if (!active.has(note)) return;
       active.delete(note);
 
-      const t = Tone.now();
+      const t = Math.max(Tone.now(), (attackAt.get(note) ?? 0) + MIN_HOLD);
+      attackAt.delete(note);
       voice.triggerRelease(note, t);
 
       if (active.size === 0) {
@@ -385,6 +392,25 @@ function envOf(s: SynthSettings) {
   };
 }
 
+// Tone drops the note when the pool is full; steal the oldest released voice
+// instead (oldest held if none). Reaches into PolySynth internals (Tone 15).
+function stealVoices(synth: { maxPolyphony: number }) {
+  type Ev = { voice: unknown; released: boolean };
+  const p = synth as unknown as {
+    _availableVoices: unknown[];
+    _voices: unknown[];
+    _activeVoices: Ev[];
+    _getNextAvailableVoice: () => unknown;
+  };
+  const next = p._getNextAvailableVoice.bind(synth);
+  p._getNextAvailableVoice = () => {
+    if (p._availableVoices.length || p._voices.length < synth.maxPolyphony)
+      return next();
+    const i = p._activeVoices.findIndex((e) => e.released);
+    return p._activeVoices.splice(i < 0 ? 0 : i, 1)[0].voice;
+  };
+}
+
 /** Pulse osc — Wave = width, Timbre = detune. */
 function buildAnalog(Tone: Tone, s: SynthSettings): VoiceHandle {
   const synth = new Tone.PolySynth(Tone.Synth, {
@@ -396,7 +422,8 @@ function buildAnalog(Tone: Tone, s: SynthSettings): VoiceHandle {
     portamento: s.glide,
     detune: s.oscTimbre * 30,
   });
-  synth.maxPolyphony = 8;
+  synth.maxPolyphony = 32;
+  stealVoices(synth);
   return {
     kind: "analog",
     output: synth,
@@ -430,7 +457,8 @@ function buildSuper(Tone: Tone, s: SynthSettings): VoiceHandle {
     envelope: envOf(s),
     portamento: s.glide,
   });
-  synth.maxPolyphony = 6;
+  synth.maxPolyphony = 32;
+  stealVoices(synth);
   return {
     kind: "super",
     output: synth,
@@ -464,7 +492,8 @@ function buildFM(Tone: Tone, s: SynthSettings): VoiceHandle {
     modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.5 },
     portamento: s.glide,
   });
-  synth.maxPolyphony = 6;
+  synth.maxPolyphony = 32;
+  stealVoices(synth);
   return {
     kind: "fm",
     output: synth,
@@ -493,7 +522,8 @@ function buildHarmonic(Tone: Tone, s: SynthSettings): VoiceHandle {
     envelope: envOf(s),
     portamento: s.glide,
   });
-  synth.maxPolyphony = 6;
+  synth.maxPolyphony = 32;
+  stealVoices(synth);
   return {
     kind: "harmonic",
     output: synth,

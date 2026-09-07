@@ -161,8 +161,11 @@ export function PianoRoll() {
   }, []);
 
   // Glissando: the strip captures the pointer (per-key capture pins the drag).
-  // pointerId → note; null = down but off the strip.
-  const pointerNote = useRef(new Map<number, string | null>());
+  // pointerId → last position and note; null note = down but off the strip.
+  type Drag = { x: number; y: number; note: string | null };
+  const drags = useRef(new Map<number, Drag>());
+  // Half a black key, so a sweep can't skip one between pointer samples.
+  const stepPx = useRef(4);
 
   const noteAt = (x: number, y: number): string | null =>
     document
@@ -171,9 +174,9 @@ export function PianoRoll() {
       ?.getAttribute("data-roll-note") ?? null;
 
   const endPointer = (e: React.PointerEvent) => {
-    const note = pointerNote.current.get(e.pointerId);
-    pointerNote.current.delete(e.pointerId);
-    if (note) release(note);
+    const drag = drags.current.get(e.pointerId);
+    drags.current.delete(e.pointerId);
+    if (drag?.note) release(drag.note);
   };
 
   const stripHandlers = {
@@ -184,17 +187,27 @@ export function PianoRoll() {
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {}
-      pointerNote.current.set(e.pointerId, note);
+      const w = e.currentTarget.getBoundingClientRect().width;
+      stepPx.current = Math.max(2, (w * WHITE_W) / 100 * 0.35);
+      drags.current.set(e.pointerId, { x: e.clientX, y: e.clientY, note });
       void press(note);
     },
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!pointerNote.current.has(e.pointerId)) return;
-      const prev = pointerNote.current.get(e.pointerId);
-      const note = noteAt(e.clientX, e.clientY);
-      if (note === prev) return;
-      pointerNote.current.set(e.pointerId, note);
-      if (prev) release(prev);
-      if (note) void press(note);
+      const drag = drags.current.get(e.pointerId);
+      if (!drag) return;
+      // Walk every key between samples; a fast drag crosses several per frame.
+      const dx = e.clientX - drag.x;
+      const dy = e.clientY - drag.y;
+      const steps = Math.max(1, Math.ceil(Math.abs(dx) / stepPx.current));
+      let cur = drag.note;
+      for (let i = 1; i <= steps; i++) {
+        const note = noteAt(drag.x + (dx * i) / steps, drag.y + (dy * i) / steps);
+        if (note === cur) continue;
+        if (cur) release(cur);
+        if (note) void press(note);
+        cur = note;
+      }
+      drags.current.set(e.pointerId, { x: e.clientX, y: e.clientY, note: cur });
     },
     onPointerUp: endPointer,
     onPointerCancel: endPointer,

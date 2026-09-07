@@ -154,7 +154,7 @@ export function SynthPanel() {
       }}
       // z-105: above hovered project cards (101), below the scrolled header
       // (110) and project modal (120).
-      className="pointer-events-none fixed z-[105] w-[min(400px,calc(100vw-2rem-60px))]"
+      className="pointer-events-none fixed z-[105] w-[min(473px,calc(100vw-2rem-60px))]"
     >
       <aside
         ref={panelRef}
