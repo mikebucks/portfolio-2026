@@ -14,20 +14,13 @@ const NAV_LINKS = [
   { id: "contact", label: "Contact" },
 ];
 
-// The wordmark lights up while the page sits on the hero — i.e. at `/`, which
-// carries no section. It isn't a routable section itself, so it gets a key that
-// can't collide with one.
+// Active-nav key for `/` (the hero); can't collide with a section id.
 const HERO_KEY = "__hero";
 
-// The scrolled bar's vertical padding, in px. Mirrors the `py-3` in the
-// className below — Tailwind needs the literal, and the height published as
-// --header-h-collapsed needs the number.
+// px; must match the `py-3` below.
 const COLLAPSED_PAD_Y = 12;
 
-// SynthPanel still deferred (it pulls in Zustand + panel state), but defined at
-// module scope: creating it inside the component re-created the lazy identity on
-// every Header render (scroll + active-nav changes), remounting the panel each
-// time.
+// Module scope: defining inside the component remounts the panel every render.
 const SynthPanel = dynamic(
   () => import("../audio/SynthPanel").then((m) => m.SynthPanel),
   { ssr: false },
@@ -37,42 +30,22 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
-  // Every homepage URL (`/`, `/projects`, `/about`, `/contact`,
-  // `/projects/<slug>`) renders this same tree, so the in-page behaviours below
-  // stay live as the path changes underneath them.
   const onHome = isHomeUrl(pathname);
 
-  // The lit nav item *is* the URL. `useRouteScroll` already mirrors the scroll
-  // position into the path as each section crosses its active line, so reading
-  // the path back is what keeps the highlight and the URL from disagreeing —
-  // they used to be two independent spies running on two different lines (a
-  // viewport-center IntersectionObserver here, the 35% line there), so the
-  // highlight could flip a section before or after the URL did.
+  // Active item comes from the URL (useRouteScroll keeps it in sync with scroll).
   const activeId = onHome
     ? (parseRoute(pathname)?.section ?? HERO_KEY)
     : null;
 
-  // Publish the bar's rendered height as --header-h so fixed overlays (the
-  // synth panel) can start below the nav instead of on top of it. It isn't a
-  // constant — the scroll state swaps the padding, and it animates — so
-  // observe it rather than measuring once.
+  // Publish --header-h (live height, for overlays) and --section-scroll-offset
+  // (collapsed bottom edge, where smoothScrollTo lands sections).
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
     const publish = () => {
       const root = document.documentElement;
       root.style.setProperty("--header-h", `${el.offsetHeight}px`);
-      // Also publish where the bar's bottom edge ends up once the page leaves
-      // the top — the line smoothScrollTo lands sections on, so a nav click
-      // stops the section just below the bar instead of behind it.
-      //
-      // Measured rather than taken from getBoundingClientRect().bottom: the
-      // intro flies the header in with a GSAP transform, and a rect read during
-      // that would bake the animation into the offset. So: the content height
-      // (offsetHeight minus whatever padding is applied *right now*, which
-      // stays constant through the padding transition) plus the collapsed
-      // padding, plus the safe-area inset the bar is pushed down by (the
-      // computed `top`, resolved from env() by the browser — zero off iOS).
+      // Not getBoundingClientRect: the intro's GSAP transform would leak in.
       const styles = getComputedStyle(el);
       const padY =
         Number.parseFloat(styles.paddingTop) +
@@ -84,20 +57,14 @@ export function Header() {
       );
     };
     publish();
-    // border-box, not the default content-box: the scroll state only swaps the
-    // bar's padding, so a content-box observation never fires and --header-h
-    // stays frozen at the expanded height (leaving a gap under the collapsed
-    // bar). Observing the border box also ticks through the padding transition,
-    // so overlays track the animation frame by frame.
+    // border-box: only the padding changes, so content-box never fires.
     const observer = new ResizeObserver(publish);
     observer.observe(el, { box: "border-box" });
     return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    // Only call into React when the threshold actually flips — Lenis fires
-    // scroll every frame of a smooth scroll, and even a bailed-out setState
-    // still enters the React dispatch each time.
+    // setState only on flip: Lenis fires scroll every frame.
     let prev: boolean | null = null;
     const onScroll = () => {
       const next = window.scrollY > 10;
@@ -110,11 +77,7 @@ export function Header() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Intercept the section links to smooth-scroll in-page and push the matching
-  // path, so the URL stays shareable without a route change. Modified clicks
-  // (new tab / window) and any future non-homepage route fall through to a real
-  // navigation — /projects and friends serve the homepage and scroll to the
-  // section on load.
+  // Smooth-scroll in-page and push the path; modified clicks fall through.
   const handleSectionClick =
     (id: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
       if (!onHome) return;
@@ -133,52 +96,28 @@ export function Header() {
   };
 
   return (
-    // top offset by safe-area-inset-top (viewport-fit=cover): sit the nav below
-    // the notch / cream status-bar frame bar. Zero on desktop, so unchanged there.
     <header
       ref={headerRef}
       data-intro-header
       style={{ top: "env(safe-area-inset-top, 0px)" }}
-      // Transition only the scroll-state properties (padding + background), NOT
-      // `all`: the intro flies the header in with a GSAP transform, and a CSS
-      // transition on `transform` would fight GSAP's per-frame writes.
+      // Never transition `transform`: it would fight the GSAP intro.
       className={cn("fixed w-full gutter-x bg-cream backdrop-blur-sm transition-[background-color,padding] duration-400",
-      // The scrolled bar outranks the cream frame bars (z-100), the unscrolled
-      // one doesn't. A hovered project card takes z-101 to get its ring out
-      // from under that frame, and a card scrolled up behind the nav would
-      // otherwise paint over it. Only the scrolled bar can afford the
-      // promotion: it's opaque bg-cream, so covering the frame's 10px rails
-      // across its own height is seamless. Unscrolled it's bg-white/80 over the
-      // hero — there it stays under the frame so the cream edge reads
-      // continuous, which is safe because the project cards can't reach the top
-      // of a 100svh hero.
+      // Scrolled: above the cream frame (z-100) and hovered cards (z-101).
       scrolled ? "z-[110] py-3" : "z-30 py-5")}>
-      {/* Contents fade out behind the translucent project modal; the bar's own
-          background is cleared by the same rules. Kept off the <header>
-          element so GSAP's intro autoAlpha tween owns its opacity alone.
-          See globals.css. */}
+      {/* Off the <header> itself so the GSAP intro alone owns its opacity. */}
       <div data-modal-hide>
-        {/* Both portal themselves to <body> and pin to the bottom-right rail —
-            they render from here only because this is where the panel's state
-            already lived. The header's backdrop-filter would otherwise be
-            their containing block, so neither can be positioned in place. */}
+        {/* Both portal to <body>; they live here for the panel state only. */}
         <SynthPanel />
         <SynthToggleButton />
         <div className={
           "flex items-center justify-between inset-x-0 mx-auto w-full max-w-[1600px]"
         }>
           <section className="flex justify-between w-full">
-            {/* Plain anchors, not next/link: each of these paths is its own
-                Next route serving the whole homepage, so Link would prefetch a
-                duplicate page payload per nav item for a navigation we always
-                intercept. The href still carries the real URL for middle-click
-                and "copy link address". */}
+            {/* Plain anchors, not next/link: Link would prefetch the homepage per item. */}
             <a
               href="/"
               onClick={handleLogoClick}
-              // -ml-2.5 cancels nav-link's own inline padding on the left, so
-              // the wordmark stays flush to the page gutter while the hover
-              // fill still gets a box to sweep through.
+              // -ml-2.5 cancels nav-link's inline padding so the wordmark sits on the gutter.
               aria-current={activeId === HERO_KEY ? "true" : undefined}
               className={cn(
                 "nav-link -ml-2.5 font-mono text-sm tracking-tight text-black",
@@ -189,9 +128,7 @@ export function Header() {
             </a>
             <div className="flex justify-between gap-6 items-center">
               <nav aria-label="Primary">
-                {/* gap-2, not gap-6: the links carry their own inline padding
-                    now (it's the hover fill's box), so the visual spacing
-                    between labels stays where it was. */}
+                {/* gap-2: nav-link's own inline padding supplies the rest. */}
                 <ul className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-black/80">
                   {NAV_LINKS.map((link) => (
                     <li key={link.id}>

@@ -1,27 +1,10 @@
 import { NOTE_HUE_GLSL } from "./palette";
 
 /**
- * Gender — a planet of dust on paper. A circle composed of thousands of dark
- * stippled particles, its interior a wrinkled terrain of creases, voids and
- * dense drifts that is being rearranged constantly — never the same crumple
- * twice. The rim is ragged, and filaments of dust escape it like weather.
- *
- * The pointer is a gravitational intruder: as the cursor approaches the disc,
- * the surface it nears pulls apart — plates of the terrain slide away from the
- * cursor by different amounts, a void opens under it, and the rim on that side
- * bulges and tears. Pull back and the disc settles whole again.
- *
- * Rendering is stochastic stipple, not geometry: a density field (warped fbm
- * masked to the disc) is dithered against per-pixel random thresholds, so tone
- * becomes particle count. Each grain re-rolls on its own slow, staggered
- * clock, so the visible motion is always the field drifting beneath a
- * near-still stipple — input speeds the field, never the grain.
- *
- * Macros:
- *   x  Width  — radius of the disc
- *   y  Drive  — density contrast / how hard the tones separate
- *   z  Wobble — resting churn: how much the terrain rearranges on its own
- *   w  Boom   — how much click / note input adds to the churn and the tearing
+ * Gender — a stippled dust planet on paper. Warped fbm density dithered against
+ * per-pixel random thresholds; cursor proximity tears the surface apart.
+ * Input speeds the field, never the grain.
+ * Macros: x disc radius, y density contrast, z resting churn, w input churn/tear.
  */
 export const genderFragment = /* glsl */ `
 precision highp float;
@@ -46,10 +29,7 @@ uniform float uReactivity;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
-// Synth fader offsets from the preset, -1..1, 0 = untouched. Here: x volume
-// is the planet's size (more grains on screen without re-seeding the grid),
-// y cutoff lets finer terrain through, z reverb widens the halo of escaping
-// dust, w delay adds a second, weaker wavefront behind each strike.
+// Faders: x planet size, y terrain detail, z halo width, w second wavefront.
 uniform vec4  uSynth;
 
 ${NOTE_HUE_GLSL}
@@ -73,8 +53,7 @@ float vnoise(vec2 p) {
   return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
 }
 
-// Four octaves, rotated between octaves so the lattice never lines up into a
-// readable grid.
+// Rotated between octaves so the lattice never reads as a grid.
 float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
@@ -95,70 +74,47 @@ void main() {
 
   float aspect = uResolution.x / uResolution.y;
 
-  // Centered, aspect-corrected frame: the disc lives at the origin.
   vec2 p = vUv - 0.5;
   p.x *= aspect;
 
-  // uShaderTime crawls at ~5% pace at rest and ramps under click / note input,
-  // so the terrain's rearrangement accelerates when played. The small uTime
-  // term keeps it from ever freezing solid.
+  // Small uTime term keeps it from freezing at rest.
   float t = uShaderTime * 0.42 + uTime * 0.015;
 
-  // Instantaneous input energy — drives amplitude (speed comes from t).
-  // Pointer motion is deliberately NOT an energy source here: the cursor acts
-  // spatially (the pull-apart below), and letting its impulse agitate the
-  // grain and churn made the whole frame shimmer-blur on every mouse move.
-  // The envelope outlasts the note impulse, so a struck key agitates the
-  // terrain for the note's audible life instead of a sub-half-second blip.
+  // Pointer motion is not an energy source: it made every mouse move shimmer.
+  // Envelope outlasts uNoteOn so a key agitates for its audible life.
   float energy = clamp(
     max(uNoteOn, uEnvelope * 0.75) * max(uVelocity, 0.4) + uClickImpulse * 0.8,
     0.0, 1.0
   ) * (0.5 + 0.5 * uReactivity);
 
-  // Rises steeply off zero so a light keypress still lands.
   float hit = pow(energy, 0.6);
 
-  // Every rim, limb and halo term below is in units of R, so the volume fader
-  // scales the whole figure coherently. (Not the stipple grid — see below.)
+  // Rim, limb and halo are all in units of R.
   float R = mix(0.24, 0.36, mWidth) * exp2(uSynth.x * 0.35);
 
-  // ── Pointer ───────────────────────────────────────────────────────────────
-  // uPointer parks off-screen until the pointer first moves, so an untouched
-  // page shows the planet whole and undisturbed.
+  // ── Pointer ──
   bool hasPointer = uPointer.x > -1.5;
 
-  // The tear answers to the eased pointer, so the surface peels open behind
-  // the cursor rather than snapping to it.
+  // Eased pointer: the tear peels open behind the cursor.
   vec2 m = uPointerLag * 0.5;
   m.x *= aspect;
   float md = length(m);
 
-  // How close the cursor is to the disc: 0 far away, 1 at the rim or inside.
-  // This is the master gain on everything the pointer does — approach and the
-  // planet comes apart, retreat and it heals.
+  // Master gain on everything the pointer does.
   float prox = hasPointer ? 1.0 - smoothstep(R * 0.25, R + 0.45, md) : 0.0;
 
-  // ── Pull-apart ────────────────────────────────────────────────────────────
-  // Content is displaced away from the cursor by sampling toward it. The
-  // amount varies by a low-frequency plate mask, so the surface doesn't dilate
-  // uniformly — different regions slide by different amounts and the seams
-  // between them read as tears.
+  // ── Pull-apart ──
+  // Displacement varies by plate mask so seams read as tears, not a lens.
   vec2 q = p;
   vec2 toP = q - m;
   float dp = length(toP);
   if (hasPointer && dp > 1e-4) {
     float plate = fbm(q * 3.0 + t * 0.6);
-    // Higher-frequency shred on top of the plates, so the tear's edge is
-    // stringy and irregular instead of a clean circular lens.
     float shred = 0.4 + 0.6 * fbm(q * 6.5 - t * 0.4);
     float fall = smoothstep(0.55, 0.0, dp);
-    // Baseline is deliberately generous: pointer motion no longer feeds the
-    // energy term, so the tear must carry its full depth from proximity alone.
     float tear = prox * fall * (0.06 + 0.38 * plate) * shred
                * (1.35 + mBoom * hit * 1.8);
-    // Each plate scatters at its own angle off the radial push — a straight
-    // radial field reads as a lens dent; angled plates read as the surface
-    // being taken apart and rearranged.
+    // Each plate scatters at its own angle off the radial push.
     float ang = (plate - 0.5) * 2.6;
     vec2 dir = toP / dp;
     q -= vec2(
@@ -167,23 +123,16 @@ void main() {
     ) * tear;
   }
 
-  // ── Note shock ────────────────────────────────────────────────────────────
-  // Every note also lands as a click placed by pitch (low → left, high →
-  // right; see InteractiveBackground). The strike point emits an expanding
-  // ring that shoves the dust outward, modulated by the same kind of noise as
-  // the tear so the shove scatters raggedly instead of reading as a clean
-  // lens. This is what makes a keypress visibly throw particles rather than
-  // merely hastening the ambient drift.
+  // ── Note shock ──
+  // Expanding ring from the strike point shoves the dust outward, raggedly.
   vec2 shock = vec2(0.0);
   if (uClickImpulse > 0.004) {
     vec2 c = uClickPos * 0.5;
     c.x *= aspect;
     vec2 toC = q - c;
     float dc = max(length(toC), 1e-4);
-    // The impulse doubles as the wavefront clock: radius grows as it decays.
     float front = (1.0 - uClickImpulse) * 0.5;
-    // The delay fader trails a second, weaker front behind the first — the
-    // strike repeating. Contributes exactly nothing at rest.
+    // Delay fader trails a second, weaker front.
     float ring = exp(-pow((dc - front) / 0.18, 2.0))
                + uSynth.w * 0.55 * exp(-pow((dc - front * 0.55) / 0.18, 2.0));
     float rag = 0.5 + 0.5 * fbm(q * 5.0 + t);
@@ -194,11 +143,8 @@ void main() {
     q += shock;
   }
 
-  // ── Churn ─────────────────────────────────────────────────────────────────
-  // Two-pass domain warp that rearranges the interior. Rest amount from the
-  // Wobble macro; input and cursor proximity both agitate it further. The
-  // input term keeps a Boom-independent floor — with a low Boom macro the old
-  // pure product scaled keypresses down to near-invisibility.
+  // ── Churn ──
+  // Two-pass domain warp. Hit term has a Boom-independent floor.
   float churn = mix(0.5, 1.0, mWobble) + hit * (1.3 + mBoom * 2.5) + prox * 0.6;
   vec2 w1 = vec2(
     fbm(q * 1.8 + vec2(0.0, t)),
@@ -210,25 +156,16 @@ void main() {
     fbm(w * 3.1 + vec2(8.4, t * 0.5))
   ) - 0.5) * 0.12 * churn;
 
-  // ── Density field ─────────────────────────────────────────────────────────
-  // The silhouette gets its own, much gentler warp: enough that the rim
-  // buckles and breathes, never enough to stop reading as a circle. The
-  // pull-apart displacement is already in q, so the cursor still dents and
-  // tears the outline at full strength. The interior texture rides the strong
-  // warp above, which is what keeps the terrain rearranging inside a stable
-  // silhouette.
+  // ── Density field ──
+  // Silhouette gets a gentler warp than the interior so it stays a circle.
   float r = length(q + w1 * (0.09 + hit * (0.08 + 0.18 * mBoom) + 0.05 * prox));
   float body = 1.0 - smoothstep(R * 0.96, R * 1.06, r);
 
-  // Interior terrain: broad light/dark drifts, with ridged creases folded in —
-  // the dark filament lines that make it read as crumpled rather than cloudy.
-  // The cutoff fader is the spatial frequency let through: open gives tighter,
-  // more numerous creases and smaller voids. Same fbm calls, just scaled.
+  // Cutoff fader scales terrain frequency.
   float det = exp2(uSynth.y * 0.8);
   float tone = fbm(w * (2.2 * det) - vec2(t * 0.15, t * 0.1));
   float crease = pow(1.0 - abs(2.0 * fbm(w * (3.4 * det) + vec2(t * 0.4, -t * 0.25)) - 1.0), 3.0);
 
-  // Denser toward the rim, like the screenshot's dark limb.
   float limb = smoothstep(R * 0.55, R * 0.95, r) * body;
 
   float density = body * clamp(
@@ -236,43 +173,17 @@ void main() {
     0.0, 1.0
   );
 
-  // Wisps: crease filaments allowed to leak past the rim into a halo band, so
-  // dust appears to escape the planet.
-  // The reverb fader is what hangs in the room after the source: a wider,
-  // denser band of dust drifting off the planet. Only adds outside the body.
+  // Creases leak past the rim into a halo; reverb fader widens it.
   float tail = exp2(uSynth.z * 0.8);
   float halo = (1.0 - smoothstep(R * 1.0, R * (1.4 * tail), r)) * (1.0 - body);
   density = clamp(density + halo * crease * (0.8 * tail), 0.0, 1.0);
 
-  // Contrast: Drive pushes mid-tones apart so voids empty and drifts blacken.
   density = pow(density, mix(1.6, 0.95, mDrive));
 
-  // ── Stipple ───────────────────────────────────────────────────────────────
-  // Tone becomes particle count: two grain layers (fine + 2px) dithered
-  // against the density. Each grain re-rolls on its OWN staggered clock — a
-  // per-pixel random phase offset — so at any instant only a sliver of the
-  // dust is changing and there is never a frame-wide flash. At rest a grain
-  // lives ~4s and the motion reads as the field drifting beneath a nearly
-  // still stipple; input spins the clock way up, so a keypress or click
-  // visibly liquefies the dust.
-  // The grain lives on a FIXED virtual pixel grid, not gl_FragCoord: the
-  // adaptive quality system resizes the render target under load, and a
-  // fragment-space grain fully re-seeds on every resize — a visible
-  // frame-wide jump whenever quality stepped (e.g. during the headline
-  // entrance animation). On a virtual grid a resolution change merely
-  // resamples the same particle pattern.
-  //
-  // The re-roll clock is CONSTANT, never input-driven. Speeding the grain up
-  // under input made hits read as the image blurring, then snapping back to
-  // crisp grain as the energy died — the stipple must look the same at every
-  // energy level, with input expressed purely as the field moving faster
-  // beneath it (uShaderTime ramp + churn above).
-  // Input slides the grain pattern itself along the churn's warp field — the
-  // dots physically travel with the terrain and drift back as the hit decays.
-  // This is a translation of the pattern, not a faster re-roll clock, so the
-  // stipple stays crisp at every energy level (see the constant-clock note
-  // below); it's what makes a keypress read as particles being thrown rather
-  // than the tone shifting underneath a static grain.
+  // ── Stipple ──
+  // Grain on a fixed virtual grid, not gl_FragCoord: render-target resizes
+  // would re-seed it. Re-roll clock is constant; input-driven speed read as blur.
+  // Per-pixel phase offset so no frame-wide flash. Input translates the pattern.
   float grainRate = 0.25;
   vec2 vp = vec2(vUv.x * aspect, vUv.y) * 1100.0;
   vp += (w1 * 120.0 * hit) + shock * 1100.0;
@@ -287,13 +198,10 @@ void main() {
     0.0, 1.0
   );
 
-  // Paper ground, dust-dark particles.
   vec3 paper = vec3(0.925);
   vec3 inkCol = vec3(0.10);
 
-  // Input tints the dust with the colour of the key that caused it, keeping
-  // the theme's violet for input with no note behind it. Scaled well down —
-  // these are full-strength colours against near-black particles.
+  // Key colour tints the dust; violet when no note is behind the input.
   vec3 flash = vec3(0.10, 0.02, 0.16);
   vec3 playAcc = vec3(0.0);
   float playW = 0.0;
@@ -310,12 +218,11 @@ void main() {
 
   vec3 col = mix(paper, inkCol, ink * (0.82 + 0.18 * density));
 
-  // Vignette — kept light, it only has paper to work against.
   vec2 v = vUv - 0.5;
   v.x *= aspect;
   col *= 1.0 - smoothstep(0.45, 1.05, length(v)) * 0.10;
 
-  // Grain — keeps the paper flats from banding.
+  // Anti-banding grain.
   col += (rand(vec3(px, seed1 + 91.0)) - 0.5) * 0.03;
 
   gl_FragColor = vec4(col, 1.0);

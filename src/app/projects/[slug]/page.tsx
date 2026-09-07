@@ -3,17 +3,11 @@ import { HomeClient } from "@/components/home/HomeClient";
 import { getProject, projects } from "@/data/projects";
 import { SITE } from "@/lib/siteMeta";
 
-// The output is the same for every slug (the modal resolves it on the client),
-// but listing them prerenders the shareable ones instead of server-rendering
-// each on demand. Unknown slugs still render on request.
 export async function generateStaticParams() {
   return projects.map((p) => ({ slug: p.slug }));
 }
 
-// The page component ignores the slug, but the preview card must not: this is
-// what makes a pasted case-study link read as that project instead of as the
-// homepage. The matching image lives in ./opengraph-image.tsx. Returning {} for
-// an unreadable project inherits the site-wide metadata from the root layout.
+// Per-project link preview; {} falls back to the root metadata.
 export async function generateMetadata({
   params,
 }: {
@@ -41,15 +35,8 @@ export async function generateMetadata({
   };
 }
 
-// A project case study is a modal over the homepage, not a page of its own —
-// but it keeps a real, shareable URL. The homepage tree renders here and
-// `ProjectModal` reads the slug off the path on mount, so a direct load lands
-// with the case study already open.
-//
-// The slug isn't validated here: an unknown slug leaves the modal closed and
-// the visitor on the homepage, same as before. Swap this for a
-// `notFound()` if a real 404 is wanted (it'd need a not-found.tsx to match the
-// site — the stock Next page doesn't).
+// Case studies are a modal over the homepage; ProjectModal reads the slug on mount.
+// Unknown slugs just leave the modal closed.
 export default function ProjectPage() {
   return <HomeClient />;
 }

@@ -6,10 +6,7 @@ export type Skill = {
 
 export type ProjectSkill = Pick<Skill, "name" | "score">;
 
-// specifics.design assessment inspired. Skill names are drawn from the language
-// used in real Product Designer / Design Engineer / PM postings (Anthropic,
-// Figma, Vercel, Ramp, OpenAI) so the list reads like the roles it's aimed at.
-// 12 per group keeps every column the same height in the viz.
+// Equal counts per group keep the viz columns level.
 export const SKILLS: Skill[] = [
   { name: "Product UI",    score: 10, group: "Design" },
   { name: "Design Systems",     score: 10, group: "Design" },

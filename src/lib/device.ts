@@ -22,23 +22,9 @@ export function isLowPower() {
   return lowMemory || fewCores;
 }
 
-export function hasWebGL(): boolean {
-  if (!isClient()) return false;
-  try {
-    const canvas = document.createElement("canvas");
-    return !!(
-      canvas.getContext("webgl2") || canvas.getContext("webgl")
-    );
-  } catch {
-    return false;
-  }
-}
-
 export function getClampedDpr() {
   if (!isClient()) return 1;
-  // Canvas-only cap (DOM text is unaffected). 1.5 on fine pointers: the shader
-  // content is soft enough that the last quarter-DPR is invisible, but it costs
-  // ~27% of the blit pass and compositor bandwidth.
+  // Canvas-only cap. Above 1.5 the shader gains nothing visible for ~27% more blit cost.
   const cap = isCoarsePointer() ? 1.25 : 1.5;
   return Math.min(window.devicePixelRatio || 1, cap);
 }

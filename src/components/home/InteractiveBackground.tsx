@@ -11,35 +11,11 @@ import {
   type ThemeId,
 } from "@/components/webgl/materials/shaders/themes";
 
-/**
- * Interactive shader surface. Two variants:
- *
- *   "full"   — full-bleed fixed background (home page). Sits behind everything
- *              at -z-10 and fills the viewport.
- *   "header" — fills its nearest positioned ancestor (a page-header banner) so
- *              subsequent pages get the shader as a header treatment.
- *
- * Page-draw sequence, to avoid a flash of the loading gradient:
- *
- *   "probing"     — initial. Show black only (the wrapper's own bg). No
- *                   gradient, no canvas. Removes the one-frame gradient flash
- *                   that would otherwise show before the probe effect runs.
- *   "loading"     — WebGL confirmed. Mount the canvas at opacity 0 over black;
- *                   gradient stays hidden while `three` and the material load.
- *   "ready"       — the shader painted its first real frame. Fade the canvas in.
- *   "unsupported" — WebGL unavailable OR setup failed. Show the CSS gradient as
- *                   the fallback. This is the only path that ever shows purple.
- *
- * `WebGLCanvas` measures its own element, so it renders correctly at either size
- * with no variant-specific code beyond the wrapper positioning below.
- */
+// Fixed home background. Draws black until the first frame paints, then fades in.
+// The CSS gradient shows only when WebGL is unavailable or setup fails.
 type Status = "probing" | "loading" | "ready" | "unsupported";
 
-export function InteractiveBackground({
-  variant = "full",
-}: {
-  variant?: "full" | "header";
-}) {
+export function InteractiveBackground() {
   const [status, setStatus] = useState<Status>("probing");
 
   useEffect(() => {
@@ -52,40 +28,21 @@ export function InteractiveBackground({
     }
   }, []);
 
-  // Release the cream intro reveal once the full-bleed shader has painted its
-  // first frame — or immediately on the unsupported (CSS-gradient) fallback,
-  // which has nothing to wait for. Only the full background gates the intro.
+  // Gates the intro reveal.
   useEffect(() => {
-    if (variant !== "full") return;
     if (status === "ready" || status === "unsupported") {
       useIntroStore.getState().setReady();
     }
-  }, [variant, status]);
+  }, [status]);
 
   return (
     <div
       aria-hidden="true"
-      // translateZ(0) locks this as a stable GPU compositing layer from the
-      // first paint. Without it, iOS Safari decides on the fly whether the
-      // fixed background gets its own layer, which makes mix-blend-difference
-      // on the hero text inconsistent on first load.
+      // Stable compositing layer; iOS Safari otherwise breaks the hero's mix-blend on first load.
       style={{ transform: "translateZ(0)" }}
-      className={
-        variant === "full"
-          ? // Top-anchored with a fixed 100lvh height (.bg-layer-full) rather
-            // than inset-0: a fixed inset-0 box tracks iOS's *dynamic* viewport,
-            // so its height changes all the way through the toolbar animation.
-            // See the .bg-layer-full comment in globals.css.
-            "pointer-events-none fixed inset-x-0 top-0 bg-layer-full -z-10 overflow-hidden bg-ink"
-          : // Render at full viewport height anchored to the banner's top, so
-            // the shader is the SAME scale as the home page and the banner's
-            // own overflow-hidden simply crops the bottom — no squashing.
-            "pointer-events-none absolute top-0 left-0 h-screen w-full z-0 overflow-hidden bg-ink"
-      }
+      // 100lvh (.bg-layer-full), not inset-0: iOS toolbar animation resizes inset-0.
+      className="pointer-events-none fixed inset-x-0 top-0 bg-layer-full -z-10 overflow-hidden bg-ink"
     >
-      {/* CSS gradient — fallback only. Shown when WebGL is unavailable or setup
-          failed, never on the normal load path (which draws black then fades in
-          the shader). */}
       {status === "unsupported" && (
         <div
           className="absolute inset-0"
@@ -99,8 +56,6 @@ export function InteractiveBackground({
         />
       )}
 
-      {/* Canvas mounts over black once WebGL is confirmed, and fades in on its
-          first painted frame. On setup failure it flips us to the gradient. */}
       {(status === "loading" || status === "ready") && (
         <WebGLCanvas
           visible={status === "ready"}
@@ -124,12 +79,9 @@ function WebGLCanvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const theme = useThemeStore((s) => s.theme);
   const themeRef = useRef<ThemeId>(theme);
-  // Populated by the async setup IIFE; called on theme change to swap the
-  // fragment shader on the live material.
   const swapThemeRef = useRef<((next: ThemeId) => void) | null>(null);
 
-  // Setup effect has [] deps, so keep these callbacks in refs updated each
-  // render to avoid firing stale closures from the async IIFE below.
+  // Refs: the [] setup effect must not call stale closures.
   const onFirstFrameRef = useRef(onFirstFrame);
   const onUnavailableRef = useRef(onUnavailable);
   onFirstFrameRef.current = onFirstFrame;
@@ -144,10 +96,8 @@ function WebGLCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Guards against StrictMode double-invoke and navigation races: an
-    // abandoned mount must not flip parent status or leak a render loop.
+    // StrictMode double-invoke / navigation race guard.
     let cancelled = false;
-    // Teardown registered asynchronously once setup completes.
     let teardown = () => {};
 
     (async () => {
@@ -168,46 +118,27 @@ function WebGLCanvas({
           import("@/lib/audioScope"),
         ]);
 
-        // Mount was abandoned while chunks downloaded — don't build anything.
         if (cancelled) return;
 
-        // ── Renderer ─────────────────────────────────────────────────────
         const renderer = new THREE.WebGLRenderer({
           canvas,
           antialias: false,
           alpha: false,
           powerPreference: "high-performance",
         });
-        // Match the canvas to the page's base black by reading the token off the
-        // document rather than repeating the hex — the wrapper div behind this
-        // canvas is `bg-ink`, and any drift between the two shows as a seam
-        // while the shader fades in. Left at three's default black if the
-        // variable somehow isn't resolvable yet; that's within a hair of --color-ink.
+        // Clear colour must match the wrapper's bg-ink or the fade-in shows a seam.
         const ink = getComputedStyle(document.documentElement)
           .getPropertyValue("--color-ink")
           .trim();
         if (ink) renderer.setClearColor(ink);
 
-        // Resolution is controlled on ONE axis: the output canvas is pinned at
-        // the device-clamped DPR, and the shader is drawn into a lower-resolution
-        // render target that gets upscaled to fill it (see the render-target
-        // block below). This keeps the compositor happy with a full-DPR canvas
-        // while the expensive fragment work runs at a fraction of the pixels.
+        // Canvas stays at full DPR; the shader draws to a smaller target and is upscaled.
         const outputDpr = device.getClampedDpr();
         renderer.setPixelRatio(outputDpr);
         const lowPower = device.isLowPower();
 
-        // Internal render scale = per-theme base × adaptive quality. Every
-        // theme draws at a fraction of the internal buffer sized to what its
-        // content actually resolves: causation's ray-marched terrain and
-        // polarity's gaussian splats have no hard edges; mind
-        // is soft cellular noise; correspondence is soft metaballs but keeps
-        // more pixels for its crisp divide line; rhythm's thin pendulum
-        // strands need the most. Vibration is cheap AND has a hard-edged
-        // square — full resolution, and gender's per-pixel stipple would smear
-        // into gray under any upscale, so it keeps full resolution too (its
-        // fbm field is cheap enough to afford it). Fragment cost scales with
-        // the square of these, so 0.6 ≈ one-third the pixels.
+        // Per-theme render scale: soft themes tolerate upscaling, vibration's
+        // hard square and gender's stipple need full resolution.
         const renderScaleForTheme = (t: ThemeId) =>
           t === "causation" ? 0.6
           : t === "polarity" ? 0.65
@@ -215,54 +146,36 @@ function WebGLCanvas({
           : t === "correspondence" ? 0.7
           : t === "rhythm" ? 0.8
           : 1;
-        // Adaptive quality now nudges the internal render scale, never the canvas
-        // DPR — dropping the canvas would soften the whole compositing layer, and
-        // capping resolution here is invisible over the upscale.
+        // Adaptive quality scales the target, never the canvas DPR.
         const scaleLevels = [1, 0.85, 0.7, 0.6];
         let qualityScale = scaleLevels[lowPower ? 1 : 0];
         let baseRenderScale = renderScaleForTheme(themeRef.current);
         let renderScale = baseRenderScale * qualityScale;
 
-        // Measure our own element rather than the window, so the same code path
-        // serves both the full-bleed background and a bounded header banner.
-        // The canvas is styled `w-full h-full` by CSS, so setSize(..., false)
-        // must not overwrite that with pixel styles.
         const measure = () => ({
           w: canvas.clientWidth || window.innerWidth,
           h: canvas.clientHeight || window.innerHeight,
         });
 
-        // ── Scene ─────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
-        // near=-1 keeps our z=0 plane safely inside the frustum.
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
 
         const material = createBackgroundMaterial(themeRef.current);
-        // Keep the geometry reachable so teardown can dispose it — an inline
-        // `new PlaneGeometry` would leak its GPU buffer on every remount.
         const planeGeo = new THREE.PlaneGeometry(2, 2);
         scene.add(new THREE.Mesh(planeGeo, material));
 
-        // ── Render target + upscale pass ──────────────────────────────────
-        // The shader renders into this lower-resolution target; a second full-
-        // screen pass then samples it onto the canvas, scaling up. Sized to 1×1
-        // here and resized to (canvas px × renderScale) in resizeRenderTarget.
+        // Low-res target, sized in resizeRenderTarget.
         const rt = new THREE.WebGLRenderTarget(1, 1, {
           depthBuffer: false,
           stencilBuffer: false,
         });
-        // Linear filtering gives the smooth upscale the heavy themes already
-        // lean on; no mipmaps for a single-sample blit.
         rt.texture.minFilter = THREE.LinearFilter;
         rt.texture.magFilter = THREE.LinearFilter;
         rt.texture.generateMipmaps = false;
         let rtW = 0;
         let rtH = 0;
 
-        // A raw passthrough — samples the target and writes it out verbatim, no
-        // colour-space encode or tone-mapping, exactly as the theme shaders
-        // wrote straight to the canvas before. That keeps the blit pixel-for-
-        // pixel identical to direct rendering at renderScale 1.0.
+        // Raw blit: no colour-space encode or tone-mapping.
         const screenScene = new THREE.Scene();
         const screenMat = new THREE.ShaderMaterial({
           depthTest: false,
@@ -285,60 +198,35 @@ function WebGLCanvas({
         const screenGeo = new THREE.PlaneGeometry(2, 2);
         screenScene.add(new THREE.Mesh(screenGeo, screenMat));
 
-        // ── Sizing ────────────────────────────────────────────────────────
-        // Resize events only RECORD a target; the drawing buffer is resized
-        // inside the render loop, immediately before the draw call.
-        //
-        // renderer.setSize assigns canvas.width/height, and assigning either
-        // reallocates and clears the WebGL drawing buffer. Doing that from an
-        // event handler leaves a cleared (black) buffer that the compositor can
-        // present before the next rAF paints it. iOS fires a stream of resizes
-        // while its toolbars animate and defers rAF during touch scrolling, so
-        // the background strobed for the whole animation. Resizing inside the
-        // tick means the frame that clears the buffer is the frame that
-        // repaints it.
+        // Resizes are recorded here and applied inside tick: setSize clears the
+        // buffer, and iOS presents that black frame mid-toolbar-animation.
         const isTouch = device.isCoarsePointer();
-        // Far above any browser-toolbar delta (~50-120px), far below an
-        // orientation change (which swaps width, so it takes the other branch).
+        // Above toolbar deltas (~50-120px), below an orientation change.
         const CHROME_JITTER = 200;
 
         let pendingW = 0;
         let pendingH = 0;
-        // -1 so the first applyPendingResize always sizes the buffer.
         let appliedW = -1;
         let appliedH = -1;
 
-        // Scrollable range, cached here rather than read per scroll event.
-        // Reading scrollHeight mid-scroll forces a layout flush every frame,
-        // because Lenis and GSAP have already dirtied the DOM. uScroll is a
-        // slow-moving 0..1 ratio, so a stale range between resizes is harmless.
+        // Cached on resize; reading scrollHeight/rect per event forces layout.
         let scrollRange = 0;
-
-        // Cached canvas rect for the pointer handlers. The canvas is a fixed
-        // full-viewport layer, so the rect only changes on resize — refreshing
-        // it there beats a forced layout read on every pointermove.
         let canvasRect: Pick<DOMRect, "left" | "top" | "width" | "height"> = {
           left: 0,
           top: 0,
           width: 1,
           height: 1,
         };
-        // Timestamp of the last user input, for the idle frame governor in the
-        // render loop. Seeded to "now" so the page always loads at full rate.
+        // Last input time, for the idle governor.
         let lastActivityAt = performance.now();
 
         const requestResize = () => {
           scrollRange =
             document.documentElement.scrollHeight - window.innerHeight;
-          // The canvas is a fixed full-viewport layer, so its rect only moves
-          // on resize — cache it here rather than forcing a layout read on
-          // every pointermove (input rate, on a DOM GSAP/Lenis keep dirty).
           canvasRect = canvas.getBoundingClientRect();
           lastActivityAt = performance.now();
           const { w, h } = measure();
-          // .bg-layer-full pins the full-bleed layer to 100lvh so chrome can't
-          // resize it, but in-app browsers vary and lvh has been reported short
-          // on some hardware. Swallow any residual chrome-sized jitter here.
+          // lvh is unreliable in some in-app browsers; swallow chrome jitter.
           if (isTouch && w === pendingW && Math.abs(h - pendingH) < CHROME_JITTER) {
             return;
           }
@@ -346,10 +234,7 @@ function WebGLCanvas({
           pendingH = h;
         };
 
-        // Size the internal render target to (canvas physical px × renderScale)
-        // and point uResolution at it — gl_FragCoord now spans the target, not
-        // the canvas. The upscale is uniform, so aspect ratio (and every
-        // resolution-relative calc in the loop) is preserved.
+        // uResolution tracks the target, not the canvas.
         const resizeRenderTarget = () => {
           const cw = renderer.domElement.width;
           const ch = renderer.domElement.height;
@@ -366,7 +251,6 @@ function WebGLCanvas({
           if (pendingW === appliedW && pendingH === appliedH) return;
           appliedW = pendingW;
           appliedH = pendingH;
-          // Canvas stays at the fixed output DPR; only the target scales.
           renderer.setSize(appliedW, appliedH, false);
           resizeRenderTarget();
         };
@@ -374,8 +258,6 @@ function WebGLCanvas({
         requestResize();
         applyPendingResize();
 
-        // Recompute the internal render scale and resize the target to match.
-        // The canvas DPR is untouched — resolution moves on one axis only.
         const applyRenderScale = () => {
           const next = baseRenderScale * qualityScale;
           if (next === renderScale) return;
@@ -392,8 +274,6 @@ function WebGLCanvas({
           },
         });
 
-        // Wire up live theme swapping. If the user changed theme during the
-        // async import, sync to the latest value now.
         let activeTheme = themeRef.current;
         swapThemeRef.current = (next: ThemeId) => {
           if (next === activeTheme) return;
@@ -401,14 +281,13 @@ function WebGLCanvas({
           activeTheme = next;
           baseRenderScale = renderScaleForTheme(next);
           applyRenderScale();
-          // A theme swap is user input — show the new theme at full rate.
           lastActivityAt = performance.now();
         };
+        // Theme may have changed during the async import.
         if (themeRef.current !== activeTheme) {
           swapThemeRef.current(themeRef.current);
         }
 
-        // ── Particles ─────────────────────────────────────────────────────
         let particleMat: THREE.PointsMaterial | null = null;
         let particleMesh: THREE.Points | null = null;
         if (
@@ -434,13 +313,10 @@ function WebGLCanvas({
             blending: THREE.AdditiveBlending,
           });
           particleMesh = new THREE.Points(geo, particleMat);
-          // Added to the screen pass, not the shader scene, so they stay crisp
-          // at full canvas resolution instead of being upscaled with the heavy
-          // themes' reduced-resolution target.
+          // Screen pass, so particles stay crisp at full resolution.
           screenScene.add(particleMesh);
         }
 
-        // ── Pointer / click / scroll ──────────────────────────────────────
         let lastX = 0, lastY = 0, lastT = 0, primed = false;
         let pointerHasMoved = false;
         const {
@@ -452,19 +328,14 @@ function WebGLCanvas({
           arePointerClicksLocked,
         } = events;
 
-        // ── Voice pool (polyphonic color) ─────────────────────────────────
-        // Each note_on claims a slot; envelopes decay independently so
-        // multiple simultaneous notes each contribute their own color.
+        // Polyphonic colour: each note claims a voice, envelopes decay independently.
         type Voice = { colorNorm: number; vel: number; env: number };
         const voices: Voice[] = Array.from({ length: 4 }, () => ({
           colorNorm: 0, vel: 0, env: 0,
         }));
 
 
-        // Correspondence's divide steps 45° clockwise on every synth note. The
-        // target holds the stepped angle (ever-decreasing so repeated notes keep
-        // sweeping the same way around); the render loop eases the live angle
-        // toward it. Rest is 3π/4 — the bottom-left→top-right diagonal.
+        // Correspondence divide: steps 45° clockwise per note. Rest = 3π/4 diagonal.
         let divideAngleTarget = (3 * Math.PI) / 4;
         let divideAngle = divideAngleTarget;
 
@@ -472,25 +343,15 @@ function WebGLCanvas({
           if (e.type !== "note_on") return;
           lastActivityAt = performance.now();
 
-          // Turn the Correspondence divide one 45° step clockwise. Fires for
-          // every note (keyboard/synth); mouse clicks go through onDown and do
-          // not rotate it. Themes that ignore uDivideAngle are unaffected.
           divideAngleTarget -= Math.PI / 4;
-          // Find a free (silent) slot, or steal the quietest active voice.
+          // Free slot, else steal the quietest voice.
           let target = 0;
           let lowestEnv = Infinity;
           for (let i = 0; i < voices.length; i++) {
             if (voices[i].env < 0.02) { target = i; break; }
             if (voices[i].env < lowestEnv) { lowestEnv = voices[i].env; target = i; }
           }
-          // Store colorNorm at note-on time — stable for the life of the voice.
-          // One stop on the shared note palette per key, so the voice lights the
-          // background in the exact colour of the cap that was struck. Colour
-          // comes from sourceNote (the key as the player named it, before the
-          // octave transpose): looked up by sounding pitch instead, a shifted
-          // key that lands on another key's home note would steal that key's
-          // colour — `a` shifted up an octave sounds D4 and would light g's
-          // violet instead of the ding's orange.
+          // sourceNote, not note: a transposed key must keep its own cap colour.
           const colorNorm = noteColorNorm(e.sourceNote);
           voices[target] = {
             colorNorm,
@@ -498,17 +359,7 @@ function WebGLCanvas({
             env: e.velocity,
           };
 
-          // Notes disturb the terrain the same way a click does, but placed by
-          // pitch instead of by cursor: low to high runs left to right, so
-          // playing up the home row walks the wavefront across the view. The
-          // span covers ~70-1100Hz, which puts the unshifted row within the
-          // middle half of the frame and sends the octave-shifted extremes out
-          // toward the edges.
-          //
-          // Deliberately quieter than a deliberate click — keys fire far more
-          // often, and a chord lands several at once. They share the single
-          // click channel, so the newest note takes over the wavefront rather
-          // than compounding with the ones still decaying.
+          // Click placed by pitch (~70-1100Hz, left to right), quieter than a real click.
           const pitchNorm =
             Math.log2(Math.max(e.frequency, 1) / 70) / Math.log2(1100 / 70);
           triggerClick(
@@ -538,8 +389,6 @@ function WebGLCanvas({
 
         const onDown = (e: PointerEvent) => {
           lastActivityAt = performance.now();
-          // Muted while the hero headline is rolling — it fires its own pulses
-          // per word, and a click on top of those stacks wavefronts.
           if (arePointerClicksLocked()) return;
           const rect = canvasRect;
           triggerClick(
@@ -558,34 +407,23 @@ function WebGLCanvas({
         window.addEventListener("pointerdown", onDown, { passive: true });
         window.addEventListener("scroll", onScroll, { passive: true });
         window.addEventListener("resize", requestResize, { passive: true });
-        // Observe the element too — banner layout can change without a window
-        // resize (e.g. content reflow), and this keeps the buffer in sync.
+        // Banner layout can change without a window resize.
         const resizeObserver = new ResizeObserver(requestResize);
         resizeObserver.observe(canvas);
         onScroll();
 
         const offVisibility = perf.onVisibilityChange((v) => { paused = !v; });
 
-        // ── Render loop ───────────────────────────────────────────────────
         let animId = 0;
         let paused = false;
         let last = performance.now();
-        // Integrated phase. Advances at 5% of the source-shader pace at rest
-        // and ramps up to source-shader pace at peak click/note input.
-        // Always monotonic so the noise field never reverses on input decay.
+        // Monotonic phase: 5% pace at rest, full pace at peak click/note input.
         let shaderTime = 0;
-        // Rhythm mandala formation: a spring-eased 0..1 amount with a hold timer.
-        // A note refreshes the hold; while it's up the spring pulls toward 1,
-        // and once it lapses the spring relaxes back to 0 — both moves slightly
-        // underdamped so they overshoot (the "spring" feel). formHold outlasts a
-        // very quick note so its form-and-return is always visible.
+        // Rhythm mandala: spring-eased 0..1 with a hold timer.
         let formMorph = 0;
         let formVel = 0;
         let formHold = 0;
-        // ── Synth waveform ───────────────────────────────────────────────
-        // One cycle of the live voice, uploaded as a 256×1 texture. RGBA/byte
-        // rather than a float format so it needs no extension and no WebGL2
-        // fallback; 8 bits is well past what a visual displacement resolves.
+        // One waveform cycle as a 256x1 RGBA byte texture (no float extension needed).
         const waveData = new Uint8Array(WAVE_SIZE * 4);
         const waveTex = new THREE.DataTexture(waveData, WAVE_SIZE, 1);
         waveTex.wrapS = THREE.RepeatWrapping;
@@ -606,66 +444,37 @@ function WebGLCanvas({
           }
           waveTex.needsUpdate = true;
         };
-        // Seed with the resting sine so the first frame is already correct.
         uploadWave();
 
-        // Eased copy of the pointer, fed to uPointerLag.
         const pointerLag: [number, number] = [-9, -9];
         let pointerLagPrimed = false;
-        // Eased follow angle for the Vibration square, fed to uSquareRot.
         let squareRot = 0;
-        // Eased camera elevation for Polarity, fed to uViewTilt.
         let viewTilt = 0;
 
-        // ── Synth faders → shader ────────────────────────────────────────
-        // The panel's four faders each re-tune the active theme. Targets are
-        // the faders' offsets from the active preset (-1..1, 0 = untouched;
-        // see lib/synthFaders), recomputed only when the tweak store's
-        // `overrides` object or the theme changes — checked by reference in
-        // tick(), which already reads the theme store every frame. Live
-        // values ease toward the targets so a drag re-tunes rather than
-        // steps. Read from the store, not the audio engine: the engine only
-        // exists after audio unlock, and the faders should shape the picture
-        // whether or not a note has ever been played.
+        // Fader offsets from the preset (-1..1, see lib/synthFaders), eased per frame.
+        // Read from the store, not the engine: the engine only exists after audio unlock.
         const synthTarget = [0, 0, 0, 0];
         const synthLive = [0, 0, 0, 0];
-        // Rhythm's pendulum count: 8 at the volume fader's bottom, 26 at the
-        // preset, 32 at the top — mapped from the fader's offset, so the
-        // resting row is 26 whatever dB the preset sits at. The target is an
-        // even integer so the mandala's outside-in pairing stays mirror-
-        // symmetric at rest; the live value is continuous while it eases.
+        // Rhythm pendulum count: 8..26..32 by volume fader. Even, so the mandala pairs mirror.
         let pendTarget = 26;
         let pendLive = 26;
-        // Rhythm's travelling-wave clock. Integrated here rather than derived
-        // from `phase` in the shader so the delay fader can change its RATE
-        // without any column's phase stepping backward — a wavelength change
-        // would whip the far columns. At rate factor 1 this equals the
-        // shader's old `phase * WAVE_SPEED` to float precision.
+        // Integrated here so the delay fader changes rate without phase stepping back.
         let wavePhase = 0;
         const WAVE_SPEED = 1.5; // mirrors rhythm.ts
         let lastOverrides: object | null = null;
         let lastSynthTheme: ThemeId | null = null;
         const roundEven = (x: number) => 2 * Math.round(x / 2);
-        // Latches on the first painted frame so we reveal the canvas once.
         let firstFramePainted = false;
 
-        // ── Idle frame governor ──────────────────────────────────────────
-        // Full display rate while anything input-coupled is live (pointer,
-        // clicks, notes, decaying envelopes), then every other frame once the
-        // page has sat still. The content at rest is slow-drifting noise, so
-        // 30fps is imperceptible — but it halves GPU work AND stops producing
-        // canvas frames the compositor would re-blur every backdrop-filter
-        // section for. rAF keeps running and all state keeps integrating with
-        // real dt (33ms is still under the 50ms clamp), so motion speed is
-        // unchanged and ramp-back to 60 on input is instant with no seam.
+        // Idle governor: full rate while input-coupled, 30fps once settled.
+        // State still integrates with real dt, so motion speed is unchanged.
         const ACTIVE_WINDOW_MS = 3000;
-        const IDLE_FRAME_MS = 1000 / 30 - 2; // -2ms of vsync jitter tolerance
+        const IDLE_FRAME_MS = 1000 / 30 - 2; // -2ms vsync jitter tolerance
         let lastDrawAt = 0;
 
         const tick = () => {
           animId = requestAnimationFrame(tick);
-          // Skip the draw when the tab is hidden. `last` is intentionally not
-          // advanced here; the dt clamp below absorbs the gap on resume.
+          // `last` not advanced; the dt clamp absorbs the gap on resume.
           if (paused) return;
           const now = performance.now();
           const dt = Math.min((now - last) / 1000, 0.05);
@@ -673,13 +482,11 @@ function WebGLCanvas({
 
           tickVisualState(dt);
 
-          // Decay each voice envelope independently.
           for (const voice of voices) {
             voice.env = Math.max(0, voice.env - dt * 1.2);
           }
 
-          // Integrate shaderTime at a rate driven by click + note pulse only.
-          // Pointer is spatial, not a rate driver — it shouldn't jolt time.
+          // Click + note drive time; pointer is spatial only.
           const reactivityScale = 0.5 + 0.5 * visualState.reactivity;
           const rawPulse =
             (0.55 * visualState.clickImpulse +
@@ -691,22 +498,16 @@ function WebGLCanvas({
           const rate = 0.05 + 0.95 * pulse;
           shaderTime += dt * rate;
 
-          // Re-capture the voice. Returns false on silence, which leaves the
-          // last captured cycle in place — that retained shape is what clicks
-          // and pointer motion animate when nothing is sounding.
+          // False on silence: the last cycle stays in place.
           if (captureWaveform(visualState.frequency)) uploadWave();
 
           const u = material.uniforms;
           u.uTime.value += dt;
           u.uShaderTime.value = shaderTime;
-          // The same pulse that sets shaderTime's rate — shaders use it to sync
-          // one-shot reactions to the strike-then-decelerate timer.
           u.uNotePulse.value = pulse;
           if (pointerHasMoved) {
             u.uPointer.value.set(visualState.pointer[0], visualState.pointer[1]);
-            // Exponential ease toward the live pointer, frame-rate independent.
-            // Snapped on the first move so it doesn't crawl in from the
-            // off-screen sentinel the uniform starts at.
+            // Snap on first move so it doesn't crawl in from the off-screen sentinel.
             if (pointerLagPrimed) {
               const k = 1 - Math.exp(-dt / 0.26);
               pointerLag[0] += (visualState.pointer[0] - pointerLag[0]) * k;
@@ -719,12 +520,8 @@ function WebGLCanvas({
             u.uPointerLag.value.set(pointerLag[0], pointerLag[1]);
           }
 
-          // Vibration's square turns to follow the cursor within the quadrant
-          // its attracted corner occupies. Crossing an axis hands off to the
-          // neighbouring corner and the target angle jumps from one extreme to
-          // the other; easing toward it lets the square drift into its new
-          // resting angle instead of snapping. Mirrors the geometry in
-          // vibration.ts — see the corner-selection block there.
+          // Vibration square follows the cursor within its corner's quadrant;
+          // eased so crossing an axis drifts rather than snaps. Mirrors vibration.ts.
           let squareRotTarget = 0;
           if (pointerHasMoved) {
             const aspect =
@@ -735,11 +532,10 @@ function WebGLCanvas({
             const my = pointerLag[1] * 0.5;
             const md = Math.hypot(mx, my);
             if (md > 1e-4) {
-              // Angle from the attracted corner's rest diagonal to the cursor,
-              // i.e. the cursor's angle folded into the ±45° of its quadrant.
+              // Cursor angle folded into its quadrant's ±45°.
               const residual =
                 Math.atan2(my, mx) - Math.atan2(Math.sign(my), Math.sign(mx));
-              // Matches the shader's smoothstep(0.0, 0.06, md) grip.
+              // Matches the shader's smoothstep(0.0, 0.06, md).
               const g = Math.min(1, Math.max(0, md / 0.06));
               squareRotTarget = residual * 0.32 * (g * g * (3 - 2 * g));
             }
@@ -748,22 +544,13 @@ function WebGLCanvas({
             (squareRotTarget - squareRot) * (1 - Math.exp(-dt / 0.32));
           u.uSquareRot.value = squareRot;
 
-          // Polarity swings the camera from head-on to overhead while a note
-          // sounds and lets it fall back as the note dies. The note lands as a
-          // step and the envelope falls linearly, so the ease is asymmetric:
-          // quick enough up that the swing belongs to the attack, slow enough
-          // down that it reads as the sound decaying rather than as a rewind.
-          // Driven by the envelope, so a soft note only lifts the camera part
-          // of the way.
+          // Polarity camera tilt: fast up with the attack, slow down with the decay.
           const tiltTarget = Math.min(1, visualState.envelope * 1.3);
           viewTilt +=
             (tiltTarget - viewTilt) *
             (1 - Math.exp(-dt / (tiltTarget > viewTilt ? 0.20 : 0.90)));
           u.uViewTilt.value = viewTilt;
 
-          // Ease the Correspondence divide toward its stepped target so a note
-          // turns the line with a visible sweep rather than a snap. ~0.20s time
-          // constant settles the 45° turn in roughly half a second.
           divideAngle +=
             (divideAngleTarget - divideAngle) * (1 - Math.exp(-dt / 0.2));
           u.uDivideAngle.value = divideAngle;
@@ -779,19 +566,12 @@ function WebGLCanvas({
           u.uVelocity.value = visualState.velocity;
           u.uReactivity.value = visualState.reactivity;
 
-          // Feed the active theme's fixed shader constants into uMacros.
-          // Reading the store outside React keeps the render loop from
-          // re-rendering on theme changes; the store update fires synchronously.
           const theme = useThemeStore.getState().theme;
           const sm = THEME_PRESETS[theme].shaderMacros;
           u.uMacros.value.set(sm[0], sm[1], sm[2], sm[3]);
 
-          // Synth fader targets (see the block above). `overrides` is only
-          // ever replaced by setOverride, so its identity changes exactly
-          // when a fader moves; the merge below runs on those events only,
-          // never per frame. A theme swap snaps instead of easing: the
-          // offsets are measured against the NEW preset, and the old theme's
-          // values must not bleed into the new shader's first frames.
+          // `overrides` identity changes only when a fader moves. A theme swap
+          // snaps: the old preset's values must not bleed into the new shader.
           const ov = useSynthTweakStore.getState().overrides;
           if (ov !== lastOverrides || theme !== lastSynthTheme) {
             const snap = theme !== lastSynthTheme;
@@ -813,12 +593,10 @@ function WebGLCanvas({
               for (let k = 0; k < 4; k++) synthLive[k] = synthTarget[k];
               pendLive = pendTarget;
             }
-            // A fader drag is user input — hold the full frame rate.
             lastActivityAt = now;
           }
 
-          // Ease the live values toward their targets, snapping the last
-          // hair so the idle governor can see them settle.
+          // Snap the last hair so the idle governor sees them settle.
           let synthMoving = false;
           const kS = 1 - Math.exp(-dt / 0.25);
           for (let k = 0; k < 4; k++) {
@@ -842,24 +620,13 @@ function WebGLCanvas({
           );
           u.uPendCount.value = pendLive;
 
-          // Rhythm's wave clock: the same per-frame increment the shader's
-          // `phase` gets (uTime·0.78 + uShaderTime·drive), times WAVE_SPEED,
-          // times the delay fader's rate factor — delay up slows the crest so
-          // each column lags its neighbour longer. Always positive, so the
-          // wave's phase is monotonic whatever the fader does.
+          // Same increment as the shader's `phase`, times the delay fader's rate.
           const drive = 2.6 * (0.55 + 0.9 * sm[2]);
           const waveRate = Math.exp(-0.8 * synthLive[3]);
           wavePhase += dt * (0.78 + rate * drive) * WAVE_SPEED * waveRate;
           u.uWaveClock.value.set(wavePhase, waveRate);
 
-          // Rhythm's mandala formation amount: a spring with a hold. Each note
-          // refreshes an 0.9s hold (so even a very quick note keeps the figure
-          // up long enough to see it form and return). The spring is asymmetric:
-          // the move IN stays lightly underdamped (damping 14 → ζ≈0.61, one
-          // small overshoot), but the melt back OUT runs much looser (damping
-          // 7 → ζ≈0.31) so the bobs spring past the wave and visibly bounce a
-          // couple of times before settling — the return used to read as an
-          // abrupt snap. Frame-time clamped for stability.
+          // Damping 14 in (one small overshoot), 7 out (visible bounce).
           if (visualState.noteImpulse > 0.5) formHold = 0.9;
           formHold = Math.max(0, formHold - dt);
           {
@@ -871,7 +638,6 @@ function WebGLCanvas({
           }
           u.uFormMorph.value = formMorph;
 
-          // Per-voice color uniforms.
           const rScale = 0.5 + 0.5 * visualState.reactivity;
           u.uNoteFreqNorms.value.set(
             voices[0].colorNorm,
@@ -891,11 +657,7 @@ function WebGLCanvas({
             particleMat.opacity = 0.18 + visualState.envelope * 0.3;
           }
 
-          // Idle governor (see above). Everything input-coupled that could
-          // still be visibly easing holds the full rate; only a genuinely
-          // settled scene drops to every other frame. Uniform writes above are
-          // plain JS property sets — nothing reaches the GPU until the draws
-          // below, so skipping here skips the whole GPU frame.
+          // Nothing reaches the GPU before the draws below, so skipping skips the frame.
           const active =
             now - lastActivityAt < ACTIVE_WINDOW_MS ||
             visualState.pointerImpulse > 0.001 ||
@@ -908,38 +670,27 @@ function WebGLCanvas({
             synthMoving ||
             !firstFramePainted;
           if (active) {
-            // Sample the frame rate for adaptive quality only at full rate —
-            // governed 30fps frames would read as a struggling GPU and step
-            // the render scale down. Its >100ms stall rejection absorbs the
-            // gap left by an idle span.
+            // Only sample at full rate; governed frames would read as a slow GPU.
             quality.tick();
           } else if (now - lastDrawAt < IDLE_FRAME_MS) {
             return;
           }
           lastDrawAt = now;
 
-          // Clear-and-repaint in the same frame — see the Sizing block above.
-          // Deliberately inside the draw gate: resizing the buffer clears it,
-          // so it must only happen on a frame that repaints.
+          // Inside the draw gate: resizing clears the buffer, so only on a repaint frame.
           applyPendingResize();
 
-          // Draw the shader into the reduced-resolution target, then upscale it
-          // (plus the full-resolution particles) onto the canvas.
           renderer.setRenderTarget(rt);
           renderer.render(scene, camera);
           renderer.setRenderTarget(null);
           renderer.render(screenScene, camera);
 
-          // Reveal the canvas the moment the first real frame is on screen.
           if (!firstFramePainted) {
             firstFramePainted = true;
             if (!cancelled) onFirstFrameRef.current();
           }
         };
 
-        // Register teardown now that every resource exists, so the abandon
-        // guard below can dispose them. animId is 0 until tick runs, and
-        // cancelAnimationFrame(0) is a harmless no-op.
         teardown = () => {
           cancelAnimationFrame(animId);
           offVisibility();
@@ -959,14 +710,11 @@ function WebGLCanvas({
           particleMesh?.geometry.dispose();
           particleMat?.dispose();
           renderer.dispose();
-          // dispose() alone doesn't guarantee the context is released promptly;
-          // force it so repeated home visits can't accumulate WebGL contexts.
+          // dispose() alone leaks contexts across repeated visits.
           renderer.forceContextLoss();
         };
 
-        // A last-moment abandon (unmounted between the await and here) must not
-        // start a render loop or fire the reveal — and must dispose what we
-        // already built (renderer, listeners, observers).
+        // Unmounted between the await and here.
         if (cancelled) {
           teardown();
           return;
@@ -975,7 +723,6 @@ function WebGLCanvas({
         tick();
       } catch (err) {
         console.error("[WebGLCanvas] setup failed:", err);
-        // Fall back to the CSS gradient rather than leaving the page on black.
         if (!cancelled) onUnavailableRef.current();
       }
     })();

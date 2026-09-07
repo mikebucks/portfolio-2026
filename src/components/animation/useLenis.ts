@@ -5,9 +5,7 @@ import Lenis from "lenis";
 import { prefersReducedMotion } from "@/lib/device";
 import { setLenisInstance, setLenisWaker } from "./lenisInstance";
 
-// Consecutive frames of `isScrolling === false` before the raf loop parks
-// itself (~1s at 60Hz). Waking is event-driven, so parking adds no input
-// latency — the loop restarts on the same frame input arrives.
+// Idle frames before the raf loop parks (~1s at 60Hz).
 const SLEEP_AFTER_IDLE_FRAMES = 60;
 
 export function useLenis() {
@@ -18,9 +16,7 @@ export function useLenis() {
       duration: 1.1,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      // Driven by our own loop below instead: Lenis's autoRaf runs at display
-      // rate forever, even when nothing has scrolled for minutes. Ours parks
-      // once the scroll settles and wakes on the inputs that can start one.
+      // Own loop below: autoRaf never parks.
       autoRaf: false,
     });
     setLenisInstance(lenis);
@@ -31,15 +27,12 @@ export function useLenis() {
 
     const loop = (time: number) => {
       lenis.raf(time);
-      // `isScrolling` is false | "native" | "smooth" — anything truthy means
-      // an animation or native scroll (with its 400ms settle timer) is live.
+      // isScrolling: false | "native" | "smooth".
       if (lenis.isScrolling === false) {
         idleFrames++;
         if (idleFrames >= SLEEP_AFTER_IDLE_FRAMES) {
           running = false;
-          // Zero Lenis's internal clock so the first frame after waking
-          // computes dt = 0 instead of the whole parked span — a large dt
-          // would jump an animation the waking input just started.
+          // Reset the clock so the first frame after waking sees dt = 0, not the parked span.
           (lenis as unknown as { time: number }).time = 0;
           return;
         }
@@ -57,11 +50,7 @@ export function useLenis() {
     };
     wake();
 
-    // Anything that can start a scroll restarts the loop: wheel/touch for
-    // smooth scrolling, keys and native scrollbar for native scrolls, resize
-    // for reflow-driven position changes. Capture phase so waking never
-    // depends on what the event's target does with it; the handler is a
-    // no-op flag check while the loop is already running.
+    // Anything that can start a scroll wakes the loop. Capture phase so targets can't swallow it.
     const wakeEvents = [
       "wheel",
       "touchstart",
@@ -73,7 +62,6 @@ export function useLenis() {
     for (const ev of wakeEvents) {
       window.addEventListener(ev, wake, { passive: true, capture: true });
     }
-    // Programmatic scrolls (nav links → smoothScrollTo) also need the loop.
     setLenisWaker(wake);
 
     return () => {

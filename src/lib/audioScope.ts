@@ -1,21 +1,8 @@
 /**
- * Captures a single cycle of the synth's own output so the visual layer can
- * draw the actual voice instead of a stand-in sine.
- *
- * Two problems have to be solved before an analyser buffer is usable as a
- * repeating shape:
- *
- *   1. The buffer is a fixed time window, so it holds a fractional number of
- *      cycles. Tiling it would put a step discontinuity at every seam. We know
- *      the sounding frequency, so we resample exactly one period out of it.
- *   2. The window is not phase-locked to the waveform, so the shape slides
- *      sideways every frame. We start the resample at a rising zero crossing,
- *      which is what an oscilloscope's trigger does.
- *
- * The captured shape is retained between captures: silence must not overwrite
- * it, or the effect would flatten the instant a note releases. That retention
- * is also what lets clicks and pointer motion reuse the shape — they drive its
- * amplitude without producing any audio of their own.
+ * Captures one cycle of the synth's output for the visual layer. Resamples
+ * exactly one period (the buffer holds a fractional count), starting at a
+ * rising zero crossing like a scope trigger. The shape is retained between
+ * captures so silence doesn't flatten it.
  */
 
 /** Samples in the shape handed to the GPU. */
@@ -39,25 +26,14 @@ for (let i = 0; i < WAVE_SIZE; i++) {
 const raw = new Float32Array(WAVE_SIZE);
 const smooth = new Float32Array(WAVE_SIZE);
 
-/**
- * Partials kept when rebuilding a captured cycle. A saw through a resonant
- * filter carries hundreds, and drawn as a displaced line they are a jagged mess
- * at any amplitude — the eye reads the wiggle, not the wave. Five keeps the
- * gross contour that actually distinguishes one voice from another and throws
- * away everything a line cannot show.
- */
+// Partials kept. More reads as jagged wiggle; five keeps the contour that
+// tells voices apart.
 const HARMONICS = 5;
 
-/**
- * How loud the partials sit relative to the fundamental after re-balancing.
- * Turn it up for more of the voice's character and a busier line; down toward
- * 0 for a plain sine that ignores what is playing.
- */
+// Partials' level relative to the fundamental; 0 gives a plain sine.
 const CHARACTER = 0.4;
 
-// Basis tables for the analysis/synthesis passes, built once. A naive DFT would
-// call sin/cos ~5k times per captured frame for no reason — the angles are
-// fixed by WAVE_SIZE.
+// Basis tables, built once.
 const COS = new Float32Array(HARMONICS * WAVE_SIZE);
 const SIN = new Float32Array(HARMONICS * WAVE_SIZE);
 for (let k = 1; k <= HARMONICS; k++) {
@@ -82,12 +58,7 @@ export function waveformShape(): Float32Array {
   return shape;
 }
 
-/**
- * Pull a fresh cycle from the source. Returns false and leaves the retained
- * shape untouched when there is nothing audible to capture.
- *
- * `frequency` is the Hz of the most recent note — it sets the period to slice.
- */
+/** Pull a fresh cycle at `frequency` Hz. False (shape untouched) when nothing is audible. */
 export function captureWaveform(frequency: number): boolean {
   if (!source) return false;
 
@@ -97,18 +68,15 @@ export function captureWaveform(frequency: number): boolean {
 
   let sum = 0;
   for (let i = 0; i < n; i++) sum += buf[i] * buf[i];
-  // Gated well above the noise floor. A decaying reverb tail is at a different
-  // pitch from the frequency we are about to slice by, so capturing it yields
-  // an aperiodic chunk that reads as spikes rather than as a waveform.
+  // Gate above the noise floor: a reverb tail at another pitch reads as spikes.
   if (Math.sqrt(sum / n) < 0.015) return false;
 
-  // One period, clamped so a very low note or a missing frequency can't ask
-  // for more samples than the buffer holds.
+  // Clamped so a low note can't ask for more samples than the buffer holds.
   const period = frequency > 0 ? source.sampleRate / frequency : n / 4;
   const span = Math.min(Math.max(period, 8), n - 2);
 
-  // Trigger on the first rising zero crossing that still leaves a full period
-  // ahead of it. Falling back to 0 is fine — worst case the shape is rotated.
+  // Trigger on a rising zero crossing with a full period ahead; the 0
+  // fallback just rotates the shape.
   let start = 0;
   const limit = Math.max(1, Math.floor(n - span - 1));
   for (let i = 0; i < limit; i++) {
@@ -125,12 +93,7 @@ export function captureWaveform(frequency: number): boolean {
     raw[j] = buf[i0] * (1 - frac) + buf[Math.min(i0 + 1, n - 1)] * frac;
   }
 
-  // Rebuild from the first few partials only. A box blur was not enough here:
-  // it attenuates the top of the spectrum but leaves plenty behind, so the
-  // captured wave still read as jagged next to the resting sine. Reconstructing
-  // from a fixed, small harmonic count guarantees a smooth curve of a known
-  // complexity no matter how filthy the source is, and it drops DC along the
-  // way so the wave can't sit off-centre.
+  // Rebuild from a few partials (a box blur left it jagged); also drops DC.
   for (let k = 0; k < HARMONICS; k++) {
     let a = 0;
     let b = 0;
@@ -143,13 +106,8 @@ export function captureWaveform(frequency: number): boolean {
     reB[k] = (b * 2) / WAVE_SIZE;
   }
 
-  // Re-balance around the fundamental. Band-limiting alone was not enough: a
-  // wave built from five partials at their captured strengths still swings up
-  // to five times per period where the resting sine swings once, so it reads as
-  // a different animal however smooth it is. Pinning the fundamental to unit
-  // magnitude and holding the partials well below it keeps the gross shape
-  // constant — one big wave per period, before and after — while the partials
-  // survive as the skew and shoulders that tell one voice from another.
+  // Pin the fundamental to unit magnitude so the wave swings once per period;
+  // the partials survive as skew and shoulders.
   const f0 = Math.hypot(reA[0], reB[0]);
   const norm = f0 > 1e-6 ? 1 / f0 : 0;
   for (let k = 0; k < HARMONICS; k++) {
@@ -158,13 +116,8 @@ export function captureWaveform(frequency: number): boolean {
     reB[k] *= norm * w;
   }
 
-  // Phase-lock to the fundamental before reconstructing. The raw zero-crossing
-  // trigger only gets the start within a sample or two of the true period, and
-  // the leftover phase error differs every capture. Easing between cycles that
-  // disagree in phase averages them toward flat — that is why the wave collapsed
-  // to a ribbon a moment after a note sounded. Rotating so the fundamental
-  // always starts at zero rising makes successive captures reinforce, and lines
-  // them up with the resting sine, which starts the same way.
+  // Phase-lock to the fundamental: the trigger is off by a sample or two per
+  // capture, and easing between phase-mismatched cycles averages toward flat.
   const phi = Math.atan2(reA[0], reB[0]);
   let shift = -Math.round((phi * WAVE_SIZE) / (2 * Math.PI));
   shift = ((shift % WAVE_SIZE) + WAVE_SIZE) % WAVE_SIZE;
@@ -182,15 +135,10 @@ export function captureWaveform(frequency: number): boolean {
     if (m > peak) peak = m;
   }
 
-  // Peak-normalize. Safe now that the curve is band-limited — the lone spike
-  // that made peak normalization collapse the wave last time cannot survive a
-  // five-harmonic reconstruction. This is what keeps a captured wave the same
-  // visual height as the resting sine.
+  // Peak-normalize; safe now the curve is band-limited.
   const scale = 1 / peak;
 
-  // Ease into the retained shape instead of replacing it. Each capture is a
-  // different slice of a moving signal, so frame-to-frame they disagree in
-  // detail; converging over ~0.25s turns that disagreement into drift.
+  // Ease into the retained shape; captures disagree frame to frame.
   for (let j = 0; j < WAVE_SIZE; j++) {
     shape[j] += (smooth[j] * scale - shape[j]) * 0.18;
   }

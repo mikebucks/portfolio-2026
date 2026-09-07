@@ -1,24 +1,13 @@
 import type { SVGProps } from "react";
 import { Icon, type IconProps } from "./Icon";
 
-/** Same 40-unit grid as the seal, so the two line up in a row without scaling. */
 export const BUCKS_UNLTD_VIEW_BOX = "0 0 40 40";
 
 type BucksUnltdColors = {
-  /** The B and the U — the whole mark. */
   ink?: string;
 };
 
-/**
- * Bare shapes, for callers that need them inside an <svg> they already own.
- * Everything else wants <BucksUnltd />.
- *
- * Path data is verbatim from the Figma export (public/icons/bucks-unltd.svg);
- * only the hard-coded colour is lifted into a prop. Two letterforms and nothing
- * else — the redraw dropped the ring that used to trace the plate's edge, so
- * there is no longer any part of this mark that survives without a background
- * behind it. Whatever it sits on has to supply the contrast.
- */
+// Paths verbatim from public/icons/bucks-unltd.svg; keep them diffable.
 export function BucksUnltdGlyph({
   ink = "currentColor",
   ...props
@@ -37,20 +26,13 @@ export function BucksUnltdGlyph({
   );
 }
 
-/**
- * Bucks Unltd — the B/U monogram.
- *
- * Unlike the seal, the letterforms run edge to edge in their box: the U's
- * descender reaches 30.8 of 40. Nothing to inset for, so `size` is the mark.
- */
 export function BucksUnltd({
   plate,
   ink,
   ...props
 }: IconProps &
   BucksUnltdColors & {
-    /** Draw the full-bleed disc behind the monogram. Off by default, matching
-     *  <PhilosophersSeal /> — a caller painting its own chip doesn't want it. */
+    /** Full-bleed disc behind the mark. */
     plate?: string | boolean;
   }) {
   return (

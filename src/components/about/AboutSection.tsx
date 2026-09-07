@@ -1,10 +1,7 @@
 import { ProjectLink } from "@/components/projects/ProjectLink";
 import { SkillsViz } from "@/components/skills/SkillsViz";
 
-/**
- * About section on the homepage. Dark translucent panel so the existing
- * white-on-dark bio + SkillsViz colors stay legible over the shader behind it.
- */
+/** Dark translucent panel keeps the white-on-dark bio legible over the shader. */
 export function AboutSection() {
   return (
     <section

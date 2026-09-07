@@ -1,8 +1,4 @@
-/**
- * Synth-engine types. Lives in its own module so theme presets can import the
- * types without creating a cycle through `store.ts` (which itself depends on
- * the theme list).
- */
+/** Own module so theme presets can import types without a cycle through store.ts. */
 
 export type OscEngine =
   | "analog"
@@ -21,12 +17,7 @@ export type SynthSettings = {
   oscWave: number;
   oscTimbre: number;
 
-  /**
-   * Octave transpose applied to every note before it reaches the voice. The
-   * keyboard mapping is one fixed handpan layout shared by all themes, so a
-   * preset that needs to sit in a different register — a bass, say — shifts it
-   * here rather than the mapping being rewritten per theme.
-   */
+  /** Octave transpose; the keyboard mapping is fixed, so presets shift register here. */
   octave: number;
 
   filterType: FilterType;

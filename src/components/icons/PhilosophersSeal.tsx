@@ -1,41 +1,20 @@
 import type { SVGProps } from "react";
 import { Icon, type IconProps } from "./Icon";
 
-/** The grid the seal is drawn on — exported so composers can match it. */
 export const PHILOSOPHERS_SEAL_VIEW_BOX = "0 0 40 40";
 
-/** The box's centre, and the origin any rotation of the mark should turn about.
- *  Not the mark's own bounding-box centre — the triangle's is a couple of units
- *  higher — but the centre of the 40-unit chip, which is what the close cross is
- *  drawn about too. Turning both glyphs about the same point is the whole trick
- *  in the synth toggle's cross-fade. */
+/** Rotation origin: chip centre, not the mark's bounding-box centre. */
 export const PHILOSOPHERS_SEAL_CENTER = 20;
 
 type SealColors = {
-  /** Strokes and the solid square. */
   ink?: string;
-  /** The triangle the ink sits on — this fill occludes, so it has to match
-   *  whatever is behind the mark or the hidden edges show through. */
+  /** Triangle fill occludes; must match the background. */
   paper?: string;
-  /** The inner circle, a hair warmer than `paper` in the source artwork. */
   highlight?: string;
 };
 
-/**
- * Bare shapes, for callers that need them inside an <svg> they already own —
- * the synth toggle wraps them in an animated <g> that cross-fades with a close
- * cross on the same grid. Everything else wants <PhilosophersSeal />.
- *
- * Path data is verbatim from the Figma export (public/icons/philosophers-seal.svg)
- * so a re-export diffs cleanly; only the hard-coded colours are lifted into
- * props. `ink` defaults to currentColor rather than the export's black, which is
- * what lets the synth toggle keep animating the mark's colour on hover.
- *
- * Stroke weight is per-path, not on the <g>: the redraw gives the three shapes
- * three different weights (triangle 1.5, square 2, circle 1) and that hierarchy
- * is the design. The <g> carries the lightest as the default so the circle can
- * stay bare, and so an `<svg strokeWidth>` above this can never leak in.
- */
+// Paths verbatim from public/icons/philosophers-seal.svg; keep them diffable.
+// Per-path stroke weights (1.5 / 2 / 1) are the design.
 export function PhilosophersSealGlyph({
   ink = "currentColor",
   paper = "#FFFFFF",
@@ -54,9 +33,7 @@ export function PhilosophersSealGlyph({
         fill={ink}
         strokeWidth="2"
       />
-      {/* Drawn a touch proud of the square on three sides — it breaks the
-          silhouette at the left, right and bottom edges rather than sitting
-          inscribed. Deliberate; don't "fix" it back to the square's bounds. */}
+      {/* Circle overhangs the square on three sides. Deliberate. */}
       <path
         d="M20 16.7021C23.3137 16.7021 26 19.3884 26 22.7021C26 26.0159 23.3137 28.7021 20 28.7021C16.6863 28.7021 14 26.0159 14 22.7021C14 19.3884 16.6863 16.7021 20 16.7021Z"
         fill={highlight}
@@ -65,15 +42,7 @@ export function PhilosophersSealGlyph({
   );
 }
 
-/**
- * Triangle, square, circle — the site's mark.
- *
- * The mark is inset from its box: the artwork was drawn inside the synth
- * toggle's 40px chip, so the triangle — the widest shape, and now the outermost
- * since the redraw dropped the enclosing circle — spans about 26 of the 40
- * units. Size it to the plate you're putting it on, not to the ink you want to
- * see.
- */
+// Mark spans ~26 of 40 units; size to the plate, not the ink.
 export function PhilosophersSeal({
   plate,
   ink,
@@ -82,8 +51,7 @@ export function PhilosophersSeal({
   ...props
 }: IconProps &
   SealColors & {
-    /** Draw the full-bleed disc behind the mark. Off by default — the synth
-     *  toggle paints its own chip, which it animates between light and dark. */
+    /** Full-bleed disc behind the mark. */
     plate?: string | boolean;
   }) {
   return (

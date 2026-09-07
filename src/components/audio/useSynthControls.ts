@@ -11,18 +11,9 @@ import { primeAudioContext } from "./primeAudioContext";
 import { useUIStore } from "@/lib/store";
 
 /**
- * Wires keyboard + touch to the synth engine. Mounted on the home page only.
- *
- * Secret UI chord: A + S + D held together for ~800ms.
- *
- * Architecture note: the window listeners are attached ONCE (empty-dep effect)
- * and read every volatile value (audio context, unlock, unlocked flag, panel
- * toggle) through refs. This is deliberate — binding these handlers to React
- * identities meant the effect tore down and re-ran the moment `unlocked`
- * flipped on the very first keypress, discarding the in-flight `activeKeyNotes`
- * map so the first note's keyup landed on a fresh empty map and never released.
- * Keeping listeners stable and state in refs eliminates that whole class of
- * stuck-note bug.
+ * Keyboard → synth engine. Home page only. Secret chord: A+S+D held 800ms.
+ * Listeners attach once and read volatile values through refs; re-running the
+ * effect mid-keypress dropped the first note's release.
  */
 export function useSynthControls() {
   const audio = useAudio();
@@ -34,9 +25,7 @@ export function useSynthControls() {
   const chordTimer = useRef<number | null>(null);
   const activeKeyNotes = useRef(new Map<string, string>());
 
-  // Live refs so the attach-once handlers always see current values. `unlock`
-  // in particular closes over `settings`; reading a stale copy would build the
-  // engine from an old preset, so it must come through the ref, not a closure.
+  // Stale `unlock` would build the engine from an old preset.
   const audioRef = useRef(audio);
   const unlockRef = useRef(unlock);
   const unlockedRef = useRef(unlocked);
@@ -48,18 +37,12 @@ export function useSynthControls() {
     toggleRef.current = toggleSynthPanel;
   });
 
-  // Opening the synth panel is explicit synth intent, so unlock the audio graph
-  // then — this covers every path into the panel (the seal button, the A+S+D
-  // chord, and Cmd/Ctrl+Shift+S). Mapped note keys still unlock on their own in
-  // `handleDown` below, so the keyboard easter egg works without the panel. A
-  // casual visitor who never does either never loads Tone.
+  // Opening the panel is synth intent: unlock then.
   useEffect(() => {
     if (synthPanelOpen && !unlockedRef.current) void unlockRef.current();
   }, [synthPanelOpen]);
 
   useEffect(() => {
-    // Release every sounding note and clear all input state. Shared by keyup
-    // fallbacks (blur / visibility / pagehide) and unmount.
     const releaseAll = () => {
       const engine = audioRef.current.engine;
       for (const [, note] of activeKeyNotes.current) engine?.noteOff(note);
@@ -86,10 +69,7 @@ export function useSynthControls() {
         return;
       }
 
-      // A system modifier (Cmd/Ctrl) came down. Browsers — macOS especially —
-      // often swallow the keyup for any music key held across this, which would
-      // strand it. Release everything on the transition rather than only
-      // blocking new attacks.
+      // macOS swallows keyups for keys held across a Cmd/Ctrl press.
       if (e.metaKey || e.ctrlKey) {
         releaseAll();
         return;
@@ -99,7 +79,6 @@ export function useSynthControls() {
       if (held.current.has(key)) return;
       held.current.add(key);
 
-      // Secret chord: A + S + D held together for 800ms.
       if (["a", "s", "d"].every((k) => held.current.has(k))) {
         if (chordTimer.current === null) {
           chordTimer.current = window.setTimeout(() => {
@@ -116,15 +95,11 @@ export function useSynthControls() {
       if (!unlockedRef.current) {
         await unlockRef.current();
       } else {
-        // iOS suspends the context on interruptions (phone call, Siri,
-        // backgrounding) and only lets a gesture bring it back — this keydown
-        // is one, so resume synchronously before playing into a dead graph.
+        // iOS suspends the context on interruptions; only a gesture resumes it.
         primeAudioContext();
       }
 
-      // The unlock above is async (Tone import + start). If the key was
-      // released during that gap, its keyup already ran — don't strand a note
-      // with no pending release.
+      // Released during the async unlock.
       if (!held.current.has(key)) return;
 
       let note = baseNote;
@@ -169,8 +144,7 @@ export function useSynthControls() {
       window.removeEventListener("blur", releaseAll);
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pagehide", releaseAll);
-      // Navigating away / unmounting while a key is held must not strand audio,
-      // since the engine lives in layout context above this component.
+      // Engine outlives this hook.
       releaseAll();
     };
   }, []);

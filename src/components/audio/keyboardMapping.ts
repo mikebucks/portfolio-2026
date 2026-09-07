@@ -1,10 +1,6 @@
 /**
- * Home-row D Kurd handpan mapping — D Aeolian (natural minor), the classic
- * "haunting/mysterious" handpan tuning. `a` is the D ding; the rest are the
- * tone-field ring. No "wrong notes": every key is diatonic to D minor.
- * A#3 is the Kurd's flat-2 (Bb) — written sharp so octave-shift parses it.
- * Keys are lowercased on lookup so Shift still works as an octave modifier
- * without eating the note.
+ * Home-row D Kurd handpan mapping (D Aeolian): `a` is the ding, the rest the
+ * tone ring. A#3 (the Kurd's Bb) is written sharp so octave-shift parses it.
  */
 export const KEYBOARD_NOTES: Record<string, string> = {
   a: "D3",

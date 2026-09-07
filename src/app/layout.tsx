@@ -9,21 +9,13 @@ import { SmoothScroll } from "@/components/animation/SmoothScroll";
 import { Analytics } from "@/components/analytics/Analytics";
 import { SITE } from "@/lib/siteMeta";
 
-// Variable font: one file covers 400–700, which is the full range the UI uses
-// (normal / medium / semibold / bold). Exposed as a CSS variable rather than a
-// class so --font-display in globals.css stays the single place typography is
-// declared. `swap` keeps the system fallback painting during the font fetch —
-// the hero animates in on load and must not wait on a font.
+// `swap`: the hero animates on load and must not wait on the font.
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-inter",
 });
 
-// `metadataBase` is what every relative URL below (and every generated OG
-// image) is resolved against — get it wrong and share previews point at the
-// wrong host. `title.template` lets each route export just its own title;
-// `default` is what the homepage and any route without one falls back to.
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
@@ -44,9 +36,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
-  // The `images` key is deliberately absent: the opengraph-image.tsx route
-  // convention supplies it (and the per-project override in
-  // app/projects/[slug]/opengraph-image.tsx supplies theirs).
+  // No `images`: the opengraph-image.tsx routes supply them.
   openGraph: {
     type: "website",
     siteName: SITE.name,
@@ -55,9 +45,6 @@ export const metadata: Metadata = {
     url: SITE.url,
     locale: "en_US",
   },
-  // Without `summary_large_image` X renders a small square crop even when a
-  // 1200x630 og:image is present. Platforms that find no twitter:image fall
-  // back to og:image, so the OG routes cover both.
   twitter: {
     card: "summary_large_image",
     title: SITE.title,
@@ -65,15 +52,8 @@ export const metadata: Metadata = {
   },
 };
 
-// Make Safari's translucent UI chrome read as part of the cream frame.
-//
-// Since Safari 26 (iOS 26 "Liquid Glass"), `theme-color` is IGNORED. Safari
-// instead tints its status bar and floating address bar by sampling the
-// `background-color` of position:fixed elements at the screen edges, falling
-// back to the <body> background. The opaque cream frame bars in <body> are
-// that sample; `viewport-fit: cover` is required so the page (and those bars)
-// extends under the chrome for Safari to read them, and so the bars can fill
-// the safe-area regions. `themeColor` is kept as a fallback for iOS < 26.
+// iOS 26 ignores theme-color and samples fixed edge elements instead (the cream
+// frame bars); viewport-fit: cover lets them extend under the chrome. themeColor is for iOS < 26.
 export const viewport: Viewport = {
   themeColor: "#f4f1ea",
   viewportFit: "cover",
@@ -86,23 +66,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable}>
-      {/* svh, not dvh: dvh is re-resolved on every step of iOS Safari's toolbar
-          animation, relayouting mid-scroll on the same frames the fixed shader
-          layer is being composited. svh is the static small-viewport height. */}
+      {/* svh, not dvh: dvh relayouts on every step of iOS Safari's toolbar animation. */}
       <body className="min-h-svh antialiased relative">
         <SmoothScroll />
-        {/* Global Mixpanel wiring. Renders nothing; no-op until
-            NEXT_PUBLIC_MIXPANEL_TOKEN is set. See src/components/analytics. */}
         <Analytics />
-        {/* Cream frame. On iOS 26 each edge must be its own OPAQUE
-            position:fixed element for Safari to sample its background-color and
-            tint the chrome cream (Safari ignores absolute children of a fixed
-            parent, and reads background-color, not border color — the old
-            single border div was transparent, so nothing got sampled). Top and
-            bottom fill the safe-area regions so the status bar and the floating
-            address bar read cream, continuous with the frame; left/right are
-            10px rails. On desktop the safe-area insets are 0, so every bar is
-            10px — identical to the previous border. */}
+        {/* Cream frame: four opaque fixed bars, one per edge, so iOS 26 samples
+            them to tint its chrome; top/bottom also fill the safe areas. */}
         <div
           aria-hidden
           className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[calc(env(safe-area-inset-top,0px)+10px)] bg-cream"

@@ -6,20 +6,7 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
-      /**
-       * Per-item Tailwind classes for this block, applied to its <figure> — so
-       * a frame (`bg-white p-3 border border-black/10`) encloses the caption
-       * along with the image, and layout utilities (`max-w-md mx-auto`) size
-       * the block as a whole. Merged with tailwind-merge, so these win over the
-       * renderer's own classes rather than fighting them.
-       *
-       * To reach the <img> itself, use a child variant: `[&_img]:rounded-none`.
-       *
-       * Note `border` alone draws nothing you can see here: Tailwind v4 gives
-       * it no color of its own, so it inherits the body's near-white text
-       * color onto a cream panel. Pair it with a color — `border
-       * border-black/10`.
-       */
+      /** Tailwind classes on the <figure>, merged over the renderer's. `[&_img]:` reaches the img. */
       className?: string;
     }
   | {
@@ -30,89 +17,49 @@ export type ProjectMedia =
       caption?: string;
       width?: number;
       height?: number;
-      /** Per-item Tailwind classes on this block's <figure> — see above. */
       className?: string;
-      /**
-       * GIF-style playback: autoplays muted, loops, and hides the controls bar.
-       * Use for silent looping clips (a lighter, sharper GIF replacement).
-       * Omit for a normal click-to-play video with controls.
-       */
+      /** GIF-style: muted, looping, no controls. */
       autoplay?: boolean;
-      /** Loop playback. Defaults to `true` when `autoplay` is set. */
+      /** Defaults to `true` when `autoplay` is set. */
       loop?: boolean;
     }
   | {
       type: "grid";
       items: { src: string; alt?: string; width?: number; height?: number }[];
       columns?: 2 | 3;
-      /**
-       * Cell shape. "square" (default) crops every image to a uniform square —
-       * right for a wall of mixed-ratio shots. "natural" keeps each image's own
-       * ratio, for tall screenshots that must not crop; pair images with
-       * matching ratios so the row's bottom edge stays level.
-       */
+      /** "natural" keeps each image's ratio; pair matching ratios per row. */
       aspect?: "square" | "natural";
       caption?: string;
-      /**
-       * Per-block Tailwind classes on the grid's <figure> — same contract as
-       * the image/video `className`. Most useful for capping a grid that would
-       * otherwise run the full panel width: `max-w-2xl mx-auto`. The grid div
-       * is the figure's direct child, so its defaults are reachable with a
-       * child variant — `[&>div]:gap-2` tightens the default `gap-4`.
-       */
+      /** `[&>div]:` reaches the grid div. */
       className?: string;
     };
 
-/**
- * A dashboard-style row of headline numbers — the outcomes of a project read as
- * a stat grid instead of a bulleted list. Each tile is a label + a figure, so
- * only use it where the outcome really is a number; prose outcomes stay a
- * `text` block with an <ol>, where they read better.
- */
 export type ProjectStats = {
   type: "stats";
-  /** Eyebrow above the grid, e.g. "Outcomes". Omit for a bare row of tiles. */
+  /** Eyebrow above the grid. */
   title?: string;
   items: {
-    /** The figure itself — pre-formatted, since only the author knows the
-     *  unit and the precision worth showing ("$921,473,361.31", "+22", "81%"). */
+    /** Pre-formatted ("$921,473,361.31", "81%"). */
     value: string;
-    /** What the figure counts, in sentence case. */
     label: string;
-    /** Optional second reading of the same figure ("213,152 ETH"). */
+    /** Second reading of the figure ("213,152 ETH"). */
     note?: string;
-    /**
-     * Direction the stat is moving, drawn as a small arrow beside the figure.
-     * Only set it where the figure is itself a change — an absolute total has
-     * no direction, and an arrow on one would claim a trend that isn't there.
-     */
+    /** Arrow beside the figure. Only for figures that are themselves a change. */
     trend?: "up" | "down";
   }[];
-  /** Tiles per row from `sm` up. Defaults to the item count, capped at 3. */
+  /** Defaults to item count, capped at 3. */
   columns?: 2 | 3 | 4;
 };
 
-/**
- * A single ordered block of a project's detail page. `text` is rich text — its
- * `html` is rendered as trusted markup (this content is authored here in-repo,
- * never user input), so inline tags like <strong> / <em> / <a> render instead
- * of showing as literal characters. All the media block types can be freely
- * interleaved with text, letting images be peppered in amongst the copy.
- */
-/**
- * A bespoke animated illustration, rendered from a component instead of an
- * image file. `id` picks the component out of the registry in ProjectDetail —
- * data stays serializable and the component code lives with the other
- * renderers under components/projects/graphics.
- */
+/** `id` picks a component from the registry in ProjectDetail. */
 export type ProjectGraphic = {
   type: "graphic";
   id: "chisel-process" | "chisel-stack" | "chisel-workflow";
   caption?: string;
-  /** Per-item Tailwind classes for the block's wrapper — see ProjectMedia. */
   className?: string;
 };
 
+// `text.html` is trusted in-repo markup.
 export type ProjectBlock =
   | { type: "text"; html: string }
   | ProjectStats
@@ -125,9 +72,8 @@ export type Project = {
   role: string;
   summary: string;
   tags: string[];
-  /** The detail page: an ordered mix of copy and media blocks. */
   content: ProjectBlock[];
-  /** Leads the project's card; optional — see projectImages for the fallback. */
+  /** Falls back to the first content image (projectImages). */
   thumbnail?: string;
 };
 
@@ -500,23 +446,12 @@ export function getProject(slug: string) {
   return projects.find((p) => p.slug === slug);
 }
 
-/**
- * Collect a project's image srcs, in reading order. Pulls the thumbnail first,
- * then any images from `content` (new format) or `media` (legacy) — including
- * grid items — deduped. Videos contribute their poster if present.
- *
- * The project cards ask for one: the thumbnail when there is one, otherwise
- * the first case-study image.
- */
+/** Thumbnail first, then content images in order, deduped. */
 export function projectImages(project: Project, limit = 4): string[] {
   const out: string[] = [];
   const push = (src?: string) => {
     if (!src) return;
-    // Paths are authored root-absolute, but normalize anyway (leaving remote
-    // http(s) URLs untouched): a relative src resolves against the CURRENT
-    // document URL, so one authored without a leading slash would 404 on
-    // /projects/<slug> and — since that route never remounts the page tree —
-    // stay broken after navigating back home.
+    // A relative src would resolve against /projects/<slug> and 404.
     const norm = /^https?:\/\//.test(src) ? src : src.startsWith("/") ? src : `/${src}`;
     if (!out.includes(norm)) out.push(norm);
   };

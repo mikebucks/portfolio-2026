@@ -1,37 +1,22 @@
 import { KEYBOARD_NOTES } from "@/components/audio/keyboardMapping";
 
 /**
- * The note palette: one colour per playable key, shared by the key caps and by
- * every shader that answers a note with colour.
- *
- * Two consumers, one list — the cap you press and the light the background
- * throws have to be the same colour, or the connection between the two reads as
- * decoration rather than cause. `NOTE_PALETTE` is the source; `themes/palette.ts`
- * compiles it into the `noteHue()` GLSL chunk, and `SynthKeyCap` reads the hex
- * directly.
- *
- * Ordered by the home row, low to high — `a` is the D ding, `;` the top C — so
- * the palette read left to right is also the instrument read low to high. The
- * last entry belongs to no key: it's the far end of the ramp, where themes that
- * sweep `noteHue()` continuously (Rhythm's ribbon) run off the top of the
- * keyboard.
- *
- * Colours are written in the same space the shaders draw in — the fragments
- * write raw values with no sRGB conversion — so a cap and its shader answer
- * land on the same hex.
+ * One colour per playable key, shared by the caps and the shaders (compiled
+ * into `noteHue()` by themes/palette.ts). Home-row order, low to high; the
+ * last entry is the ramp tail past the top key. Written in the shaders' raw
+ * (no sRGB conversion) space so cap and shader land on the same hex.
  */
 export const NOTE_PALETTE = [
   "#FD7220", // a · D3  — the ding
   "#1B7F9E", // s · A3
-  "#E8C34A", // d · A#3 — light on purpose: A# is the piano roll's one black
-  //            key, and its marker dot has to read on near-black without help
+  "#E8C34A", // d · A#3 — light: the roll's one black key, its dot must read
   "#4FB0C6", // f · C4
   "#7A4FB5", // g · D4
   "#2FA35A", // h · E4
   "#C9A227", // j · F4
   "#D64550", // k · G4
   "#5C6672", // l · A4
-  "#2E4E8F", // ; · C5 — swapped with A#3's old dark blue
+  "#2E4E8F", // ; · C5
   "#0F3D3E", // (no key) ramp tail
 ] as const;
 
@@ -58,24 +43,15 @@ export function noteToMidi(note: string): number | null {
 /** The playable keys in home-row order, which is also palette order. */
 export const PALETTE_KEYS = Object.keys(KEYBOARD_NOTES);
 
-// MIDI number → palette index, built from the keyboard mapping so the two can't
-// drift. Every mapped note is distinct, so this is 1:1.
+// Built from the mapping so the two can't drift; mapped notes are distinct.
 const INDEX_BY_MIDI = new Map<number, number>(
   PALETTE_KEYS.map((k, i) => [noteToMidi(KEYBOARD_NOTES[k])!, i] as const),
 );
 
 /**
- * Palette index for a sounding note.
- *
- * The colour belongs to the pitch, and octaves fold onto the mapped note that
- * shares their pitch class — so the transposed pitches that Shift/Alt and the
- * presets' own octave setting produce (applied inside the engine, after the key
- * mapping) still land on a palette colour instead of falling off the end. D2,
- * D3 and D5 all read as `a`'s orange; D4 is `g`'s own note, so it reads as
- * `g`'s violet no matter which key sounded it — same pitch, same colour.
- *
- * Off-scale pitches can't come from the keyboard; if one ever arrives it gets a
- * stable colour by pitch class rather than nothing.
+ * Palette index for a sounding note. Octaves fold onto the nearest mapped note
+ * of the same pitch class, so transposed pitches keep a colour; off-scale
+ * pitches fall back by pitch class.
  */
 export function noteColorIndex(note: string): number {
   const midi = noteToMidi(note);

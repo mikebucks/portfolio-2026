@@ -6,14 +6,8 @@ import type { SynthOverrideKey } from "@/lib/store";
 import { FADERS, clamp01 } from "@/lib/synthFaders";
 
 /**
- * The panel's four vertical faders. They edit the tweak store's overrides —
- * absolute values layered over the active preset. A theme change clears them
- * (the store does that), so every preset opens at its own defaults and the
- * fills ease over to them. Double-click hands one fader back to the preset.
- *
- * The faders themselves (what each one drives, and how its position maps to
- * settings) live in lib/synthFaders — the background render loop reads the
- * same table to let each fader re-tune the active shader.
+ * Four vertical faders editing the tweak store's overrides over the active
+ * preset. Double-click resets one. Definitions live in lib/synthFaders.
  */
 
 export function SynthSliders() {
@@ -55,10 +49,7 @@ function VSlider({
   onChange: (t: number) => void;
   onReset: () => void;
 }) {
-  // The fill's height eases when the value arrives from elsewhere — a preset
-  // switch re-seating an untouched fader, a double-click reset, an arrow key —
-  // but not while a drag is live: a tween under the pointer would make the
-  // fader feel like it's trailing the hand.
+  // Fill height eases when the value arrives from elsewhere, never mid-drag.
   const [dragging, setDragging] = useState(false);
 
   const fromPointer = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -66,9 +57,6 @@ function VSlider({
     onChange(clamp01(1 - (e.clientY - r.top) / r.height));
   };
 
-  // Track and fill share a corner radius so they read as one strip. The track
-  // keeps its width; hover/focus/drag widen only the white fill, so it lifts
-  // off the track like a fader cap under the hand.
   const strip = "absolute left-1/2 -translate-x-1/2 rounded-xs";
 
   return (
@@ -84,8 +72,8 @@ function VSlider({
         aria-valuetext={display}
         data-dragging={dragging}
         title="Drag up or down · double-click to reset to the preset"
-        // Pointer capture lets a drag keep tracking outside the strip; the
-        // buttons guard skips plain hover moves.
+        // Capture keeps a drag tracking outside the strip; the buttons guard
+        // skips hover moves.
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           setDragging(true);
@@ -107,12 +95,9 @@ function VSlider({
             onChange(clamp01(t - 0.04));
           }
         }}
-        // `group` scopes the strips' hover/focus/drag styles to this element;
-        // `peer` lets the label below (a sibling) follow the same states.
+        // `peer` lets the sibling label follow the same states.
         className="group peer relative h-24 w-10 cursor-ns-resize touch-none outline-none"
       >
-        {/* Track and fill wear the octave buttons' clothes — same dark wash,
-            same corner radius — so the panel's controls read as one family. */}
         <div className={`${strip} inset-y-0 w-4 bg-black/40`} />
         <div
           className={`${strip} bottom-0 w-4 bg-white group-hover:w-5 group-focus-visible:w-5 group-data-[dragging=true]:w-5 ${

@@ -12,7 +12,7 @@ import { shiftOctave } from "./keyboardMapping";
 export type SynthEngine = {
   noteOn: (note: string, velocity?: number) => void;
   noteOff: (note: string) => void;
-  /** Release every sounding note and reset the filter envelope. Panic button. */
+  /** Panic: release every note, reset the filter envelope. */
   releaseAll: () => void;
   applySettings: (s: SynthSettings) => void;
   dispose: () => void;
@@ -35,45 +35,24 @@ const LFO_DEPTH_HZ = 2400;
 const CYC_RES_DEPTH = 6;
 
 /**
- * MicroFreak-inspired hybrid engine: digital oscillator section feeding an
- * analog-style filter, ADSR (VCA), filter envelope, LFO, and cycling
- * envelope. Modulation is computed manually each frame and written into the
- * shared filter — Tone's automatic LFO→Param routing has unit-coercion
- * quirks with frequency params and is brittle.
- *
- * Browser-only additions: a fixed "character" master chain — saturation,
- * chorus, stereo widener, EQ — plus stereo delay + a dark reverb tail.
+ * Hybrid engine: oscillator voice → shared filter → fixed "character" chain.
+ * Modulation (filter env, LFO, cycling env) is stepped per frame in JS;
+ * Tone's LFO→Param routing is brittle with frequency params.
  */
 export function createSynthEngine(
   Tone: Tone,
   initial: SynthSettings,
 ): SynthEngine {
-  // Play live, not sequenced: Tone's default 0.1s lookAhead schedules every
-  // triggerAttack 100ms into the future, which reads as a laggy delay when the
-  // keyboard is the instrument. Pull it down to a hair above zero so notes fire
-  // almost immediately (well under the ~20ms perceptual threshold, on top of
-  // the unavoidable hardware output latency).
-  //
-  // NOT exactly 0: on a just-resumed AudioContext (first keypress, or after a
-  // suspend/resume on tab switch) a note scheduled at currentTime lands before
-  // the context renders its first block and gets dropped — the swallowed
-  // "first note". A few ms of headroom guarantees the note is always in the
-  // future without any audible lag.
+  // Default 0.1s lookAhead feels laggy live. Not 0: a note scheduled at
+  // currentTime on a just-resumed context gets dropped.
   Tone.getContext().lookAhead = 0.015;
 
-  // Master chain, output → input:
-  //   voice → filter → drive → chorus → delay → reverb → widener → eq → volume → limiter
-  // The nodes between the filter and volume are always-on "character" — fixed,
-  // preset-independent values that pull every sound out of raw-oscillator
-  // "toy" territory: analog-ish saturation, chorus width, stereo spread, and a
-  // darkened/bodied EQ. They intentionally read no SynthSettings fields so
-  // presets never have to know about them.
+  // Chain: voice → filter → drive → chorus → delay → reverb → widener → eq → volume → limiter.
+  // drive..eq are fixed "character", deliberately preset-independent.
   const limiter = new Tone.Limiter(-1).toDestination();
   const volume = new Tone.Volume(initial.masterVolume).connect(limiter);
 
-  // Scope tap for the visual layer. Sits on the master so it sees the voice as
-  // it is actually heard, character chain and all. 2048 samples is enough to
-  // hold a full period of the lowest playable note at 48kHz.
+  // Scope tap on the master. 2048 samples holds a period of the lowest note at 48kHz.
   const scope = new Tone.Waveform(2048);
   volume.connect(scope);
   const releaseScope = registerWaveformSource({
@@ -81,9 +60,7 @@ export function createSynthEngine(
     sampleRate: Tone.getContext().sampleRate,
   });
 
-  // Gentle master EQ: a little low-end body, a touch of mud scooped, and the
-  // top rolled off. Sitting last (after reverb) this also darkens the reverb
-  // tail, so the wash reads as "haunting" rather than fizzy.
+  // Last in chain so it darkens the reverb tail too.
   const eq = new Tone.EQ3({
     low: 1.5,
     mid: -1,
@@ -92,11 +69,10 @@ export function createSynthEngine(
     highFrequency: 3200,
   }).connect(volume);
 
-  // Stereo spread on the whole mix — 0.5 is neutral, higher is wider.
+  // 0.5 is neutral.
   const widener = new Tone.StereoWidener(0.7).connect(eq);
 
-  // Longer, darker tail than the old 3.4s. preDelay pushes the wash back off
-  // the transient so notes still speak clearly before they bloom.
+  // preDelay keeps the transient clear before the wash.
   const reverb = new Tone.Reverb({
     decay: 5,
     preDelay: 0.03,
@@ -110,8 +86,7 @@ export function createSynthEngine(
     wet: initial.delayWet,
   }).connect(reverb);
 
-  // Chorus is the biggest single anti-"toy" lever: it de-monos the pitched
-  // voices and adds slow movement. Its LFO must be started explicitly.
+  // Chorus LFO must be started explicitly.
   const chorus = new Tone.Chorus({
     frequency: 0.6,
     delayTime: 3.5,
@@ -121,8 +96,7 @@ export function createSynthEngine(
   }).connect(delay);
   chorus.start();
 
-  // Subtle soft-clip for harmonic "glue" / warmth. Kept low and pre-time-
-  // effects so it thickens the dry tone without dirtying the reverb/delay tails.
+  // Pre-time-effects so it doesn't dirty the delay/reverb tails.
   const drive = new Tone.Distortion({
     distortion: 0.1,
     oversample: "4x",
@@ -143,29 +117,17 @@ export function createSynthEngine(
 
   let current: SynthSettings = initial;
 
-  // Filter envelope ADSR state machine
   type EnvStage = "idle" | "attack" | "decay" | "sustain" | "release";
   const fenv = { stage: "idle" as EnvStage, value: 0, releaseFrom: 0 };
 
-  // Authoritative set of currently-sounding notes → their velocity. Drives the
-  // filter-envelope release off real voice state (a lost noteOff can no longer
-  // strand the filter open) and makes noteOn/noteOff idempotent. The stored
-  // velocity lets a preset switch re-trigger held notes on the new voice.
-  //
-  // Contract: one active voice per pitch — a second noteOn for a pitch already
-  // sounding is ignored. That matches the one-key-one-note keyboard. It is NOT
-  // reference-counted, so it wouldn't correctly support multiple controllers
-  // (on-screen keyboard / MIDI) playing the same pitch; that would need
-  // per-pitch refcounts or source IDs.
+  // Sounding note → velocity. One voice per pitch, not refcounted.
   const active = new Map<string, number>();
 
   let lfoPhase = 0;
   let cycPhase = 0;
   let lastT = performance.now();
   let raf = 0;
-  // The RAF only needs to run while its output can be heard. It self-suspends
-  // when nothing audible remains (see isModActive / tick) and is woken by
-  // noteOn or a tab becoming visible again.
+  // Loop self-suspends when inaudible; noteOn / visibility wake it.
   let loopActive = false;
 
   function tickFilterEnv(dt: number) {
@@ -188,7 +150,6 @@ export function createSynthEngine(
         break;
       }
       case "sustain": {
-        // Track sustain in case it changes live.
         const target = sustain;
         fenv.value += (target - fenv.value) * Math.min(1, dt * 8);
         break;
@@ -222,17 +183,11 @@ export function createSynthEngine(
     }
   }
 
-  // True while modulation can still shape audible sound: a note is held, or the
-  // filter envelope is still releasing its tail. When neither holds, no signal
-  // reaches the (non-self-oscillating) filter, so freezing modulation is
-  // inaudible — the cue to suspend the loop.
   function isModActive() {
     return active.size > 0 || fenv.stage !== "idle";
   }
 
-  // One modulation step. Split out of the RAF so noteOn can run it synchronously
-  // and set the filter for the attack this instant, rather than waiting a frame
-  // (the loop may have been suspended while idle). dt=0 is a valid "set now".
+  // dt=0 is a valid "set now"; noteOn uses it.
   function stepModulation(dt: number) {
     tickFilterEnv(dt);
 
@@ -242,12 +197,7 @@ export function createSynthEngine(
     const lfoVal = lfoSample(lfoPhase, current.lfoShape) * current.lfoAmount;
     const cycVal = Math.sin(cycPhase * Math.PI * 2) * current.cycEnvAmount;
 
-    // The envelope and LFO push the cutoff in absolute Hz, at depths tuned
-    // against preset-scale cutoffs (all ≥ 620 Hz). When the player drags the
-    // cutoff below that region, those additions would hold the filter open
-    // regardless — Mentalism's envelope alone parks it near 1.6 kHz — so they
-    // shrink in proportion once the base drops under 600 Hz. Above 600 Hz
-    // (every preset's home) this is exactly the old arithmetic.
+    // Absolute-Hz mod depths would hold a low cutoff open; scale them down under 600 Hz.
     const modScale = Math.min(1, current.filterCutoff / 600);
     const cutoff =
       current.filterCutoff +
@@ -256,8 +206,7 @@ export function createSynthEngine(
         modScale;
     const q = Math.max(0, current.filterResonance + cycVal * CYC_RES_DEPTH);
 
-    // setTargetAtTime gives a smooth one-pole interpolation that hides the
-    // RAF cadence and prevents zipper noise.
+    // setTargetAtTime smooths the RAF cadence; avoids zipper noise.
     const audioNow = Tone.now();
     filter.frequency.setTargetAtTime(
       Math.max(40, Math.min(18000, cutoff)),
@@ -274,9 +223,6 @@ export function createSynthEngine(
 
     stepModulation(dt);
 
-    // Suspend once nothing audible remains, or while the tab is hidden. noteOn
-    // (or onVisibility) restarts the loop; the audio graph keeps its own tail
-    // going without us — only the per-frame JS modulation stops.
     if (!isModActive() || document.hidden) {
       loopActive = false;
       raf = 0;
@@ -292,14 +238,12 @@ export function createSynthEngine(
     raf = requestAnimationFrame(tick);
   }
 
-  // Resume when the tab returns, if there's still something to modulate.
   const onVisibility = () => {
     if (!document.hidden && isModActive()) startLoop();
   };
   document.addEventListener("visibilitychange", onVisibility);
 
-  // Seed the filter to its resting cutoff/Q so the first note lands correctly
-  // without the loop having had to run yet.
+  // Seed the filter before the loop has run.
   stepModulation(0);
 
   function rebuildIfEngineChanged(s: SynthSettings) {
@@ -309,25 +253,18 @@ export function createSynthEngine(
     next.output.connect(filter);
     voice = next;
     old.releaseAll();
-    // The new voice never attacked the held notes; drop them and settle the
-    // filter so the switch can't leave a phantom drone or stuck-open filter.
+    // New voice never attacked the held notes; drop them.
     active.clear();
     fenv.releaseFrom = fenv.value;
     fenv.stage = "release";
     setTimeout(() => old.dispose(), Math.max(80, s.release * 1000 + 80));
   }
 
-  // Preset transpose. Applied at the engine boundary rather than in the
-  // keyboard mapping so callers keep passing the untransposed name — as long as
-  // noteOn and noteOff shift identically, `active` stays keyed consistently and
-  // a release still finds its note.
+  // Preset transpose; callers pass untransposed notes.
   const transpose = (note: string) =>
     current.octave === 0 ? note : shiftOctave(note, current.octave);
 
-  // What each held key actually sounded. Switching theme mid-note swaps
-  // `current.octave` between the attack and the release, so re-deriving the
-  // note at noteOff would look up a pitch that was never started and strand the
-  // voice sounding forever.
+  // rawNote → note actually sounded. Octave can change mid-hold.
   const sounding = new Map<string, string>();
 
   return {
@@ -340,11 +277,7 @@ export function createSynthEngine(
       const t = Tone.now();
       voice.triggerAttack(note, t, velocity);
 
-      // Retrigger the filter envelope on every note (including chord additions),
-      // matching the prior articulation.
       fenv.stage = "attack";
-      // Set the filter for this attack immediately, then (re)start the loop —
-      // it may have been suspended while idle.
       stepModulation(0);
       startLoop();
 
@@ -401,11 +334,6 @@ export function createSynthEngine(
 
       visualBus.emit({
         type: "setting",
-        key: "filterCutoff",
-        value: Math.min(1, s.filterCutoff / 8000),
-      });
-      visualBus.emit({
-        type: "setting",
         key: "reactivity",
         value: s.visualReactivity,
       });
@@ -457,7 +385,7 @@ function envOf(s: SynthSettings) {
   };
 }
 
-/** Pulse oscillator with adjustable width and detune — classic VA character. */
+/** Pulse osc — Wave = width, Timbre = detune. */
 function buildAnalog(Tone: Tone, s: SynthSettings): VoiceHandle {
   const synth = new Tone.PolySynth(Tone.Synth, {
     oscillator: {
@@ -490,7 +418,7 @@ function buildAnalog(Tone: Tone, s: SynthSettings): VoiceHandle {
   };
 }
 
-/** Stacked detuned saws — supersaw / "Super" wave. */
+/** Supersaw — Wave = spread, Timbre = count. */
 function buildSuper(Tone: Tone, s: SynthSettings): VoiceHandle {
   const count = Math.max(3, Math.round(3 + s.oscTimbre * 4));
   const synth = new Tone.PolySynth(Tone.Synth, {
@@ -528,10 +456,7 @@ function buildSuper(Tone: Tone, s: SynthSettings): VoiceHandle {
 /** Two-operator FM — Wave morphs index, Timbre morphs harmonicity. */
 function buildFM(Tone: Tone, s: SynthSettings): VoiceHandle {
   const synth = new Tone.PolySynth(Tone.FMSynth, {
-    // Makeup gain: Tone's FMSynth outputs well below the subtractive engines
-    // (super/analog), so at equal masterVolume it reads much quieter. Lift the
-    // voice so presets are loudness-matched and masterVolume behaves the same
-    // across engines. The master limiter (-1 dB) still catches peaks/chords.
+    // Makeup gain: FMSynth is much quieter than the subtractive engines.
     volume: 8,
     harmonicity: 0.5 + s.oscTimbre * 4,
     modulationIndex: 0.5 + s.oscWave * 18,
@@ -603,35 +528,17 @@ function harmonicPartials(wave: number, timbre: number): number[] {
 
 /**
  * Karplus-Strong pluck — Wave = resonance, Timbre = attack noise.
- *
- * PluckSynth isn't Monophonic, so it can't be wrapped by PolySynth. Round-
- * robin a small voice pool ourselves.
- *
- * attackNoise is the excitation length in periods of the note — how hard the
- * string is hit. Tone's Noise starts its pink-noise buffer at a random offset,
- * so a burst under ~2 periods is a random sliver and the note's weight varies
- * a few dB from strike to strike; 3–4 periods average that out. Timbre maps
- * 0..1 → 0.3..6 periods (6 at D3 is ~40 ms — still a pluck, with a little
- * more chiff on the front). The far larger strike-to-strike swing is the
- * subsonic one, handled by the highpass below.
+ * PluckSynth isn't Monophonic, so PolySynth can't wrap it; round-robin a pool.
+ * attackNoise in note periods: under ~2 the random noise offset makes level vary.
  */
 const karplusAttackNoise = (timbre: number) => 0.3 + timbre * 5.7;
 function buildKarplus(Tone: Tone, s: SynthSettings): VoiceHandle {
   const VOICES = 6;
-  // Makeup gain, same idea as the FM voice's. PluckSynth excites its comb
-  // filter with a few periods of pink noise and no amp envelope, so its output
-  // sits ~10 dB under the subtractive engines at the same masterVolume. Lifted
-  // here so a Karplus preset can share the others' volume range and the master
-  // limiter (-1 dB) still catches the pluck transient.
+  // Makeup gain: PluckSynth sits ~10 dB under the subtractive engines.
   const out = new Tone.Gain(2.0);
 
-  // Subsonic trap. A comb filter resonates at every multiple of the note's
-  // frequency, 0 Hz included, and its lowpass makes DC the strongest of them —
-  // so whatever offset the random pink-noise burst happens to carry rings on
-  // as an inaudible blob up to 12 dB louder than the note itself (measured at
-  // the master, 60 Hz split). Nobody hears it, but the limiter does: it ducked
-  // every pluck by a random amount, which read as a soft, inconsistent voice.
-  // 30 Hz, 4th order: ~1 dB at D1 (the lowest reachable note), -60 dB by 5 Hz.
+  // Subsonic trap: the comb's DC ringing is inaudible but ducks the limiter.
+  // 30 Hz, 4th order: ~1 dB at D1, the lowest note.
   const hp = new Tone.Filter({
     type: "highpass",
     frequency: 30,
@@ -686,10 +593,7 @@ function buildKarplus(Tone: Tone, s: SynthSettings): VoiceHandle {
   };
 }
 
-/**
- * Filtered noise. Mono — noise has no pitch, but the global filter shapes it
- * and the keyboard still gives the player rhythmic control.
- */
+/** Mono noise; keys only gate it. */
 function buildNoise(Tone: Tone, s: SynthSettings): VoiceHandle {
   const noise = new Tone.NoiseSynth({
     noise: { type: noiseType(s.oscWave) },

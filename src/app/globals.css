@@ -1,13 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  /* --color-accent: #ff5f15; */
   --color-accent: #FD7220;
   --color-cream: #f4f1ea;
-  /* The page's base black. Lives in @theme (not just :root) so it's usable as
-     `bg-ink`/`text-ink` in markup, as `var(--color-ink)` in CSS, and readable
-     off the document at runtime — the WebGL clear color in
-     InteractiveBackground reads it so the canvas matches the page exactly. */
+  /* Read at runtime as the WebGL clear color (InteractiveBackground). */
   --color-ink: #08080a;
   --font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -17,15 +13,9 @@
   color-scheme: dark;
 }
 
-/* The site's outer gutter — every full-bleed section pads its sides with this,
-   so the mobile value is a single knob. 1.25rem is the widest that still lets
-   the header nav and the hero headline fit a 400px-wide viewport. */
+/* Outer gutter. 1.25rem: widest that fits the nav and headline at 400px. */
 @utility gutter-x {
-  /* Published as a variable, not just applied: a child that breaks out of the
-     gutter has to undo exactly this much, and inheriting the value is what
-     keeps the two from drifting at the breakpoint. See the projects
-     row, which cancels it with a negative margin and adds it back to its own
-     max-width so its cap still measures the same column as the text above it. */
+  /* Variable so breakout children (projects row) can undo exactly this much. */
   --gutter: 1.25rem;
 
   @media (width >= 40rem) {
@@ -35,46 +25,10 @@
   padding-inline: var(--gutter);
 }
 
-/* Marks the surface a `full-bleed` block measures itself against — the project
-   modal's scroll area, whose content box already excludes both the page's
-   reserved scrollbar gutter and the panel's own scrollbar. Measuring against
-   this instead of 100vw is what keeps a bled image from pushing the panel
-   sideways. */
-@utility bleed-root {
-  container-type: inline-size;
-}
-
-/* Escapes the case-study column's gutters so a block spans the full panel
-   width. The negative margin is half the column minus half the container, so
-   the block grows symmetrically out of the centered flow. Needs a `bleed-root`
-   ancestor; without one the container units fall back to the viewport and the
-   scrollbars reappear as horizontal overflow.
-
-   Mobile only: the bleed is there to buy back the narrow screen's gutters. Past
-   this width the column is comfortably inside the panel and an edge-to-edge
-   image reads as a banner instead, so it stays in the text column. The cutoff
-   matches the `md:px-10` the column picks up in ProjectDetail. */
-@utility full-bleed {
-  @media (width < 48rem) {
-    width: 100cqw;
-    max-width: none;
-    margin-inline: calc(50% - 50cqw);
-  }
-}
-
-/* Only the root element gets the background.
-   If body also has a background it paints OVER position:fixed z-index:-10
-   children — hiding the WebGL canvas and CSS gradient entirely. */
+/* Background on html only: a body background paints over the z-[-10] canvas. */
 html {
   background: var(--color-ink);
-  /* Always reserve the scrollbar's space so the page never jumps sideways when
-     ProjectModal locks scroll with `body { overflow: hidden }` (the scrollbar
-     vanishes and, without a reserved gutter, content + fixed header widen to
-     fill the freed space). `overflow-y: scroll` is required alongside the
-     gutter: by default <html> is `overflow: visible`, so the viewport scrollbar
-     is governed by <body> and this gutter would be ignored. Making <html> own
-     the scrollbar lets `scrollbar-gutter` take effect and stay put when <body>
-     goes `overflow: hidden`. */
+  /* html owns the scrollbar so the gutter holds when the modal locks body scroll. */
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
@@ -83,24 +37,13 @@ body {
   color: #f4f4f4;
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
-  /* Pin every descendant into a single stacking/blend context. Without this,
-     iOS Safari sometimes parks the hero H1 on its own compositing layer
-     after the GSAP intro and mix-blend-difference doesn't paint against the
-     fixed shader behind it until a scroll forces a recomposite. */
+  /* iOS Safari: keeps the hero H1's mix-blend-difference painting after the intro. */
   isolation: isolate;
 }
 
-/* The full-bleed shader layer. Pinned to the LARGE viewport (chrome retracted)
-   so its height never changes while iOS Safari animates its toolbars. A
-   mid-scroll size change reallocates — and therefore clears — the WebGL drawing
-   buffer, and the cleared frame gets composited: that is what makes the
-   background strobe. When the chrome is expanded the bottom ~60-90px simply
-   sits behind the toolbar and is revealed, already painted, as it retracts.
-
-   Written as a rule + @supports rather than two declarations in one block,
-   because Lightning CSS drops a same-property fallback whenever its build
-   targets all understand the later value. iOS Safari's vh has always been the
-   large viewport, so the fallback is exact on the engines that need it. */
+/* Shader layer pinned to the large viewport: a resize during iOS toolbar
+   animation clears the WebGL buffer and strobes. @supports, not a same-block
+   fallback, because Lightning CSS drops the fallback. */
 .bg-layer-full {
   height: 100vh;
 }
@@ -111,38 +54,19 @@ body {
   }
 }
 
-/* ── Project modal ─────────────────────────────────────────────────────────
-   The project lightbox is translucent so the shader background reads through
-   it. Every other layer of the page would read through it too, so while the
-   modal is up the page's own content fades out and the shader is the only
-   thing left behind the panel.
-
-   Driven by a `data-project-modal` attribute on <body> (set by ProjectModal)
-   rather than by props: the header and footer live in the root layout, not in
-   the modal's React tree, and this way neither has to become stateful.
-
-   The page doesn't just switch off: it scales down as it fades, on the same
-   clock as the panel rising over it, so the two read as one move — the page
-   recedes, the case study slides up and takes its place. */
+/* ── Project modal ──
+   Page content fades and recedes behind the translucent modal, driven by
+   body[data-project-modal] (set by ProjectModal) since header/footer live outside its tree. */
 [data-modal-hide] {
   transform-origin: 50% 50%;
-  /* No `transform` and no `will-change` in the rest state, on purpose: either
-     one would make this a permanent stacking context, and the hero's
-     mix-blend-difference would stop reaching the shader behind it. Both only
-     apply while the modal is up, where the hero is faded out anyway. */
-  /* This duration is the CLOSE (CLOSE_MS in ProjectModal) — the page coming
-     back as the panel collapses. Opening overrides it below, so each direction
-     matches the panel's own timing. */
+  /* No rest-state transform/will-change: a stacking context would break the hero's blend. */
+  /* 320ms = CLOSE_MS in ProjectModal; open overrides below. */
   transition:
     opacity 320ms cubic-bezier(0.7, 0, 0.2, 1),
     transform 320ms cubic-bezier(0.7, 0, 0.2, 1);
 }
 
-/* The page column is the full document height, so its own center is nowhere
-   near the viewport and scaling about it would sling the content sideways.
-   ProjectModal pins the origin to the middle of what's actually on screen when
-   the modal opens; scroll is locked from that moment, so one measurement holds
-   for the whole open-and-close. */
+/* Origin at the on-screen middle (set by ProjectModal), not the document's. */
 [data-modal-hide="page"] {
   transform-origin: 50% var(--modal-origin-y, 50%);
 }
@@ -151,15 +75,12 @@ body[data-project-modal="open"] [data-modal-hide] {
   opacity: 0;
   transform: scale(0.94);
   pointer-events: none;
-  /* OPEN_MS + the cover's expo.out, so the recede tracks the rise exactly. */
+  /* OPEN_MS + the cover's expo.out. */
   transition-duration: 550ms;
   transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* The header's bar (cream, or white + blur before scroll) is painted on the
-   <header> itself, while its contents fade via [data-modal-hide] above. Drop
-   the bar here instead of fading the element, so GSAP's intro autoAlpha tween
-   stays the only thing writing the header's opacity. */
+/* Drop the bar, don't fade the element: GSAP's intro owns the header's opacity. */
 body[data-project-modal="open"] header[data-intro-header] {
   background-color: transparent;
   backdrop-filter: none;
@@ -187,23 +108,9 @@ html.lenis body {
   }
 }
 
-/* Primary nav item. Active reads as white-on-accent; hover animates *into* that
-   same state, so the two are one visual language rather than two effects.
-
-   The fill is a pseudo-element scaled on X rather than an animated width — width
-   relayouts the bar on every frame, transform doesn't. Swapping the origin
-   between the hover and rest rules is what makes the wipe directional: it grows
-   from the left edge on the way in, and on mouse-out the rest rule's `right`
-   origin takes over so it retracts toward the right edge instead of rewinding.
-
-   The label's colour flip is delayed to roughly the wipe's midpoint — flipped
-   immediately it would be white on cream (invisible) while the fill is still
-   crossing.
-
-   Fill and ink are custom properties so other surfaces can wear the same wipe
-   in their own colours — the synth panel's principle nav runs it white-on-dark
-   (set --nav-link-fill / --nav-link-ink); the defaults are the header's
-   accent-and-white. */
+/* Nav item: hover wipes into the active state. Fill origin swaps between
+   hover (left) and rest (right) so it retracts rather than rewinds.
+   Colour flip is delayed to the wipe's midpoint. Override --nav-link-fill / --nav-link-ink. */
 @utility nav-link {
   position: relative;
   isolation: isolate;
@@ -221,8 +128,6 @@ html.lenis body {
     background: var(--nav-link-fill, var(--color-accent));
     transform: scaleX(0);
     transform-origin: right center;
-    /* Aggressive in/out: near-flat at both ends, near-vertical through the
-       middle, so the fill snaps across and settles hard. */
     transition: transform 320ms cubic-bezier(0.85, 0, 0.15, 1);
   }
 
@@ -244,24 +149,13 @@ html.lenis body {
   border-radius: 2px;
 }
 
-/* The synth panel is a play surface: its own states (lit caps, wipes, fills)
-   already answer every interaction, and the synthetic key events the caps and
-   roll dispatch leave :focus-visible parked on whatever was pressed last — a
-   ring that lands "on the wrong item" and reads as a bug. Quiet it here;
-   everything stays tabbable and the arrow/Enter/Space handlers still work. */
+/* Synthetic key events leave :focus-visible on the wrong item; still tabbable. */
 [data-focus-quiet] :focus-visible {
   outline: none;
 }
 
-/* Travelling connector dot for the animated process graphics (see
-   src/components/projects/graphics). A small accent dot runs along a hairline
-   connector, fading in as it leaves one node and out as it reaches the next —
-   the openlogi.org "data packet" idiom, done in pure CSS.
-
-   Only two keyframe tracks exist (x → rightward, y → downward); the opposite
-   directions come from `animation-direction: reverse`, which works because the
-   opacity envelope is symmetric. Stagger dots with a negative delay via
-   `--flow-delay` so every connector is already mid-cycle on first paint. */
+/* Connector dots for src/components/projects/graphics. Two tracks (x right,
+   y down); reverse via animation-direction. Stagger with a negative --flow-delay. */
 @keyframes chisel-flow-x {
   0% {
     left: 0%;
@@ -303,11 +197,7 @@ html.lenis body {
   border-radius: 9999px;
   background: var(--color-accent);
   opacity: 0;
-  /* Longhands on purpose — an `animation:` shorthand here breaks in
-     production. The shorthand carries no animation-name (variant classes
-     supply it), and when LightningCSS merges such a nameless shorthand with
-     the var() delay below it emits initial values instead (duration auto,
-     iteration-count 1), killing every dot in the minified build. */
+  /* Longhands: LightningCSS breaks a nameless `animation:` shorthand + var() delay. */
   animation-duration: 2.4s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -328,10 +218,7 @@ html.lenis body {
   animation-name: chisel-flow-y;
 }
 
-/* Double tempo for the connectors that touch the Chisel bar — the faster,
-   denser traffic is what signals the gains from Chisel, so it follows those
-   connectors whatever their axis (vertical on desktop, horizontal in the
-   rotated mobile layout). */
+/* Double tempo for connectors touching the Chisel bar. */
 .chisel-dot-fast {
   animation-duration: 1.2s;
 }
@@ -340,11 +227,7 @@ html.lenis body {
   animation-direction: reverse;
 }
 
-/* Relay variant: the dot owns one sixth of a shared 7.2s cycle (6 hops ×
-   1.2s — RELAY_SLOT_SEC in ChiselProcess must match) and hides for the rest,
-   so a chain of six connectors delayed one slot apart reads as a single
-   baton passed hop by hop — the THEN pipeline's strictly sequential
-   waterfall. */
+/* Relay: one sixth of a 7.2s cycle (6 × 1.2s; must match RELAY_SLOT_SEC in ChiselProcess). */
 @keyframes chisel-relay-x {
   0% {
     left: 0%;
@@ -399,12 +282,7 @@ html.lenis body {
   animation-name: chisel-relay-y;
 }
 
-/* The "this step is live" stroke: an ink ring outside the card's own border,
-   so it thickens the stroke without shifting layout and stays visible on the
-   dark cards. NOW's cards wear it permanently (everything is live at once);
-   THEN's cards pulse it in sync with the relay — rising while the baton
-   travels toward the card, fully lit at arrival (16.66% = one 1.2s slot of
-   the shared 7.2s cycle), fading just after the next hop leaves. */
+/* "Live step" ring. Static on NOW cards; pulsed on THEN cards in sync with the relay. */
 .chisel-card-active {
   box-shadow: 0 0 0 1.5px var(--color-ink);
 }
@@ -428,7 +306,7 @@ html.lenis body {
 }
 
 .chisel-card-pulse {
-  /* Longhands for the same LightningCSS reason as .chisel-dot above. */
+  /* Longhands: see .chisel-dot. */
   animation-name: chisel-card-pulse;
   animation-duration: 7.2s;
   animation-timing-function: ease-in-out;
@@ -442,7 +320,7 @@ html.lenis body {
     animation: none;
   }
 
-  /* SMIL dots (ChiselStack's fans) can't be paused from CSS — hide them. */
+  /* SMIL dots can't be paused from CSS. */
   .chisel-fan-dot {
     display: none;
   }

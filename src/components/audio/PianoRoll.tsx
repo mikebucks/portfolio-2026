@@ -16,34 +16,14 @@ import { resolveSettings } from "@/components/webgl/materials/shaders/themes";
 import { visualBus } from "@/lib/visualEvents";
 
 /**
- * A slim piano strip spanning the synth's whole reachable register (C1–C7),
- * plus the octave shift controls. Deliberately small — it's an indicator you
- * can also play, not the main keyboard.
- *
- * The keys the home row currently reaches each wear a bar of their palette
- * colour across the bottom edge — like tape strips on a practice keyboard —
- * and that band slides as the octave moves, so the roll *is* the octave
- * indicator. Any key — marked or not — plays its exact written pitch on click.
- *
- * Playing takes one of two routes. A *mapped* note — one the home row
- * currently reaches — is played by dispatching the synthetic key events the
- * caps themselves use, so it walks the exact physical-press path: the engine
- * wiring sounds it, and the matching cap above lights up. An unmapped note has
- * no key to speak through, so it goes to the engine directly; the engine
- * transposes every incoming note by the active octave, so this component
- * un-shifts first and remembers what it sent per pressed key — the octave can
- * change between press and release, and the release must name the note that
- * actually started.
- *
- * Lit state comes from the visualBus, which carries the engine's post-transpose
- * pitch — so a physical keypress lights the same roll key its sound occupies,
- * and Shift/Alt one-octave holds light where they really play.
+ * Slim C1–C7 piano strip plus octave controls; doubles as the octave indicator.
+ * Home-row-mapped notes play via synthetic key events so the caps light up;
+ * unmapped notes go to the engine directly, un-shifted by the octave.
+ * Lit state comes from the visualBus (engine's post-transpose pitch).
  */
 
-// C1 .. C7: six full octaves of white keys plus the closing C.
 const LOW_OCT = 1;
 const WHITE_PITCHES = ["C", "D", "E", "F", "G", "A", "B"] as const;
-// The sharp that sits after each white key, if any.
 const SHARP_AFTER: Record<string, string | null> = {
   C: "C#",
   D: "D#",
@@ -80,23 +60,16 @@ export function PianoRoll() {
   const settings = useResolvedSynthSettings();
   const octave = settings.octave;
 
-  // The attach-once pointer handlers and the async unlock path read these
-  // through refs — same reasoning as useSynthControls: a press must not close
-  // over the values that were current when it started.
+  // Refs: a press must not close over values current when it started.
   const audioRef = useRef(audio);
   const octaveRef = useRef(octave);
   audioRef.current = audio;
   octaveRef.current = octave;
 
-  // Absolute pitch pressed on the roll → how to let go of it: the home-row key
-  // whose keyup to dispatch, or the untransposed note to hand the engine. The
-  // release route must be the press's, remembered — the octave can move
-  // mid-hold and change which route a pitch *would* take.
+  // absNote → release route, fixed at press time (octave can move mid-hold).
   const held = useRef(new Map<string, { key: string } | { raw: string }>());
 
-  // Every pitch currently sounding, in the engine's own (absolute) terms. The
-  // ref is the same set kept synchronously — press() consults it mid-gesture,
-  // before React has committed the state.
+  // Sounding pitches; the ref is read synchronously by press().
   const soundingRef = useRef(new Set<string>());
   const [sounding, setSounding] = useState<ReadonlySet<string>>(
     () => new Set(),
@@ -123,11 +96,7 @@ export function PianoRoll() {
     };
   }, []);
 
-  // Where the home row currently lands, and in what colour. The colour is the
-  // *key's* — keyColor(key), the same lookup the caps use — not the sounding
-  // pitch's: a pitch-based lookup goes wrong the moment the octave shift parks
-  // one key on another key's home note (`a` shifted up an octave sounds D4,
-  // which is g's own note, and the ding's dot would turn violet).
+  // absNote → colour of the key that reaches it (key's colour, not the pitch's).
   const mappedColor = useMemo(() => {
     const m = new Map<string, string>();
     for (const [key, note] of Object.entries(KEYBOARD_NOTES)) {
@@ -137,9 +106,7 @@ export function PianoRoll() {
     return m;
   }, [octave]);
 
-  // absNote → the home-row key that reaches it under the current octave. Read
-  // through a ref for the same reason as the octave: a glissando's handlers
-  // outlive the render they were created in.
+  // absNote → home-row key that reaches it.
   const mappedKey = useMemo(() => {
     const m = new Map<string, string>();
     for (const [key, note] of Object.entries(KEYBOARD_NOTES)) {
@@ -155,12 +122,9 @@ export function PianoRoll() {
 
     const key = mappedKeyRef.current.get(absNote);
     if (key) {
-      // Already sounding from the physical keyboard: don't take ownership of a
-      // release that isn't ours — same rule as the caps.
+      // Already sounding from the physical keyboard: not our release to own.
       if (soundingRef.current.has(absNote)) return;
       held.current.set(absNote, { key });
-      // The keydown path unlocks the audio graph itself (useSynthControls),
-      // so no unlock dance is needed here.
       dispatchKey("keydown", key);
       return;
     }
@@ -170,10 +134,8 @@ export function PianoRoll() {
         ? absNote
         : shiftOctave(absNote, -octaveRef.current);
     held.current.set(absNote, { raw });
-    // Opening the panel already unlocks, but the roll shouldn't depend on
-    // where it's mounted — unlock on first press like the key caps' path does.
     if (!audioRef.current.unlocked) await audioRef.current.unlock();
-    // Released while the unlock was in flight: its release already ran.
+    // Released during the unlock.
     if (!held.current.has(absNote)) return;
     audioRef.current.engine?.noteOn(raw, 0.75);
   };
@@ -186,7 +148,7 @@ export function PianoRoll() {
     else audioRef.current.engine?.noteOff(entry.raw);
   };
 
-  // Unmounting mid-press must not strand a note — the engine lives above us.
+  // Engine outlives us; release on unmount.
   useEffect(() => {
     const heldMap = held.current;
     return () => {
@@ -198,18 +160,8 @@ export function PianoRoll() {
     };
   }, []);
 
-  // ── Pointer → glissando ──────────────────────────────────────────────────
-  // The strip, not the key, owns the pointer: capturing on the pressed button
-  // (the obvious per-key approach) pins every later event to that key, so a
-  // drag can never reach its neighbours. Instead the container captures, and
-  // each move hit-tests what's under the cursor — swapping notes as it crosses
-  // key boundaries, like dragging a finger across a real keyboard. Hit-testing
-  // via elementFromPoint rather than arithmetic keeps one source of truth: the
-  // rendered keys, black-over-white stacking included.
-  //
-  // Keyed by pointerId so a second finger runs its own independent glissando.
-  // `null` means "down, but currently off the strip" — the note mutes, and the
-  // entry stays so sliding back on resumes.
+  // Glissando: the strip captures the pointer (per-key capture pins the drag).
+  // pointerId → note; null = down but off the strip.
   const pointerNote = useRef(new Map<number, string | null>());
 
   const noteAt = (x: number, y: number): string | null =>
@@ -228,8 +180,7 @@ export function PianoRoll() {
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
       const note = noteAt(e.clientX, e.clientY);
       if (!note) return;
-      // Capture can throw if the pointer is already gone (a pen lifting in the
-      // same frame); the press should still land.
+      // Throws if the pointer is already gone.
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {}
@@ -250,8 +201,7 @@ export function PianoRoll() {
     onLostPointerCapture: endPointer,
   };
 
-  // Enter / Space on a focused key still plays it — the pointer story above is
-  // no help to a keyboard user tabbing through the strip.
+  // Enter / Space for keyboard users.
   const keyHandlers = (note: string) => ({
     onKeyDown: (e: React.KeyboardEvent<HTMLButtonElement>) => {
       if (e.key !== "Enter" && e.key !== " ") return;
@@ -288,8 +238,6 @@ export function PianoRoll() {
               style={{
                 left: `${whiteIndex * WHITE_W}%`,
                 width: `${WHITE_W}%`,
-                // At rest every key is plain ivory; a mapped key is marked by
-                // its bottom bar, not a tint. Struck, it floods with its colour.
                 backgroundColor: lit
                   ? (color ?? "#ffffff")
                   : "rgba(255,255,255,0.75)",
@@ -330,9 +278,6 @@ export function PianoRoll() {
                   : undefined,
               }}
             >
-              {/* The one mapped black key (A#) carries a light palette colour
-                  by design (see NOTE_PALETTE), so its bar reads on the dark
-                  key without any helper ring. */}
               {color && (
                 <span
                   className="pointer-events-none absolute inset-x-0 bottom-0 h-1"
@@ -354,8 +299,7 @@ export function PianoRoll() {
 function OctaveControls({ octave }: { octave: number }) {
   const theme = useThemeStore((s) => s.theme);
   const setOctaveOffset = useSynthTweakStore((s) => s.setOctaveOffset);
-  // The offset is stored relative to the preset's own register, so moving one
-  // effective octave means solving for the offset that lands there.
+  // Offset is relative to the preset's own octave.
   const base = resolveSettings(theme).octave;
   const bump = (delta: number) => setOctaveOffset(octave + delta - base);
 

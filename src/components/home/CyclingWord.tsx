@@ -5,15 +5,11 @@ import gsap from "gsap";
 import { setPointerClicksLocked, triggerClick } from "@/lib/visualEvents";
 import { useIntroStore } from "@/lib/store";
 
-// The headline reveals "Designer" out of the intro, then flips through the
-// roles like an old subway departure board: each letter rolls up out of the
-// slot on its own, its replacement rolling in from below a beat behind it,
-// the whole word turning over in a left-to-right wave. It rests on "Builder"
-// — but the slot stays live: clicking it rolls to the next word, wrapping
-// from "Builder" back around to "Designer".
+// Departure-board roll through the roles after the intro, resting on the last
+// word. Clicking the slot rolls one word forward, wrapping.
 const WORDS = ["Designer", "Engineer", "Thinker", "Builder"];
 
-// One line, expressed in the headline's leading so the roll aligns to the text.
+// One line at the headline's leading.
 const LINE = "1.2em";
 
 export function CyclingWord() {
@@ -29,27 +25,18 @@ export function CyclingWord() {
     const letters = words.map((w) => Array.from(w.children) as HTMLElement[]);
     const last = WORDS.length - 1;
 
-    // Which word currently owns the slot, and whether a roll is in flight.
-    // Clicks are ignored while busy — including the whole stretch before the
-    // intro roll finishes, so a click can't fork the arrival sequence.
+    // Clicks are ignored while busy, including before the intro roll finishes.
     let current = 0;
     let busy = true;
 
-    // Rest the layout on the given word: point the sizer (which gives the
-    // root its width and baseline) at it and release the px width the roll
-    // animated, so the underline keeps hugging the word across font-size
-    // breakpoints between rolls.
+    // Rest on word i: sizer sets width/baseline; drop the tweened px width.
     const settle = (i: number) => {
       sizer.textContent = WORDS[i];
       gsap.set(root, { width: "auto" });
       root.setAttribute("aria-label", WORDS[i]);
     };
 
-    // Reduced motion: skip the roll and rest on the final word ("Builder").
-    // Clicks still cycle, as an instant swap rather than a roll.
-    // Checked inline (rather than via @/lib/device) so editing this file's
-    // timing doesn't invalidate the device chunk that InteractiveBackground
-    // lazy-loads — that coupling was causing HMR ChunkLoadErrors on every edit.
+    // Inline, not @/lib/device: importing it caused HMR ChunkLoadErrors.
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -71,9 +58,7 @@ export function CyclingWord() {
       return () => root.removeEventListener("click", swap);
     }
 
-    // Every word after the opener waits below the slot, ready to roll in.
-    // (They're also visibility-hidden inline from SSR, so nothing stacks up
-    // before this runs; autoAlpha overrides that inline style from here on.)
+    // Park every word after the opener below the slot.
     words.forEach((w, i) => {
       if (i > 0) {
         gsap.set(w, { autoAlpha: 0 });
@@ -87,11 +72,7 @@ export function CyclingWord() {
     const WIDTH = 0.4; // slot/underline re-hug duration
     const LINGER = 1.5; // pause between rolls so each word can be read
 
-    // Fire a shader "click" at the on-screen center of the word slot — same
-    // signal a real pointer-down sends (normalized -1..1, y flipped). The
-    // full-bleed background canvas fills the viewport, so its rect IS the
-    // viewport and we can map straight off innerWidth/innerHeight. Measured at
-    // call time so scroll/resize can't stale the coordinates.
+    // Shader click at the slot's center (normalized -1..1, y flipped).
     const pulseBackground = () => {
       const rect = root.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
@@ -102,21 +83,15 @@ export function CyclingWord() {
       );
     };
 
-    // Offset from the intro's headlinePlay cue to the headline being settled
-    // and readable — the H1's fly-up starts 0.45s after the cue and runs 0.9s
-    // (see IntroSequence). Rolling before this lands would move the word while
-    // it's still arriving.
+    // headlinePlay cue → headline landed (IntroSequence: 0.45s delay + 0.9s).
     const REVEAL = 1.15;
-    // ...then hold "Designer" this long before the roll starts, so it reads as
-    // the headline's own word rather than the first frame of an animation.
+    // Hold the opener before rolling.
     const HOLD = 0.75;
 
     let tl: gsap.core.Timeline | null = null;
 
-    // Adds one departure-board roll (word `from` out, word `to` in) to `tl`
-    // starting at `at`; returns the time the roll fully lands. `pulse` fires
-    // the background ripple on landing — the auto roll wants it, a manual
-    // click doesn't (the pointer click already rippled the shader itself).
+    // Roll `from` out and `to` in at `at`; returns landing time.
+    // `pulse`: ripple the shader on landing (a real click already did).
     const addRoll = (
       timeline: gsap.core.Timeline,
       from: number,
@@ -127,18 +102,14 @@ export function CyclingWord() {
       const out = letters[from];
       const inc = letters[to];
 
-      // The underline (inset-x-0 on the root) rides this width tween, so it
-      // re-hugs each word as it arrives. Function-based value: measured when
-      // the tween starts, not when the timeline is built, so a late font
-      // load can't bake in stale widths.
+      // Function value: measured at tween start, so a late font load can't stale it.
       timeline.to(
         root,
         { width: () => words[to].offsetWidth, duration: WIDTH, ease: "power2.inOut" },
         at,
       );
 
-      // Park the incoming letters below the slot first — on a wrapped cycle
-      // they're still sitting above it from when this word last rolled out.
+      // Re-park below: on a wrapped cycle they're still above the slot.
       timeline.set(inc, { yPercent: 105 }, at);
       timeline.set(words[to], { autoAlpha: 1 }, at);
       timeline.to(
@@ -155,22 +126,13 @@ export function CyclingWord() {
       const outEnd = at + FLIP + (out.length - 1) * STAGGER;
       const inEnd = at + IN_LAG + FLIP + (inc.length - 1) * STAGGER;
       timeline.set(words[from], { autoAlpha: 0 }, outEnd);
-      // Ripple the background from the word's center as it lands — as if the
-      // headline itself clicked the shader on each role change.
       if (pulse) timeline.call(pulseBackground, undefined, at + IN_LAG + FLIP);
       return Math.max(outEnd, inEnd);
     };
 
-    // Runs exactly once per mount, on load. Scrolling back up to the hero does
-    // NOT replay it: the roll is part of the page's arrival, and re-running it
-    // every time the hero re-enters the viewport turned a one-time flourish
-    // into a loop you couldn't scroll past. "Builder" is the resting headline;
-    // from there, only a click moves the slot.
+    // Once per mount, never replayed on scroll-back.
     const play = () => {
-      // The roll pulses the background itself on every word landing, so a
-      // pointer click during it stacks a second wavefront onto the headline's
-      // own. Mute pointer clicks for the duration; onComplete releases them,
-      // and so does teardown, since a killed timeline never completes.
+      // Pointer clicks would stack a second wavefront on the roll's own pulses.
       setPointerClicksLocked(true);
 
       tl = gsap.timeline({
@@ -187,14 +149,10 @@ export function CyclingWord() {
       let at = 0;
       for (let i = 1; i < WORDS.length; i++) {
         const end = addRoll(tl, i - 1, i, at, true);
-        // Advance past the roll, plus a linger to read it — except the final
-        // word, which just rests as the headline.
         at = end + (i < last ? LINGER : 0);
       }
     };
 
-    // A click rolls the slot one word forward, wrapping at the end. Ignored
-    // while any roll (arrival or click) is still in flight.
     const cycle = () => {
       if (busy) return;
       busy = true;
@@ -212,9 +170,7 @@ export function CyclingWord() {
     };
     root.addEventListener("click", cycle);
 
-    // Hold the roll until the intro reveals the headline, so "Designer" rolls
-    // out of the H1 as it flies up rather than under the cream cover. On a
-    // re-entry to the home route the flag is already set, so this fires now.
+    // Wait for the intro to reveal the headline (already set on re-entry).
     let unsubIntro = () => {};
     if (useIntroStore.getState().headlinePlay) {
       play();
@@ -231,8 +187,7 @@ export function CyclingWord() {
       root.removeEventListener("click", cycle);
       unsubIntro();
       tl?.kill();
-      // kill() skips onComplete — without this the lock outlives the component
-      // and clicks stay dead for the rest of the session.
+      // kill() skips onComplete, which would leave the lock on.
       setPointerClicksLocked(false);
     };
   }, []);
@@ -243,26 +198,19 @@ export function CyclingWord() {
       className="relative inline-block cursor-ns-resize select-none whitespace-nowrap align-baseline"
       aria-label={WORDS[WORDS.length - 1]}
     >
-      {/* Reserves inline width + baseline so the surrounding text lays out
-          normally. Starts as the opening word (also what SSR shows); settle()
-          rewrites it to whichever word owns the slot, and the width tween
-          owns the in-between. */}
+      {/* Sizer: reserves width + baseline; settle() rewrites it. */}
       <span ref={sizerRef} className="invisible" aria-hidden>
         {WORDS[0]}
       </span>
 
-      {/* Hairline under the slot. inset-x-0, so it tracks the root's width
-          tween and always hugs the word currently in the slot. */}
+      {/* Underline; inset-x-0 so it rides the root's width tween. */}
       <span
         aria-hidden
         className="absolute inset-x-0 bg-current"
         style={{ height: "0.045em", bottom: "-0.06em" }}
       />
 
-      {/* One row per word, stacked in the same slot. Each row clips its own
-          letters vertically (overflow-hidden at the line height), so a letter
-          mid-roll shears off at the slot edge like a real departure board —
-          and a narrowing slot never clips a wider outgoing word sideways. */}
+      {/* One row per word, stacked; each clips its own letters at line height. */}
       {WORDS.map((word, w) => (
         <span
           key={w}

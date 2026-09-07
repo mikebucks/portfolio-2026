@@ -11,35 +11,22 @@ import { cn } from "@/lib/utils";
 import { GRAPHIC_LABEL } from "./shared";
 
 /**
- * Animated replacement for the static chisel-workflow.png. A swimlane graph —
- * CLAUDE, GITHUB and VERCEL lanes with the run of one Chisel change: prompt →
- * branch & edit → push → CI + preview build → report back, then either out to
- * eng review or looping back to the next prompt.
- *
- * Instead of arrows, the whole workflow is narrated by a relay: one dot
- * travels the graph hop by hop on a shared clock (each link owns a time slot
- * of the cycle), splitting where the workflow splits — at CI checks it forks
- * to the preview build and the report, and at report back one dot exits to
- * review while another rides the big loop back to the prompt. Steps carry
- * their sequence number so the relay can be read at a glance.
- *
- * ≥ md it's the original's swimlane layout with the loop arching over the
- * top; below md the steps stack as a single ordered column (lane shown as a
- * chip on each card) and the loop runs up the left margin.
- *
- * Like ChiselStack, connector geometry is measured from the rendered cards
- * (ResizeObserver) and the dots animate via SMIL — no per-frame JS.
+ * Swimlane graph (Claude / GitHub / Vercel) of one Chisel change. A dot relays
+ * hop by hop on a shared clock (each link owns a slot), forking at CI and at
+ * report back (exit to review + loop to the prompt). ≥ md: swimlanes, loop over
+ * the top; below md: one column, lanes as chips, loop up the left. Geometry is
+ * measured (ResizeObserver); dots are SMIL.
  */
 
 type Side = "left" | "right" | "top" | "bottom";
 
 type Step = {
   id: string;
-  /** Position in the sequence, shown on the card. */
+  /** Sequence number shown on the card. */
   num?: number;
   title: string;
   sub: string[];
-  /** Swimlane (desktop row): 0 = Claude, 1 = GitHub, 2 = Vercel. */
+  /** Desktop row: 0 Claude, 1 GitHub, 2 Vercel. */
   lane: 0 | 1 | 2;
   /** Desktop grid column, 1-based. */
   col: number;
@@ -113,11 +100,11 @@ type Link = {
   fromSide: Side;
   to: string;
   toSide: Side;
-  /** Which slice of the relay cycle this hop's dot occupies (0-based). */
+  /** Relay cycle slot, 0-based. */
   slot: number;
-  /** Nudge the anchor along the edge, so merging links don't stack. */
+  /** Nudge along the edge so merging links don't stack. */
   toDx?: number;
-  /** Override the curve's control-point reach (the loop needs a tall arch). */
+  /** Detour distance for loops. */
   ext?: number;
 };
 
@@ -126,10 +113,10 @@ const DESKTOP_LINKS: Link[] = [
   { from: "branch", fromSide: "bottom", to: "push", toSide: "top", slot: 1 },
   { from: "push", fromSide: "right", to: "ci", toSide: "left", slot: 2 },
   { from: "ci", fromSide: "bottom", to: "preview", toSide: "top", slot: 3 },
-  // The fork: CI reports directly while the preview build spins up…
+  // Fork: CI reports while the preview builds.
   { from: "ci", fromSide: "right", to: "report", toSide: "bottom", slot: 3, toDx: -12 },
   { from: "preview", fromSide: "right", to: "report", toSide: "bottom", slot: 4, toDx: 12 },
-  // …and the exit + iterate loop leave report back together.
+  // Exit and loop leave together.
   { from: "report", fromSide: "right", to: "ready", toSide: "left", slot: 5 },
   { from: "report", fromSide: "top", to: "prompt", toSide: "top", slot: 5, ext: 38 },
 ];
@@ -145,12 +132,11 @@ const MOBILE_LINKS: Link[] = [
 ];
 
 const SLOTS = 6;
-/** Dot speed in px/s — every hop's duration is its path length over this, so
- *  short gaps flick across while the big loop takes visibly longer. */
+/** px/s; hop duration = path length / this, so dot speed is constant. */
 const DOT_SPEED = 260;
-/** Floor so the shortest gap hop is still perceptible. */
+/** Floor so the shortest hop is still perceptible. */
 const MIN_HOP_SEC = 0.3;
-/** Beat of stillness at the end of each cycle before the relay restarts. */
+/** Pause at the end of each cycle. */
 const REST_SEC = 0.5;
 
 function anchor(r: DOMRect, side: Side, base: DOMRect, dx = 0): [number, number] {
@@ -168,11 +154,7 @@ function anchor(r: DOMRect, side: Side, base: DOMRect, dx = 0): [number, number]
   }
 }
 
-/**
- * Renders a polyline as straight orthogonal segments whose corners are
- * rounded with small quadratic arcs — the original graphic's 90°-bend style.
- * The radius shrinks when a segment is too short to fit it.
- */
+/** Orthogonal polyline with rounded corners; radius shrinks to fit short segments. */
 function roundedPath(pts: [number, number][], radius = 10): string {
   const r = (n: number) => Math.round(n * 10) / 10;
   let d = `M ${r(pts[0][0])} ${r(pts[0][1])}`;
@@ -193,13 +175,7 @@ function roundedPath(pts: [number, number][], radius = 10): string {
   return `${d} L ${r(last[0])} ${r(last[1])}`;
 }
 
-/**
- * Routes a link as an orthogonal run between two card edges. Aligned anchors
- * connect straight; offset ones bend at 90° — an S through the midpoint of
- * the gap for edge-to-facing-edge links, a single elbow into a perpendicular
- * edge, and a three-sided detour for the loops, whose `ext` says how far the
- * detour lane sits from the start edge.
- */
+/** Orthogonal route between card edges: straight if aligned, else S / elbow / detour (`ext`) for loops. */
 function routePath(
   from: [number, number],
   fromSide: Side,
@@ -245,7 +221,7 @@ type Net = {
   view: "desktop" | "mobile";
   w: number;
   h: number;
-  /** Seconds per full relay cycle — the sum of the slot durations plus rest. */
+  /** Seconds per relay cycle. */
   cycle: number;
   paths: NetPath[];
 };
@@ -352,7 +328,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
   const [net, setNet] = useState<Net | null>(null);
 
   const measure = useCallback(() => {
-    // Both layouts are in the DOM; measure whichever the breakpoint shows.
+    // Both layouts are in the DOM; measure the visible one.
     const desktop = desktopRef.current;
     const mobile = mobileRef.current;
     const view: Net["view"] | null = desktop?.offsetWidth
@@ -366,9 +342,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
     const base = root.getBoundingClientRect();
     const svg = root.querySelector("svg");
     if (!svg) return;
-    // A scratch path in the live svg to read each route's real length —
-    // hop duration is length ÷ DOT_SPEED, so dot speed is constant and the
-    // short gap hops flick across while the loop takes its time.
+    // Scratch path reads each route's real length.
     const scratch = document.createElementNS("http://www.w3.org/2000/svg", "path");
     svg.appendChild(scratch);
     const hops: { link: Link; d: string; dur: number }[] = [];
@@ -394,8 +368,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
       });
     }
     scratch.remove();
-    // Each slot opens when the previous slot's longest hop lands; parallel
-    // forks share a slot and simply finish at their own times.
+    // A slot opens when the previous slot's longest hop lands; forks share a slot.
     const slotDur = Array<number>(SLOTS).fill(0);
     for (const hop of hops)
       slotDur[hop.link.slot] = Math.max(slotDur[hop.link.slot], hop.dur);
@@ -440,8 +413,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
         className,
       )}
     >
-      {/* Desktop: the swimlane graph. pt-12 reserves the arch lane for the
-          iterate loop over the top row. */}
+      {/* pt-12 reserves the arch lane for the loop. */}
       <div ref={desktopRef} className="relative hidden md:block">
         <FlowSvg net={net} view="desktop" />
         <div className="relative grid grid-cols-[auto_repeat(5,minmax(0,1fr))] items-center gap-x-7 gap-y-9 pt-12">
@@ -464,8 +436,7 @@ export function ChiselWorkflow({ className }: { className?: string }) {
         </div>
       </div>
 
-      {/* Mobile: the same relay as one ordered column, lanes as chips, with
-          the iterate loop arching up the left margin (hence the pl). */}
+      {/* pl-8 leaves room for the loop up the left margin. */}
       <div ref={mobileRef} className="relative md:hidden">
         <FlowSvg net={net} view="mobile" />
         <div className="relative flex flex-col gap-7 pl-8">

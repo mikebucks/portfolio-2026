@@ -1,11 +1,7 @@
 import type { ProjectMedia } from "@/data/projects";
 import { cn } from "@/lib/utils";
 
-/**
- * Renders a single media item (image / video / grid) as a `<figure>` inside the
- * interleaved content renderer. The caption color is passed in via
- * `captionClassName` so light and dark surfaces can share it.
- */
+/** One media item (image / video / grid) as a <figure>. */
 export function ProjectMediaFigure({
   media: m,
   className,
@@ -15,10 +11,8 @@ export function ProjectMediaFigure({
   className?: string;
   captionClassName?: string;
 }) {
-  // Per-item classes from the data go on the <figure>, not the media element,
-  // so a frame (padding, background, border) encloses the caption too. They
-  // come last, after the caller's layout classes, so an item can override them.
-  // To reach the media itself, use a child variant: `[&_img]:rounded-none`.
+  // m.className goes on the <figure>, last: a frame encloses the caption and the item wins.
+  // Reach the media itself with child variants, e.g. [&_img]:rounded-none.
 
   return (
     <figure className={cn(className, m.className)}>
@@ -37,8 +31,7 @@ export function ProjectMediaFigure({
           poster={m.poster}
           width={m.width}
           height={m.height}
-          // GIF-style clips autoplay muted + loop with no chrome; otherwise it's
-          // a normal click-to-play video with controls.
+          // autoplay = GIF-style: muted, looping, no controls.
           {...(m.autoplay
             ? { autoPlay: true, muted: true, loop: m.loop ?? true }
             : { controls: true, loop: m.loop })}

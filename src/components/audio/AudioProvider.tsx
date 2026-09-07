@@ -11,11 +11,7 @@ import {
 } from "react";
 import type { SynthEngine } from "./createSynthEngine";
 import { primeAudioContext } from "./primeAudioContext";
-import {
-  rehydrateThemeStore,
-  useResolvedSynthSettings,
-  useUIStore,
-} from "@/lib/store";
+import { rehydrateThemeStore, useResolvedSynthSettings } from "@/lib/store";
 
 type AudioContextValue = {
   unlocked: boolean;
@@ -32,37 +28,26 @@ export function useAudio() {
 }
 
 /**
- * Lazy audio provider: Tone.js is imported and the AudioContext started only on
- * explicit synth intent — a mapped synth key or opening the synth panel — not
- * on the first gesture anywhere. The synth is an easter egg, so a casual visitor
- * who only scrolls or clicks a link never pays the Tone bundle + audio-graph
- * cost. `unlock` is called from `useSynthControls` (mapped keys and panel open);
- * both paths run inside a real user gesture, so the browser's autoplay policy is
- * still satisfied.
+ * Lazy: Tone.js loads only on synth intent (mapped key or panel open),
+ * so casual visitors never pay for the bundle. `unlock` runs inside a gesture.
  */
 export function AudioProvider({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
   const engineRef = useRef<SynthEngine | null>(null);
   const unlockingRef = useRef<Promise<void> | null>(null);
 
-  // Pull persisted theme state out of localStorage once on mount.
-  // Skipping persist during SSR keeps useSyncExternalStore happy.
+  // Rehydrate after mount; persisting during SSR breaks useSyncExternalStore.
   useEffect(() => {
     rehydrateThemeStore();
   }, []);
 
   const settings = useResolvedSynthSettings();
-  const setAudioUnlocked = useUIStore((s) => s.setAudioUnlocked);
 
   const unlock = useCallback(async () => {
     if (engineRef.current) return;
     if (unlockingRef.current) return unlockingRef.current;
 
-    // Before the first await, while the caller's user gesture is still live:
-    // create and resume the raw AudioContext. iOS Safari refuses a resume()
-    // issued from the far side of the dynamic import below — the gesture's
-    // activation has expired by then — so the context has to start here and
-    // be handed to Tone once it loads.
+    // Before any await: iOS needs resume() inside the gesture.
     const rawContext = primeAudioContext();
 
     const run = (async () => {
@@ -74,7 +59,6 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       await Tone.start();
       engineRef.current = createSynthEngine(Tone, settings);
       setUnlocked(true);
-      setAudioUnlocked(true);
     })();
 
     unlockingRef.current = run;
@@ -83,14 +67,12 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
     } finally {
       unlockingRef.current = null;
     }
-  }, [settings, setAudioUnlocked]);
+  }, [settings]);
 
-  // Keep engine in sync with settings as user tweaks the panel.
   useEffect(() => {
     engineRef.current?.applySettings(settings);
   }, [settings]);
 
-  // Tear down on unmount.
   useEffect(() => {
     return () => {
       engineRef.current?.dispose();

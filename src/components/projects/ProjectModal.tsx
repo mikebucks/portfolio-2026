@@ -8,7 +8,7 @@ import { getLenisInstance } from "@/components/animation/lenisInstance";
 import { currentRoute, navigate, onRouteChange } from "@/lib/appRoute";
 import { ProjectDetail } from "./ProjectDetail";
 
-/** Resolve `/projects/<slug>` → a valid project slug, or null. */
+/** Slug from `/projects/<slug>`, or null if unknown. */
 function slugFromUrl(): string | null {
   const { slug } = currentRoute();
   if (!slug) return null;
@@ -17,38 +17,28 @@ function slugFromUrl(): string | null {
 
 type Phase = "enter" | "open" | "leave";
 
-// The cover's rise from the bottom — same length and curve as the intro
-// sequence's cream wipe (0.55s expo.out), so opening a case study reads as the
-// same gesture as the site revealing itself on load.
+// Cover rise matches the intro's cream wipe (0.55s expo.out).
 const OPEN_MS = 550;
 const CLOSE_MS = 320;
-// expo.out / expo.in as CSS curves, matching the GSAP eases the intro uses.
+// expo.out / expo.in as CSS curves.
 const EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)";
 const EASE_IN = "cubic-bezier(0.7, 0, 0.84, 0)";
 
-// How long after the cover starts rising the first content blocks begin their
-// cascade — mirrors the intro overlapping the headline into the tail of the
-// wipe rather than waiting for it to finish.
+// Cascade starts before the cover finishes rising, like the intro.
 const CASCADE_DELAY_S = 0.3;
 
-// The panel's cream, held short of opaque so the shader background bleeds
-// through it. The page's own content is faded out underneath (see the
-// `data-project-modal` effect below), so this is the shader and nothing else.
+// Held short of opaque so the shader bleeds through.
 const PANEL = "rgba(244, 241, 234, 0.95)";
 
 /**
- * URL-routed project lightbox. `/projects/<slug>` opens a full-viewport cream
- * panel that rises from the bottom of the screen; the content blocks then
- * cascade in top-to-bottom (offset + fade), and blocks below the fold play the
- * same reveal as they scroll into view. Timing matches the initial hero intro.
+ * URL-routed project lightbox. `/projects/<slug>` rises a cream panel from the
+ * bottom, then content blocks cascade in; timing matches the hero intro.
  */
 export function ProjectModal() {
-  // The hash's current target (source of truth).
+  // URL target (source of truth); `slug` lags it so the leave transition can play.
   const [target, setTarget] = useState<string | null>(null);
-  // Mounted slug — lags `target` so the leave transition can play.
   const [slug, setSlug] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("enter");
-  // The detail's scroll surface — the cascade queries its [data-reveal] blocks.
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const sync = useCallback(() => setTarget(slugFromUrl()), []);
@@ -59,7 +49,7 @@ export function ProjectModal() {
   }, [sync]);
 
   const close = useCallback(() => {
-    // Return to the projects section without stacking a history entry.
+    // No history entry.
     navigate("/projects", { replace: true });
     sync();
   }, [sync]);
@@ -77,9 +67,8 @@ export function ProjectModal() {
     }
   }, [target, slug]);
 
-  // Flip from the collapsed "enter" state to "open" so CSS transitions run from
-  // the committed initial state. A timeout (rather than rAF) keeps this firing
-  // even when the tab is backgrounded and rAF is paused.
+  // Flip enter → open after commit so CSS transitions run from the initial state.
+  // Timeout, not rAF: rAF pauses in background tabs.
   useEffect(() => {
     if (phase !== "enter" || !slug) return;
     if (prefersReducedMotion()) {
@@ -100,12 +89,8 @@ export function ProjectModal() {
 
     const lenis = getLenisInstance();
     lenis?.stop();
-    // Lock <html>, not <body>. globals.css gives <html> `overflow-y: scroll` so
-    // it owns the viewport scrollbar; hiding <body>'s overflow leaves that track
-    // painted but dead, right beside the panel's own scroll surface — two
-    // scrollbars. `scrollbar-gutter: stable` still reserves the gutter while the
-    // overflow is hidden, so this keeps the no-sideways-jump the gutter is there
-    // for.
+    // Lock <html>, not <body>: <html> owns the scrollbar (globals.css), and
+    // locking <body> leaves a dead second scrollbar beside the panel's.
     const root = document.documentElement;
     const prevOverflow = root.style.overflow;
     root.style.overflow = "hidden";
@@ -117,16 +102,8 @@ export function ProjectModal() {
     };
   }, [slug, close]);
 
-  // Pin the point the page scales toward, measured once per open. The page
-  // column spans the whole document, so its own center is far off screen; this
-  // puts the origin at the middle of the current viewport, making the page look
-  // like it recedes straight back behind the panel. Measured on mount only —
-  // by the time the phase flips to `open` the column is already mid-transform,
-  // and re-measuring would move the origin out from under the animation.
-  //
-  // Left in place afterwards rather than cleaned up: transform-origin is inert
-  // once the column is back to `transform: none`, and clearing it while the
-  // page is still scaling back would snap it sideways.
+  // Scale origin at viewport centre, measured once: re-measuring mid-transform shifts it.
+  // Never cleared — clearing while the page scales back snaps it sideways.
   useEffect(() => {
     if (!slug) return;
     const page = document.querySelector<HTMLElement>('[data-modal-hide="page"]');
@@ -135,17 +112,8 @@ export function ProjectModal() {
     document.body.style.setProperty("--modal-origin-y", `${Math.round(y)}px`);
   }, [slug]);
 
-  // Scale and fade the page's own content (hero, sections, header bar, footer)
-  // out while the panel is up. The panel is translucent so the shader reads
-  // through it; without this the page sections would read through it too.
-  // Released the moment the leave transition starts, so the page is back by the
-  // time the panel has finished sliding away. See globals.css for the rules
-  // this drives — including the matching durations that keep the page's
-  // retreat and the panel's rise on the same clock.
-  //
-  // Keyed on the `open` phase rather than merely being mounted, so the page
-  // starts receding on the same frame the panel starts rising — the `enter`
-  // phase is the panel's committed off-screen state, before anything moves.
+  // Fade the page out behind the translucent panel (rules in globals.css).
+  // Keyed on `open` so page and panel start moving on the same frame.
   useEffect(() => {
     if (phase === "open") {
       document.body.dataset.projectModal = "open";
@@ -157,10 +125,7 @@ export function ProjectModal() {
     };
   }, [phase]);
 
-  // Park every content block in its pre-reveal state (offset down, invisible)
-  // the moment the detail mounts. The scroll surface itself is still at
-  // opacity 0 during `enter`, so this can never flash — it just guarantees the
-  // cascade starts from a committed hidden state.
+  // Park blocks hidden on mount; the surface is opacity 0 during `enter`, so no flash.
   useEffect(() => {
     if (!slug || prefersReducedMotion()) return;
     const root = scrollRef.current;
@@ -172,11 +137,8 @@ export function ProjectModal() {
     });
   }, [slug]);
 
-  // The cascade. Once the cover is rising, blocks inside the initial viewport
-  // fly up into place top-to-bottom on the intro headline's timing (0.9s
-  // expo.out, 0.18s stagger, 24px offset). Everything below the fold waits on
-  // an IntersectionObserver and plays the same single-block reveal as it
-  // scrolls in — one motion vocabulary for the whole page.
+  // Cascade: in-viewport blocks stagger up on the intro headline's timing;
+  // below-fold blocks play the same reveal as they scroll in.
   useEffect(() => {
     if (phase !== "open" || prefersReducedMotion()) return;
     const root = scrollRef.current;
@@ -215,11 +177,8 @@ export function ProjectModal() {
             io?.unobserve(entry.target);
           }
         },
-        // The panel is the scroll container; trigger slightly inside the
-        // bottom edge so a block is moving as it enters, not after. The huge
-        // top margin keeps anything scrolled PAST still "intersecting" — a
-        // fast jump can put a block above the viewport between observations,
-        // and without this it would never fire and stay invisible.
+        // Trigger just inside the bottom edge. Huge top margin keeps blocks
+        // scrolled past still intersecting, else a fast jump leaves them invisible.
         { root, rootMargin: "100000px 0px -10% 0px" },
       );
       below.forEach((el) => io?.observe(el));
@@ -236,10 +195,7 @@ export function ProjectModal() {
 
   return (
     <div className="fixed inset-0 z-[120]" role="dialog" aria-modal="true">
-      {/* Cream cover: rises from the bottom of the screen to fill the viewport
-          (and slides back down on close) — the intro's cream wipe, played in
-          reverse direction. Translucent, with a constant backdrop blur, so the
-          shader reads through it softened wherever it has covered. */}
+      {/* Cream cover rising from the bottom — the intro wipe in reverse. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0"
@@ -260,23 +216,15 @@ export function ProjectModal() {
       <div
         ref={scrollRef}
         data-lenis-prevent
-        // `bleed-root`: the width a `full-bleed` figure measures against. This
-        // box excludes both scrollbars, so a bled image lands flush instead of
-        // overflowing sideways the way 100vw would.
-        //
-        // The surface itself only gates visibility: it snaps on for the open
-        // (the blocks are individually hidden, the cascade is theirs to play)
-        // and fades as one on leave, ahead of the cover sliding away.
-        className="absolute inset-0 overflow-y-auto bleed-root"
+        // Snaps visible on open (blocks hide themselves); fades as one on leave.
+        className="absolute inset-0 overflow-y-auto"
         style={{
           opacity: isOpen ? 1 : 0,
           transition:
             reduce || isOpen ? "none" : "opacity 140ms linear",
         }}
       >
-        {/* The wordmark at the top of the article is the way out — there's no
-            floating close button. It scrolls away with the content, so Escape
-            (bound above) stays the always-available exit. */}
+        {/* The wordmark is the exit; no close button. Escape stays always available. */}
         <ProjectDetail project={project} onBack={close} />
       </div>
     </div>

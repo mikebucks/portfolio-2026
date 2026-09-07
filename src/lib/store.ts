@@ -9,8 +9,6 @@ import {
 } from "@/components/webgl/materials/shaders/themes";
 import type { SynthSettings } from "@/lib/synthTypes";
 
-// Re-export the synth types so existing import sites (`@/lib/store`) keep
-// working without churn.
 export type {
   FilterType,
   LfoShape,
@@ -20,43 +18,19 @@ export type {
 
 type UIState = {
   synthPanelOpen: boolean;
-  audioUnlocked: boolean;
-  reducedMotion: boolean;
-  muted: boolean;
   toggleSynthPanel: () => void;
   setSynthPanel: (open: boolean) => void;
-  setAudioUnlocked: (v: boolean) => void;
-  setReducedMotion: (v: boolean) => void;
-  setMuted: (v: boolean) => void;
 };
 
 export const useUIStore = create<UIState>((set) => ({
   synthPanelOpen: false,
-  audioUnlocked: false,
-  reducedMotion: false,
-  muted: false,
   toggleSynthPanel: () =>
     set((s) => ({ synthPanelOpen: !s.synthPanelOpen })),
   setSynthPanel: (open) => set({ synthPanelOpen: open }),
-  setAudioUnlocked: (v) => set({ audioUnlocked: v }),
-  setReducedMotion: (v) => set({ reducedMotion: v }),
-  setMuted: (v) => set({ muted: v }),
 }));
 
-// ── Intro store ──────────────────────────────────────────────────────────────
-// Coordinates the first-load page-in animation across three separate React
-// trees that can't share refs: the cream reveal overlay + hero headline (in
-// HomeClient), the global header (in the root layout), and the CyclingWord roll
-// (deep in the hero). IntroSequence owns the master GSAP timeline and flips
-// these flags; the other pieces subscribe and react.
-//
-//   ready         — the shader painted its first real frame (or WebGL is
-//                   unavailable / a safety timeout elapsed). The cue to begin
-//                   the reveal. Set by InteractiveBackground.
-//   headlinePlay  — the timeline has reached the headline phase. The hero word
-//                   roll (CyclingWord) waits on this so it stays in sync with
-//                   the headline flying up instead of rolling under the cream.
-
+// Intro flags shared across React trees that can't share refs.
+// ready: shader painted (set by InteractiveBackground). headlinePlay: timeline reached the headline.
 type IntroStore = {
   ready: boolean;
   headlinePlay: boolean;
@@ -71,12 +45,7 @@ export const useIntroStore = create<IntroStore>((set) => ({
   setHeadlinePlay: () => set({ headlinePlay: true }),
 }));
 
-// ── Theme store ────────────────────────────────────────────────────────────
-// The canonical state is just the active `theme`. Each theme maps 1:1 to a
-// synth preset, so `resolveSettings(theme)` returns the full `SynthSettings`
-// consumed by the audio engine — the sound is edited directly in the preset's
-// `baseSettings`, with no macro layer on top.
-
+// Each theme maps 1:1 to a synth preset; resolveSettings(theme) gives the SynthSettings.
 type ThemeStore = {
   theme: ThemeId;
   setTheme: (theme: ThemeId) => void;
@@ -98,20 +67,13 @@ export const useThemeStore = create<ThemeStore>()(
     {
       name: "portfolio:theme",
       storage: createJSONStorage(() => localStorage),
-      // v2 dropped the old per-theme `macros` map. v3 renamed the theme ids to
-      // the seven Hermetic principles; `migrate` maps any old id to its new
-      // one so a returning visitor keeps their selection, then falls back to
-      // the default for anything unrecognized.
       version: 3,
-      // Skip auto-hydration — `persist` running during SSR breaks the
-      // useSyncExternalStore "stable server snapshot" contract and floods
-      // the console with React warnings. We rehydrate explicitly after
-      // mount via `rehydrateThemeStore` below.
+      // persist during SSR breaks useSyncExternalStore; rehydrateThemeStore runs after mount.
       skipHydration: true,
       partialize: (s) => ({ theme: s.theme }),
       migrate: (persisted) => {
         const raw = (persisted as { theme?: string } | undefined)?.theme;
-        // Old (pre-v3) id → Hermetic-principle id.
+        // pre-v3 ids
         const RENAMED: Record<string, ThemeId> = {
           cellular: "mind",
           aurora: "correspondence",
@@ -128,24 +90,10 @@ export const useThemeStore = create<ThemeStore>()(
   ),
 );
 
-// ── Synth tweak store ──────────────────────────────────────────────────────
-// The player's own adjustments, layered over whichever preset is active. Two
-// kinds, both session-only (deliberately not persisted — a preset should sound
-// like itself on a fresh visit):
-//
-//   octaveOffset — a global transpose added to the preset's `octave`. Stored as
-//     an offset rather than an absolute register so switching themes keeps the
-//     player's shift while each preset still contributes its own home register
-//     (Vibration lives two octaves down; the offset rides on top of that).
-//
-//   overrides — absolute values for the handful of parameters the panel's
-//     sliders expose. A parameter absent from the map means "use the preset's
-//     value". The map is cleared whenever the theme changes (see the
-//     subscription below the store), so every preset opens at its own
-//     defaults and a slider you moved belongs to the theme you moved it on.
+// Player tweaks over the active preset. Session-only, deliberately not persisted.
+// octaveOffset is relative so a theme switch keeps the shift; overrides clear on theme change.
 
-/** Bounds on the *effective* octave (preset + offset), keeping every mapped
- * note inside D1–C7 — audible, and on the piano roll. */
+/** Bounds on the effective octave (preset + offset): keeps notes in D1-C7. */
 export const OCTAVE_SHIFT_MIN = -2;
 export const OCTAVE_SHIFT_MAX = 2;
 
@@ -177,25 +125,12 @@ export const useSynthTweakStore = create<SynthTweakState>((set) => ({
     }),
 }));
 
-// A theme change hands every slider back to the new preset. Done here, at the
-// store level, rather than in the theme buttons so it holds for every path
-// that changes the theme — the panel's picker, the "chance" roll, cycleTheme,
-// and the persisted-theme rehydrate on load (a no-op then: nothing is set yet).
+// Store-level so every theme-change path resets the sliders.
 useThemeStore.subscribe((s, prev) => {
   if (s.theme !== prev.theme) useSynthTweakStore.setState({ overrides: {} });
 });
 
-/**
- * Hook: resolved SynthSettings for the active theme, with the player's tweaks
- * (octave shift, slider overrides) merged in. This is the one place preset and
- * player meet — the engine and every UI readout consume the merged result, so
- * they can't disagree.
- *
- * Selectors must return referentially stable values across calls; doing the
- * resolveSettings() call directly in the selector returns a fresh object on
- * every read and trips React's `getServerSnapshot should be cached` guard.
- * Pull the theme primitive, then memoize the resolution into a settings object.
- */
+/** Active preset merged with the player's tweaks. Memoized: selectors must return stable refs. */
 export function useResolvedSynthSettings(): SynthSettings {
   const theme = useThemeStore((s) => s.theme);
   const octaveOffset = useSynthTweakStore((s) => s.octaveOffset);
@@ -213,11 +148,7 @@ export function useResolvedSynthSettings(): SynthSettings {
   }, [theme, octaveOffset, overrides]);
 }
 
-/**
- * Mount once per app to read persisted localStorage state into the store.
- * Called from a top-level client component after mount so `persist` never
- * runs during SSR.
- */
+/** Call once after mount so `persist` never runs during SSR. */
 export function rehydrateThemeStore() {
   if (typeof window === "undefined") return;
   void useThemeStore.persist?.rehydrate();

@@ -10,5 +10,3 @@ export const SOCIALS: Social[] = [
   { label: "SoundCloud", href: "https://soundcloud.com/michael-bucks-1/tracks" },
   { label: "CV", href: "/MikeBucks2026.pdf" },
 ];
-
-export const CONTACT_EMAIL = "dangerbucks@gmail.com";

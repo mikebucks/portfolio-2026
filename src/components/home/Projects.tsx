@@ -16,16 +16,9 @@ import { headerOffset } from "@/components/animation/lenisInstance";
 const HOVER_SCALE = 1.05;
 const PARALLAX_MAX_PCT = 1.5;
 
-// Scroll-driven card scale. A card is at its largest and square-cornered once
-// its top edge reaches the finish line — a third of the way down the viewport
-// below the header — and stays that way above it; the further below the line
-// it sits, the smaller and rounder it is. Progress is 0 at the finish line and
-// 1 at the viewport's bottom edge, both figures below scale linearly with it.
-// The rest scale is per card: grown about its centre until its outer edge meets
-// the row's edge (10px inside the cream frame, or the row's max width). With
-// the columns pulled in 12.5% that's 1.25 on desktop; 1 on mobile, where there
-// is no room. The radius is written in the card's own (unscaled) pixels, so
-// what's SEEN is radius × scale — at the bottom, 91 × 0.7 ≈ 64px.
+// Scroll-driven card scale: progress 0 at the finish line, 1 at viewport
+// bottom. Rest scale grows each card until its outer edge meets the row's.
+// Radius is unscaled px, so seen radius = radius × scale.
 const SCROLL_FINISH = 0.33; // fraction of the viewport (below the header)
 const SCROLL_SCALE_MIN = 0.7; // at the bottom
 const SCROLL_SCALE_MAX = 1.2; // cap on the rest scale
@@ -41,11 +34,7 @@ export function Projects() {
 
   useScrollReveal(sectionRef);
 
-  // Scroll-driven scale + corner radius on each card's stage. Measured off the
-  // <li> (its layout box, which the stage's transform never moves) and written
-  // straight to style — nothing else touches the stage's transform, and four
-  // rect reads a frame is nothing. Lenis scrolls the window natively, so plain
-  // scroll events cover both smooth and native scrolling.
+  // Measured off the <li>, whose box the stage's transform never moves.
   useLayoutEffect(() => {
     const root = sectionRef.current;
     if (!root || prefersReducedMotion()) return;
@@ -70,8 +59,7 @@ export function Projects() {
     };
 
     update();
-    // Once more after first paint: the header publishes its offset from a
-    // post-paint effect, so the pass above measured against the bare viewport.
+    // Again after paint: the header publishes its offset post-paint.
     const raf = requestAnimationFrame(update);
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
@@ -177,8 +165,6 @@ export function Projects() {
         card.addEventListener("mouseenter", enter);
         card.addEventListener("mousemove", move);
         card.addEventListener("mouseleave", leave);
-        // Keyboard users on a hover-capable device have no hover: tabbing onto
-        // a card rolls its copy in the same way.
         card.addEventListener("focusin", rollIn);
         card.addEventListener("focusout", rollOut);
         cleanups.push(() => {
@@ -215,9 +201,7 @@ export function Projects() {
 
       <ul className="[--bleed:calc(var(--gutter)_-_20px)] grid md:grid-cols-2 gap-[10px] pt-[10px] md:pt-16 pb-[1px] -mx-[var(--bleed)] max-w-[calc(1600px_+_var(--gutter)*2_-_40px)]">
         {projects.map((p, i) => {
-          // Projects without a dedicated thumbnail lead with their first
-          // case-study image instead (projectImages puts the thumbnail first
-          // when there is one, so this is the same lookup either way).
+          // Thumbnail, or the first case-study image.
           const [thumbnail] = projectImages(p, 1);
           return (
           <li
@@ -227,7 +211,7 @@ export function Projects() {
               {
                 "--row": i + 1,
                 "--col": (i % 2) + 1,
-                // Left column paints over the right where the two overlap.
+                // Left column paints over the right.
                 "--z": i % 2 ? 1 : 2,
               } as CSSProperties
             }
@@ -253,9 +237,7 @@ export function Projects() {
 
               <div
                 data-copy
-                // Copy inset: a fixed 20px on mobile — the bleed there is
-                // zero (gutter 20px − 20px inset), which would put the title
-                // flush against the card's edge — and the bleed from md up.
+                // px-5 on mobile: --bleed is 0 there.
                 className="absolute inset-x-0 bottom-0 [--scrim-fade:5rem] pt-[var(--scrim-fade)] pb-4 md:pb-8 px-5 md:px-[var(--bleed)] flex flex-col gap-1 bg-[linear-gradient(to_top,#fff_0%,rgba(244,241,234,0.9)_calc(100%_-_var(--scrim-fade)),rgba(244,241,234,0)_100%)]"
               >
                 <div className="overflow-hidden">

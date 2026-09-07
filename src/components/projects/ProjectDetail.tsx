@@ -6,7 +6,6 @@ import { ChiselWorkflow } from "./graphics/ChiselWorkflow";
 import { ProjectMediaFigure } from "./ProjectMediaList";
 import { ProjectStatGrid } from "./ProjectStatGrid";
 
-/** Bespoke animated illustrations, keyed by a `graphic` block's `id`. */
 const GRAPHICS: Record<
   ProjectGraphic["id"],
   (props: { className?: string }) => React.ReactNode
@@ -16,26 +15,14 @@ const GRAPHICS: Record<
   "chisel-workflow": ChiselWorkflow,
 };
 
-/**
- * The reading column — narrower than the article itself, so copy holds a ~75
- * character measure while screenshots, video and stat grids run to the full
- * panel width. Everything that is words gets this; everything that is a picture
- * doesn't.
- */
+/** Reading column (~75ch) for text; media runs full width. */
 const COLUMN = "max-w-[49.5rem]";
 
-/** Vertical rhythm between blocks — one gap for everything. */
 function gapBefore(prev: ProjectBlock | undefined) {
   return prev ? "mt-14" : "";
 }
 
-/**
- * Cream-themed (dark-text) project detail body, used inside the project modal.
- *
- * Pass `onBack` to put the wordmark at the top of the article as the way out of
- * the modal — it replaces a floating close affordance, so the exit lives in the
- * reading column where the eye already starts.
- */
+/** Cream-themed detail body for the modal. `onBack` makes the top wordmark the exit. */
 export function ProjectDetail({
   project,
   onBack,
@@ -45,18 +32,14 @@ export function ProjectDetail({
 }) {
   const blocks = project.content;
 
-  // `data-reveal` marks each element as one step of the modal's entrance
-  // cascade (offset down + faded until ProjectModal reveals it — staggered on
-  // open for what's in the viewport, on scroll for everything below).
+  // data-reveal: one step of ProjectModal's entrance cascade.
 
   return (
     <article className="mx-auto max-w-6xl gutter-x pt-14 pb-24">
       <header>
         {onBack && (
-          // A real href so middle-click and "copy link address" still work; the
-          // click itself is intercepted so the modal plays its leave transition
-          // instead of hard-navigating. -ml-2.5 cancels nav-link's own inline
-          // padding, keeping the wordmark flush with the column like the header's.
+          // Real href keeps middle-click working; click is intercepted for the leave transition.
+          // -ml-2.5 cancels nav-link's inline padding.
           <a
             data-reveal
             href="/projects"
@@ -99,8 +82,7 @@ export function ProjectDetail({
           const gap = gapBefore(blocks[i - 1]);
 
           return block.type === "text" ? (
-            // A <div> (not <p>) so block-level rich text like <ol>/<ul> is valid
-            // markup — a <p> would be force-closed before a list.
+            // <div> not <p>: a <p> is force-closed before block html like <ol>.
             <div
               key={i}
               data-reveal
@@ -110,18 +92,15 @@ export function ProjectDetail({
                 "text-lg leading-[1.8] text-black/80 md:text-[21px]",
                 "[&_a]:underline [&_strong]:font-semibold [&_strong]:text-black",
                 "[&_ol]:list-decimal [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:pl-6 [&_li]:mt-2 [&_li]:pl-1 [&_li]:marker:text-black/40",
-                // Section headings hold one size across breakpoints — the title
-                // shrinks on mobile and meets them, which is the whole ramp.
+                // h2 holds one size across breakpoints; the title shrinks to meet it.
                 "[&_h2]:mb-6 [&_h2]:mt-10 [&_h2]:text-[28px] [&_h2]:font-medium [&_h2]:leading-[1.3] [&_h2]:text-black md:[&_h2]:mb-8 md:[&_h2]:mt-14",
                 "[&_h2:first-child]:mt-0",
               )}
-              // Trusted, in-repo authored copy (see ProjectBlock) — not user input.
+              // Trusted in-repo copy, not user input.
               dangerouslySetInnerHTML={{ __html: block.html }}
             />
           ) : block.type === "stats" ? (
-            // Wrapped rather than tagged: these components own their root
-            // classNames, and a wrapper keeps the reveal transform off any
-            // layout they do internally. The gap margin collapses through it.
+            // Wrapper keeps the reveal transform off the component's own layout.
             <div key={i} data-reveal>
               <ProjectStatGrid stats={block} className={gap} />
             </div>

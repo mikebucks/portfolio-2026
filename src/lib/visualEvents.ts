@@ -1,19 +1,11 @@
-/**
- * Tiny event bus connecting the audio system to the visual layer.
- * High-frequency values live in a mutable ref-like object so the render
- * loop can read them without triggering React updates.
- */
+// Audio-to-visual event bus. Per-frame values live in a mutable object
+// so the render loop reads them without React updates.
 
 export type NoteOnEvent = {
   type: "note_on";
-  /** The sounding pitch, after the engine's octave transpose ("D4"). */
+  /** Sounding pitch after octave transpose ("D4"). */
   note: string;
-  /**
-   * The note as the player named it, before the transpose ("D3" for the `a`
-   * key at any octave). Colour belongs to this, not to `note`: a key keeps its
-   * palette colour wherever the octave shift parks it, even when the shifted
-   * pitch lands exactly on another key's home note.
-   */
+  /** Key as named before transpose ("D3"); colour keys off this, not `note`. */
   sourceNote: string;
   frequency: number;
   velocity: number; // 0..1
@@ -36,7 +28,6 @@ export type VisualEvent = NoteOnEvent | NoteOffEvent | SettingEvent;
 
 type Listener = (e: VisualEvent) => void;
 
-/** Shared store of values the render loop reads each frame. */
 export type VisualState = {
   pointer: [number, number]; // normalized -1..1, smoothed target
   pointerImpulse: number; // 0..1, decays — bumped by pointer velocity
@@ -48,7 +39,6 @@ export type VisualState = {
   envelope: number; // 0..1 rough envelope follower
   frequency: number; // Hz of most recent note
   velocity: number; // 0..1 of most recent note
-  filterCutoff: number; // normalized 0..1
   reactivity: number; // 0..1 user-controlled
 };
 
@@ -63,7 +53,6 @@ export const visualState: VisualState = {
   envelope: 0,
   frequency: 0,
   velocity: 0,
-  filterCutoff: 0.6,
   reactivity: 0.7,
 };
 
@@ -76,9 +65,8 @@ export const visualBus = {
       visualState.envelope = Math.max(visualState.envelope, e.velocity);
       visualState.frequency = e.frequency;
       visualState.velocity = e.velocity;
-    } else if (e.type === "setting") {
-      if (e.key === "filterCutoff") visualState.filterCutoff = e.value;
-      if (e.key === "reactivity") visualState.reactivity = e.value;
+    } else if (e.type === "setting" && e.key === "reactivity") {
+      visualState.reactivity = e.value;
     }
     for (const l of listeners) l(e);
   },
@@ -88,9 +76,8 @@ export const visualBus = {
   },
 };
 
-/** Call from RAF to decay transient values. */
+/** Decay transients; dt in seconds. */
 export function tickVisualState(dt: number) {
-  // dt in seconds
   visualState.noteImpulse = Math.max(0, visualState.noteImpulse - dt * 2.5);
   visualState.envelope = Math.max(0, visualState.envelope - dt * 1.2);
   visualState.pointerImpulse = Math.max(
@@ -100,7 +87,6 @@ export function tickVisualState(dt: number) {
   visualState.clickImpulse = Math.max(0, visualState.clickImpulse - dt * 0.6);
 }
 
-/** Bump from outside (e.g. pointer velocity, click) without going through the event bus. */
 export function bumpPointerImpulse(amount: number) {
   visualState.pointerImpulse = Math.min(
     1,
@@ -108,14 +94,7 @@ export function bumpPointerImpulse(amount: number) {
   );
 }
 
-/**
- * Fire a click impulse at a normalized (-1..1) screen position.
- *
- * `strength` scales how loudly the shader answers without touching the impulse,
- * which is also the wavefront's clock — themes derive the expanding radius from
- * its decay, so a quieter event has to arrive quiet rather than pre-expanded.
- * Notes use it to raise a gentler swell than a deliberate click.
- */
+/** Click impulse at a -1..1 position. `strength` scales the response; impulse is also the wavefront clock. */
 export function triggerClick(x: number, y: number, strength = 1) {
   visualState.clickPos[0] = x;
   visualState.clickPos[1] = y;
@@ -123,11 +102,7 @@ export function triggerClick(x: number, y: number, strength = 1) {
   visualState.clickStrength = strength;
 }
 
-// Set while the hero headline is rolling. The roll drives its own background
-// pulses (CyclingWord calls triggerClick as each word lands), and a pointer
-// click landing on top of those stacks a second wavefront into the first — the
-// combination is what reads as too much. Only the pointer handler consults
-// this; the headline's own pulses are deliberate and go straight through.
+// Set while the hero headline rolls: its own pulses plus a click stack wavefronts.
 let pointerClicksLocked = false;
 
 export function setPointerClicksLocked(locked: boolean) {

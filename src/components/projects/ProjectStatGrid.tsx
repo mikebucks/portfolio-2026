@@ -9,33 +9,16 @@ const COLUMNS: Record<number, string> = {
   4: "sm:grid-cols-2 lg:grid-cols-4",
 };
 
-/**
- * The two directions a stat can move. Each pairs a glyph with a color, and the
- * glyph is what actually carries the meaning — the color only reinforces it, so
- * the arrow still reads for a colorblind viewer or in forced-colors. The
- * screen-reader label does the same job for anyone who can't see either.
- *
- * These greens and reds are deeper than a UI "success"/"danger" would be: the
- * tile is a translucent white over cream, and the brighter steps only clear 3:1
- * against it. At these values both directions clear 4.5:1 and land within
- * 0.1 of each other, so neither arrow reads as the louder of the pair.
- */
+// Glyph carries the meaning; colour only reinforces it. These deep green/red
+// clear 4.5:1 on the translucent tile and match each other's contrast.
 const TRENDS = {
   up: { Glyph: ArrowUp, color: "text-[#00780f]", label: "Trending up" },
   down: { Glyph: ArrowDown, color: "text-[#c02d2d]", label: "Trending down" },
 } as const;
 
 /**
- * A project's headline numbers as a dashboard-style stat grid.
- *
- * The tiles are separated by the grid's own `gap-px` showing the container's
- * hairline through — one shared 1px rule between neighbours rather than a
- * border per tile, so nothing doubles up where two tiles meet or wraps to a
- * second row.
- *
- * Tiles are translucent white, not opaque: the modal's cream panel is itself
- * held short of opaque so the shader reads through it, and a solid tile would
- * punch three flat rectangles out of that.
+ * Headline numbers as a stat grid. gap-px shows the container hairline between
+ * tiles (no doubled borders); tiles stay translucent so the shader reads through.
  */
 export function ProjectStatGrid({
   stats,
@@ -58,21 +41,15 @@ export function ProjectStatGrid({
           const trend = item.trend && TRENDS[item.trend];
 
           return (
-            // Padding scales with the type: at the old p-4 the 44px figure sat
-            // almost on the hairline.
+            // p-5: at p-4 the 44px figure sat on the hairline.
             <div key={i} className="bg-white/60 p-5 md:p-6">
               <dt className="text-lg leading-snug text-black md:text-[21px]">
                 {item.label}
               </dt>
-              {/* The figure reuses the article title's step rather than inventing
-                one — the grid never sits next to the title, so the two never
-                compete, and the ramp stays four sizes wide instead of five. */}
+              {/* Reuses the title's type step; keeps the ramp at four sizes. */}
               <dd className="text-[32px] font-semibold leading-[1.3] text-black md:text-[44px]">
-                {/* The arrow trails the figure rather than leading it: a leading
-                  glyph would indent this tile's number and break the left edge
-                  the figures share across the row. Sized in `em` so it tracks
-                  the figure through the breakpoint, and heavier-stroked than
-                  lucide's default, which goes wispy at this size. */}
+                {/* Arrow trails the figure to keep the row's shared left edge.
+                  em-sized to track the breakpoint; stroke 3 as the default goes wispy. */}
                 <span className="mt-1 inline-flex items-baseline gap-[0.15em]">
                   {trend && (
                     <>

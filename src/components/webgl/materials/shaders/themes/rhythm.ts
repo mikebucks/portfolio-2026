@@ -1,58 +1,10 @@
 import { NOTE_HUE_GLSL } from "./palette";
 
 /**
- * Rhythm — a row of pendulum bobs hangs on hair-thin strings that leave the
- * top edge of the frame and spread edge to edge. Every bob swings left↔right in perfect
- * unison — they always reach their extremes at the same instant, so the row
- * reads as one shared pulse and never drifts into the order→chaos→order of a
- * classic pendulum wave. Laid over that shared swing is a second motion: each
- * bob rides up and down, but phase-offset column to column, so a wave travels
- * sideways through the row while the whole rack sways as one.
- *
- * "The measure of the swing to the right is the measure of the swing to the
- * left; rhythm compensates." Both motions are pure sines centred on their rest
- * position, so the swing is exactly equidistant left and right, and the wave
- * exactly equidistant up and down — the symmetry is guaranteed by construction,
- * at every instant, whatever the tempo or amplitude is doing. That guarantee is
- * the point of this theme; nothing below is allowed to break it.
- *
- * The keyboard drives the swing. uShaderTime is a monotonic phase clock that
- * advances faster while notes sound, so playing speeds the swing up without ever
- * stepping the phase backward — which is exactly why the sine stays symmetric no
- * matter how the tempo changes. A slow floor of real time sits under it so the
- * rack keeps a gentle sway at rest. Velocity opens the swing wider and lifts the
- * wave; each note flares the bobs.
- *
- * At rest the whole rack is monochrome: near-white bobs and 1px white strings
- * on near-black, high contrast and colourless. Colour belongs to the keyboard —
- * playing a note washes the shared palette across the row (warmed toward the
- * pitch sounding) and it drains back to white as the note decays. A press
- * lands on the bobs themselves: the discs flush toward the played pitch's
- * colour and swell slightly, easing back to small white points with the
- * envelope.
- *
- * Macros:
- *   x  Swing — lateral travel of the whole rack, css-relative
- *   y  Wave  — height of the travelling up/down wave
- *   z  Tempo — base rate of the swing/wave clock (notes accelerate it further)
- *   w  Glow  — bob brightness and how long the phosphor trail persists
- *
- * Synth faders (uSynth, each -1..1 with 0 = the preset's own position, so the
- * resting look is untouched until a fader moves):
- *   x  Volume — how many pendulums hang in the row (uPendCount, 8..32, 26 at
- *               the preset). The row always spans edge to edge, so turning up
- *               compresses it and each newcomer slides in from the right edge
- *               while fading up.
- *   y  Cutoff — focus: bright, crisp cores and strings when open; dim, soft
- *               and wide when closed. A low-pass filter, drawn.
- *   z  Reverb — wash: the halos spread and the note's colour and energy
- *               linger longer (an exponent on the envelope); the phosphor
- *               trail reaches further back.
- *   w  Delay  — how long each column lags its neighbour. The travelling wave
- *               runs on its own clock (uWaveClock, integrated in the render
- *               loop) whose RATE the fader sets — not its wavelength, which
- *               would whip the far columns and run their phase backward. The
- *               clock only ever advances, so the wave keeps its symmetry.
+ * Rhythm — a row of pendulum bobs on 1px strings from the top edge, white at rest.
+ * Locked: unison swing, vertical travelling wave, always equidistant (pure sines
+ * on monotonic clocks), notes drive tempo. Colour comes only from the keyboard.
+ * Macros: x swing, y wave height, z tempo, w glow. Faders: x count, y focus, z wash, w wave rate.
  */
 export const rhythmFragment = /* glsl */ `
 precision highp float;
@@ -75,42 +27,28 @@ uniform sampler2D uWave;
 uniform vec4  uMacros;
 uniform vec4  uNoteFreqNorms;
 uniform vec4  uNoteAmts;
-// Spring-eased formation amount from the render loop: 0 = resting wave, 1 =
-// gathered into the mandala. Overshoots slightly past both ends (the spring),
-// and holds near 1 for a beat after the last note so a quick note still reads.
+// Spring-eased 0 = wave, 1 = mandala; overshoots both ends, holds after the last note.
 uniform float uFormMorph;
-// Synth fader offsets from the preset — see the header.
 uniform vec4  uSynth;
-// Eased, continuous pendulum count set by the volume fader. An even integer
-// at rest (8..32); fractional only while it eases between two counts.
+// Eased count, 8..32; fractional only while easing.
 uniform float uPendCount;
-// x: the travelling wave's own monotonic phase clock, integrated in the render
-// loop so the delay fader can change its rate without stepping any column's
-// phase backward. y: the current rate factor, so lagged (trail) positions can
-// be re-evaluated on the same clock.
+// x: wave's monotonic phase clock (JS-integrated), y: its current rate.
 uniform vec2  uWaveClock;
 
 ${NOTE_HUE_GLSL}
 
-// Upper bound on the row. The live count arrives in uPendCount; the loop runs
-// to this fixed bound and breaks early, so cost scales with the actual count
-// and the worst case is bounded whatever the uniform says.
 const float NPEND_MAX = 32.0;
 const float PI    = 3.14159265;
 const float TAU   = 6.28318531;
 
-// The up/down wave runs a little faster than the swing, so the travelling crest
-// reads as its own motion against the shared sway rather than locking to it.
+// Wave runs faster than the swing so the crest reads as its own motion.
 const float WAVE_SPEED = 1.5;
 
-// One cycle of the synth's live output, repeat-wrapped, 0.5 == silence. Used to
-// give each bob a little timbre-driven shimmer so the glow answers to the sound
-// and not just the envelope.
+// One cycle of the synth's live output, 0.5 == silence.
 float wave(float x) {
   return texture2D(uWave, vec2(x, 0.5)).r * 2.0 - 1.0;
 }
 
-// Distance from point p to segment a-b, for drawing a string as a thin capsule.
 float segDist(vec2 p, vec2 a, vec2 b) {
   vec2 ab = b - a;
   vec2 ap = p - a;
@@ -118,31 +56,20 @@ float segDist(vec2 p, vec2 a, vec2 b) {
   return length(ap - ab * h);
 }
 
-// The audio formation a bob morphs toward while notes sound: two concentric
-// mandala rings that spin in opposite directions. Rather than mapping the top
-// pivots to ring slots in order (which just fans the strings out), the pivots
-// are paired OUTSIDE-IN and crossed: the far-left and far-right pivots go to
-// adjacent slots straddling the top, then the next pair inward, and so on. The
-// left pivot of each pair swings to the right of the ring and the right pivot to
-// the left, so strings from opposite ends of the rail sweep across the centre
-// and intersect — a symmetric string-art web. Pairs alternate between the two
-// rings (even pairs → outer ring, odd → inner), which counter-rotate. N is the
-// row's (even) pendulum count; at 26 the rings hold 14 and 12 dots.
+// Mandala: two counter-rotating rings. Pivots paired outside-in and crossed
+// (left pivot → right side) so strings intersect. Even pairs outer, odd inner. N even.
 vec2 formationPos(float i, float N, vec2 C, float rIn, float rOut) {
-  float last = N - 1.0;                         // 25 at N = 26
-  float outerCnt = 2.0 * ceil(N * 0.25);        // even pairs → outer ring (14)
-  float innerCnt = N - outerCnt;                //  odd pairs → inner ring (12)
-  float p    = min(i, last - i);                // 0..12 pair index (0 = the ends)
-  float side = i <= last - i ? -1.0 : 1.0;      // left pivot → right side, v.v.
-  float outer = mod(p, 2.0) < 0.5 ? 1.0 : 0.0;  // even pairs ride the outer ring
-  float q    = floor(p * 0.5);                  // the pair's index within its ring
-  float cnt  = outer > 0.5 ? outerCnt : innerCnt; // dots on this ring
-  float off  = (q + 0.5) * (TAU / cnt);         // symmetric offset from the top
+  float last = N - 1.0;
+  float outerCnt = 2.0 * ceil(N * 0.25);
+  float innerCnt = N - outerCnt;
+  float p    = min(i, last - i);                // pair index, 0 = the ends
+  float side = i <= last - i ? -1.0 : 1.0;
+  float outer = mod(p, 2.0) < 0.5 ? 1.0 : 0.0;
+  float q    = floor(p * 0.5);                  // index within its ring
+  float cnt  = outer > 0.5 ? outerCnt : innerCnt;
+  float off  = (q + 0.5) * (TAU / cnt);
   float r    = outer > 0.5 ? rOut : rIn;
-  float dir  = outer > 0.5 ? -1.0 : 1.0;        // rings counter-rotate
-  // Spin phase: a slow real-time floor plus uShaderTime, whose rate spikes on
-  // each note strike and decays with the impulse — so the rings whirl fastest
-  // right after a key press and visibly decelerate as the note dies.
+  float dir  = outer > 0.5 ? -1.0 : 1.0;
   float ang  = PI * 0.5 + side * off + dir * (uTime * 0.25 + uShaderTime * 2.4);
   return C + r * vec2(cos(ang), sin(ang));
 }
@@ -155,112 +82,68 @@ void main() {
 
   float aspect = uResolution.x / uResolution.y;
 
-  // Work in an isotropic space where one unit is one frame-height on both axes,
-  // so bobs stay round and strings keep their thickness on any canvas. x runs
-  // 0..aspect, y runs 0..1 with 0 at the bottom.
+  // Isotropic space: x 0..aspect, y 0..1 bottom-up.
   vec2 P = vec2(vUv.x * aspect, vUv.y);
-
-  // One device pixel expressed in P-units, so line widths can be set in pixels.
   float pxU = 1.0 / uResolution.y;
 
-  // ── Synth faders ────────────────────────────────────────────────────────────
-  // Every factor here is exactly 1 (and every exponent exactly 1) at rest, so
-  // an untouched fader leaves the frame as it was. Hoisted out of the loop.
+  // Faders: every factor and exponent is exactly 1 at rest.
   float fCut = uSynth.y;
   float fRev = uSynth.z;
-  // Cutoff → focus. Brightness of everything drawn, and the anti-aliasing width
-  // of the cores — a closed filter softens the discs into dim, blurred spots.
   float bright = 1.0 + 0.6 * fCut;                    // 0.4 .. 1.6
   float soften = 1.0 + max(-fCut, 0.0);               // core AA width ×1 .. ×2
-  // Reverb → wash. How far the halos spread, and how long a note's energy and
-  // colour hang on: an exponent below 1 holds the decaying envelope near full
-  // for longer, above 1 drops it sooner — a tail, or a dry room.
   float spread = 1.0 + 0.6 * fRev;                    // halo width 0.4 .. 1.6
-  float linger = 1.0 / (1.0 + 0.7 * fRev);            // exponent 0.59 .. 3.3
+  float linger = 1.0 / (1.0 + 0.7 * fRev);            // envelope exponent 0.59 .. 3.3
   float env    = pow(max(uEnvelope, 0.0), linger);
   vec4  amts   = pow(max(uNoteAmts, vec4(0.0)), vec4(linger));
-  // Volume → count. The formation pairs pivots outside-in, which needs an even
-  // count; while the count eases between two even targets, round it.
+  // Formation pairs pivots outside-in, so it needs an even count.
   float N = 2.0 * floor(uPendCount * 0.5 + 0.5);
 
-  // ── The shared clock ────────────────────────────────────────────────────────
-  // One monotonic phase for the whole rack. The real-time floor keeps a gentle
-  // sway alive at rest; uShaderTime carries the note-driven acceleration and,
-  // being monotonic, only ever speeds the swing up or slows it — it never steps
-  // the phase back, which is what keeps sin(phase) an exactly symmetric swing.
-  // The travelling wave rides its own clock, integrated in the render loop from
-  // the same increments (× WAVE_SPEED × the delay fader's rate) — see uWaveClock.
+  // Monotonic phase: notes only speed it up, never step back, so sin stays symmetric.
   float drive = 2.6 * (0.55 + 0.9 * mTempo);
   float phase = uTime * 0.78 + uShaderTime * drive;
   float wPhase = uWaveClock.x;
 
-  // ── Input energy ────────────────────────────────────────────────────────────
-  // Smoothed on the JS side (uEnvelope, here reshaped by the reverb fader) plus
-  // the instantaneous strike, shaped so the tail of a note still reads. Opens
-  // the swing, lifts the wave, and — as colourAmt below — is the ONLY thing
-  // that brings colour into the frame.
   float energy = clamp(uNoteOn * max(uVelocity, 0.4) + env * 0.7, 0.0, 1.4)
                * (0.5 + 0.5 * uReactivity);
 
-  // Colour presence. Zero at rest → the rack is pure white; a note ramps it in
-  // and it drains back as the note decays. Nothing but sounding notes moves it.
+  // Only sounding notes bring colour in.
   float colorAmt = clamp(energy, 0.0, 1.0);
 
-  // ── Rack geometry ───────────────────────────────────────────────────────────
-  // Pivots sit on the very top edge and span the full width, so the outermost
-  // strings reach the left and right edges of the canvas and every string runs
-  // clear to the top. No rail — the strings simply leave the top edge.
-  float pivotY = 1.0;                     // top edge of the canvas
-  float restY  = 0.5;                     // baseline the bobs hang to and wave around (vertically centred)
+  float pivotY = 1.0;                     // top edge
+  float restY  = 0.5;
   float sp     = aspect / max(uPendCount - 1.0, 1.0); // edge-to-edge spacing
-  float x0     = 0.0;                     // first string on the left edge
+  float x0     = 0.0;
 
-  // Lateral travel of the WHOLE rack, identical for every bob (unison swing).
-  // Because they all share it, the bobs translate as one rigid row and never
-  // collide however wide the swing gets — so amplitude is set directly rather
-  // than off the (now tighter) spacing, and stays visible at 26 across.
+  // Unison swing: whole rack translates together, so amplitude is independent of spacing.
   float swingAmp = (0.045 + 0.05 * mSwing) * (1.0 + 0.6 * energy);
   float swingX   = swingAmp * sin(phase);
 
-  // Height of the travelling wave and how tightly it's wound across the row.
-  // WAVE_K holds ~2.5 wavelengths across the rack whatever the count is, so
-  // adding pendulums just samples the same wave more finely — a smoother sine
-  // of dots.
+  // WAVE_K holds ~2.5 wavelengths across the rack at any count.
   float waveAmp = (0.055 + 0.09 * mWave) * (1.0 + 0.5 * energy);
   float WAVE_K  = TAU * 2.5 / uPendCount;
 
-  // Bulb radius at full size (under the cursor / in formation). Kept small so
-  // the note swell below has somewhere obvious to go — a pressed bob grows
-  // past this to ~1.5×, which is the visible "reacting" beat.
+  // Full-size bulb radius; kept small so the note swell has headroom.
   float bobR = 0.0085;
 
-  // Cursor in the isotropic P-space, for proximity-driven bulb sizing. uPointer
-  // rests at its off-screen sentinel (-9,-9) until the first move, which lands
-  // far from every bulb — so with no cursor the whole rack sits at minimum size.
+  // uPointer sentinel (-9,-9) lands far from every bulb, so no cursor = minimum size.
   bool  hasPtr = uPointer.x > -1.5;
   vec2  ptrP   = vec2((uPointer.x * 0.5 + 0.5) * aspect, uPointer.y * 0.5 + 0.5);
-  float reach  = 0.28;                      // spotlight radius the bulb size fades over
+  float reach  = 0.28;                      // spotlight radius
 
-  // ── Audio formation ─────────────────────────────────────────────────────────
-  // While notes sound the bobs leave the wave and gather into two counter-
-  // spinning mandala rings, then melt back. The amount (with its hold-after-note
-  // and spring overshoot) is computed in the render loop and arrives as
-  // uFormMorph. The wave breaking (strings crossing) is intended.
-  vec2  figC   = vec2(aspect * 0.5, 0.5);   // figure centre
-  float figRin  = 0.19;                     // inner ring radius
-  float figRout = 0.34;                     // outer ring radius
+  // Mandala formation; strings crossing is intended.
+  vec2  figC   = vec2(aspect * 0.5, 0.5);
+  float figRin  = 0.19;
+  float figRout = 0.34;
   float morph  = uFormMorph;
-  float morphC = clamp(morph, 0.0, 1.0);    // clamped copy for size/trail
+  float morphC = clamp(morph, 0.0, 1.0);
 
-  // ── Accumulate the row ──────────────────────────────────────────────────────
-  vec3  bobCol   = vec3(0.0);   // coloured glow (halo)
-  vec3  coreCol  = vec3(0.0);   // crisp discs — white at rest, note-coloured
+  vec3  bobCol   = vec3(0.0);   // halo
+  vec3  coreCol  = vec3(0.0);   // crisp discs
   float bobGlow  = 0.0;         // total, for the note flash
   vec3  trailCol = vec3(0.0);
   float filament = 0.0;
 
-  // Where the sounding pitch(es) sit on the palette, so a played note warms the
-  // whole ribbon toward that colour. Summed once, reused per bob.
+  // Played pitch on the palette, summed once.
   vec3  playAcc = vec3(0.0);
   float playW   = 0.0;
   for (int v = 0; v < 4; v++) {
@@ -274,59 +157,40 @@ void main() {
 
   for (float i = 0.0; i < NPEND_MAX; i += 1.0) {
     if (i >= ceil(uPendCount)) break;
-    // While the count eases up, the newest bob's x = i·sp still lies beyond
-    // the right edge; it fades up as it slides into frame, and out again the
-    // other way. Everything it draws is weighted by w.
+    // Newest bob fades up as it slides in from the right edge.
     float w  = clamp(uPendCount - i, 0.0, 1.0);
     float fi = i / max(uPendCount - 1.0, 1.0);   // 0..1 across the row
 
     float px    = x0 + i * sp;
     vec2  pivot = vec2(px, pivotY);
 
-    // Vertical wave: its own slightly faster clock, offset per column so the
-    // crest travels. sin() keeps it exactly equidistant up/down.
     float wy      = waveAmp * sin(wPhase + i * WAVE_K);
     vec2  sineBob = vec2(px + swingX, restY + wy);
 
-    // Blend from the resting wave toward the mandala. morph can overshoot past
-    // 0 and 1 (the spring), so this extrapolates a touch beyond both ends.
+    // morph overshoots 0..1 (spring), so this extrapolates slightly.
     vec2  bob = mix(sineBob, formationPos(i, N, figC, figRin, figRout), morph);
 
-    // Bulb size tracks cursor proximity: full radius when the cursor sits right
-    // on the bulb, shrinking to an eighth as it moves away (and at rest, with no
-    // cursor at all). A Gaussian spotlight keeps the falloff smooth.
+    // Bulb size: full under the cursor, an eighth away from it.
     float pd    = hasPtr ? length(bob - ptrP) : 1e3;
     float prox  = exp(-(pd * pd) / (reach * reach));
-    // Bulbs also bloom while a formation is held — but only to just over half
-    // size, so the spinning figure stays a constellation of points and the
-    // note swell below still has visible headroom on top.
+    // 0.55: formation blooms only to half size so the note swell has headroom.
     float sizeK = max(mix(0.125, 1.0, prox), morphC * 0.55);
-    // Notes swell every bulb to 3× at the strike. Rides uNotePulse — the same
-    // impulse that sets the spin rate — so the shrink back runs on exactly the
-    // timer the ring deceleration runs on: hit hard, ease off together.
+    // uNotePulse also sets spin rate, so swell and deceleration share a timer.
     float br    = bobR * sizeK * (1.0 + 2.0 * uNotePulse);
 
-    // The glow colour: white at rest, ramping to the row's palette position
-    // (warmed toward the pitch played) only as a note sounds. The crisp core is
-    // kept white separately, so playing tints the halo, not the white-hot centre.
     vec3 ribbon = noteHue(fract(fi + uTime * 0.012));
     ribbon = mix(ribbon, playHue, playAmt);
     vec3 hue = mix(vec3(1.0), ribbon, colorAmt);
 
-    // A touch of live-waveform shimmer, sampled at this bob's column, so the
-    // glow carries the timbre and not just a smooth envelope.
+    // Live-waveform shimmer so the glow carries timbre.
     float shim = 1.0 + 0.18 * wave(fi + phase * 0.05) * (0.3 + energy);
 
-    // --- string: ~1px white line from pivot to bob ---
+    // string: ~1px
     float ds = segDist(P, pivot, bob);
     float fl = 1.0 - smoothstep(0.6 * pxU, 1.6 * pxU, ds);
     filament += fl * w;
 
-    // --- phosphor trail: a short dim arc of the bob's recent positions ---
-    // Re-evaluate the bob at a few lagged phases; nearer samples are brighter.
-    // The reverb fader stretches the lag (a longer smear) and lifts it. The
-    // wave term lags on the wave's own clock, scaled by its current rate so
-    // the trail follows the same path the bob actually took.
+    // phosphor trail: lagged positions. Wave lag scaled by its rate so the trail follows the real path.
     float lagK = 0.16 * (1.0 + 0.6 * fRev);
     float sm = 0.0;
     for (float k = 1.0; k <= 3.0; k += 1.0) {
@@ -339,16 +203,12 @@ void main() {
     }
     trailCol += hue * sm * w * (1.0 + 0.8 * max(fRev, 0.0));
 
-    // --- bob: white-hot crisp core + soft (tintable) halo ---
-    // Disc form (1 - smoothstep) stays well-defined down to the eighth-size
-    // bulb, where a fixed inner edge would invert.
+    // bob: crisp core + soft halo. 1 - smoothstep stays valid at eighth size.
     float d2   = length(P - bob);
     float aa   = 1.2 * pxU * soften;
     float core = 1.0 - smoothstep(br - aa, br + aa, d2);
     float halo = exp(-d2 * d2 / (br * br * 2.5 * spread * spread));
-    // The disc itself takes the played pitch's colour — flushed harder toward
-    // playHue than the halo's ribbon tint, so a press reads on the circle and
-    // not just around it. White at rest by the same colorAmt gate as the halo.
+    // Core flushes harder toward playHue than the halo.
     vec3 coreHue = mix(vec3(1.0),
                        mix(ribbon, playHue, min(1.0, playAmt * 2.0)),
                        clamp(colorAmt * 1.5, 0.0, 0.95));
@@ -357,40 +217,29 @@ void main() {
     bobGlow  += (core + halo) * shim * w;
   }
 
-  // ── Compose ─────────────────────────────────────────────────────────────────
   vec3 BG  = vec3(0.030, 0.031, 0.038);
   vec3 col = BG;
 
   float glow = 0.55 + 0.9 * mGlow;
 
-  // bright is the cutoff fader: everything drawn dims and brightens with it.
-  col += vec3(1.0) * filament * 0.18 * bright;        // strings, dim grey — lower
-                                                      // contrast than the bobs
+  col += vec3(1.0) * filament * 0.18 * bright;        // strings, dim grey
 
   col += trailCol * (0.05 + 0.06 * mGlow) * (1.0 - morphC); // smear (wave only)
-  // Coloured halos — faint at rest, blooming with note energy so a press
-  // reads as the whole figure lighting up, not just the discs resizing.
   col += bobCol * (0.22 * glow) * (1.0 + 0.9 * energy) * bright;
-  col += coreCol * 1.4 * bright;                      // crisp cores
+  col += coreCol * 1.4 * bright;
 
-  // Note flash: a quick lift on the bobs so a strike reads as a pulse of light
-  // through the whole rack, then falls back with the envelope. Tinted halfway
-  // toward the played pitch so the flash doesn't wash the cores' colour back
-  // to white at the exact moment the press should read as coloured.
+  // Note flash, tinted toward the pitch so it doesn't wash the cores back to white.
   vec3 flashHue = mix(vec3(1.0), playHue, clamp(playW, 0.0, 1.0) * 0.75);
   col += flashHue * bobGlow * uNoteOn * max(uVelocity, 0.3) * 0.55
        * (0.5 + 0.5 * uReactivity);
 
-  // Very gentle vignette — only the far corners fall off, so the rack can spread
-  // to the edges without the outermost strings and bobs being dimmed away.
+  // Corners only, so edge strings and bobs aren't dimmed.
   vec2 vg = vec2((vUv.x - 0.5) * aspect, vUv.y - 0.5);
   float vign = 1.0 - smoothstep(0.85, 1.25, length(vg));
   col = mix(BG, col, 0.7 + 0.3 * vign);
 
-  // Soft tone curve to tame the hottest cores without a hard clip.
   col = col / (1.0 + col * 0.28);
 
-  // Subtle grain, lifted a little by input so a busy frame reads as alive.
   float grain = fract(sin(dot(gl_FragCoord.xy + uTime, vec2(12.9898, 78.233))) * 43758.5453);
   col += (grain - 0.5) * (0.02 + energy * 0.02);
 

@@ -2,27 +2,12 @@ import type { SynthOverrideKey } from "@/lib/store";
 import type { SynthSettings } from "@/lib/synthTypes";
 
 /**
- * The synth panel's four faders, as data. Shared by the panel (which draws
- * and edits them) and the background render loop (which reads each fader's
- * position to parametrize the active shader), so the two can never disagree
- * about where a fader sits.
- *
- * The set is deliberately the parameters that are audible on *every* engine:
- * volume and the wet sends live on the master chain, and every voice runs
- * through the shared filter. Preset-specific character (envelopes, LFOs,
- * timbre) stays the preset's own.
- *
- * A fader is a macro, not necessarily one parameter. Delay is the example:
- * wet alone reads as "the note arrives late" once it crosses the dry signal
- * (and the preset's low feedback gives a single repeat), so the knob drives
- * wet — capped at an equal blend, the played note always speaks on time —
- * and feedback together: further up, more repeats, longer fade. Pedal logic.
- *
- * The wet caps stop the top of a send fader from crossfading the dry signal
- * away entirely — full-wet is a synthesis trick, not what a mix knob means.
+ * The panel's faders as data, shared with the background render loop.
+ * Only parameters audible on every engine. A fader is a macro: delay drives
+ * wet and feedback together. Wet caps keep the dry signal from crossfading away.
  */
 
-/** Fader order — matches the shader's `uSynth.xyzw`. */
+/** Fader order matches the shader's `uSynth.xyzw`. */
 export type FaderId = "volume" | "cutoff" | "reverb" | "delay";
 
 export type Fader = {
@@ -39,9 +24,7 @@ export type Fader = {
 
 export const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 
-// The presets sit a few dB under 0 so a chord has headroom, but the fader
-// runs past 0: the master limiter (-1 dB) catches the peaks, so the top of the
-// travel reads as "louder and denser" rather than clipping.
+// Runs past 0: the master limiter (-1 dB) catches the peaks.
 const VOL_MIN = -36;
 const VOL_MAX = 6;
 const VOL_RANGE = VOL_MAX - VOL_MIN;
@@ -54,7 +37,7 @@ const REV_WET_MAX = 0.85;
 
 const DLY_WET_MAX = 0.5;
 const DLY_FB_MIN = 0.1;
-const DLY_FB_MAX = 0.7; // well clear of runaway; ~10 audible repeats at the top
+const DLY_FB_MAX = 0.7; // clear of runaway
 
 const pct = (t: number) => `${Math.round(t * 100)}%`;
 
@@ -100,14 +83,8 @@ export const FADERS: Fader[] = [
 ];
 
 /**
- * Signed offset of a fader from the preset's own position, normalised per
- * side: -1 at the fader's bottom, 0 at the preset, +1 at the top.
- *
- * Presets sit at very different points of each fader's travel (Rhythm's
- * cutoff at ~0.74, Vibration's reverb at ~0.04), so a raw `t - tPreset` would
- * hand a shader almost no range in one direction. Normalising each side gives
- * every shader a clean -1..1 to design against, whatever the preset — and 0
- * still means "untouched", which is what keeps the resting look identical.
+ * Fader offset from the preset, normalised per side: -1 bottom, 0 preset,
+ * +1 top. A raw `t - tPreset` would starve one direction for most presets.
  */
 export function faderDelta(t: number, tPreset: number): number {
   const d = t - tPreset;

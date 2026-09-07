@@ -1,8 +1,4 @@
-/**
- * Single source of truth for the site's identity — shared by the root metadata,
- * the generated OG images, the sitemap, robots and the web manifest, so the
- * domain and the strings people see when a link is pasted can't drift apart.
- */
+// Shared by metadata, OG images, sitemap, robots and manifest.
 export const SITE = {
   url: "https://mikebucks.me",
   name: "Mike Bucks",
@@ -12,7 +8,7 @@ export const SITE = {
   author: "Mike Bucks",
 } as const;
 
-/** Design tokens the OG images share with globals.css. */
+/** Must match globals.css. */
 export const OG = {
   cream: "#f4f1ea",
   ink: "#111111",

@@ -1,21 +1,5 @@
-/**
- * Custom icons — the marks lucide doesn't have. Import from the folder, not the
- * file: `import { PhilosophersSeal } from "@/components/icons"`.
- *
- * Adding one: a file per icon exporting `<Name>` (an <Icon> wrapper, the usual
- * import) and, when something needs to compose it into an <svg> of its own,
- * `<Name>Glyph` — the bare shapes with the icon's own stroke settings on them,
- * so the two exports can't drift. Re-export both here.
- *
- * The three brand marks (seal, monogram, sigil) also have static copies under
- * /public/icons for non-React consumers (og images, mail signatures, anything
- * loading a URL). Those are the Figma exports and the source of truth for the
- * path data — edit both if the geometry changes, and keep the components'
- * `d` attributes verbatim so the next re-export diffs cleanly.
- *
- * All three are drawn on the same 40-unit grid and carry the same padding, so
- * one `size` renders them as a matched set. The footer stands them in a row.
- */
+// Custom marks lucide lacks. Each file exports <Name> and a bare <Name>Glyph.
+// Source of truth for path data is the Figma export under public/icons.
 export { Icon, type IconProps } from "./Icon";
 export {
   PhilosophersSeal,

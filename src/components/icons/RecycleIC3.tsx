@@ -1,26 +1,14 @@
 import type { SVGProps } from "react";
 import { Icon, type IconProps } from "./Icon";
 
-/** Same 40-unit grid as the other marks, so a shared `size` lines them up. */
 export const RECYCLE_IC3_VIEW_BOX = "0 0 40 40";
 
 type RecycleIC3Colors = {
-  /** The three arrows and the wordmark under them. */
   ink?: string;
 };
 
-/**
- * Bare shapes, for callers that need them inside an <svg> they already own.
- * Everything else wants <RecycleIC3 />.
- *
- * Path data is verbatim from the export (public/icons/recycle-ic3.svg); only the
- * hard-coded colour is lifted into a prop.
- *
- * Two groups, not one, and the split is load-bearing: the arrows are filled
- * *and* stroked, because the 0.8 stroke is what rounds their points into the
- * blunted, stamped look. The wordmark is already outlined, so the same stroke
- * would fatten the letterforms — it takes the fill alone.
- */
+// Paths verbatim from public/icons/recycle-ic3.svg; keep them diffable.
+// Arrows are stroked to blunt their points; the wordmark is fill-only.
 export function RecycleIC3Glyph({
   ink = "currentColor",
   ...props
@@ -28,12 +16,10 @@ export function RecycleIC3Glyph({
   return (
     <g {...props}>
       <g fill={ink} stroke={ink} strokeWidth="0.8" strokeLinejoin="round">
-        {/* Top arrow, then the two that fold under it — clockwise. */}
         <path d="M13.9238 16.193L16.7362 11.3854C17.063 10.8268 17.533 10.363 18.0989 10.0406C18.6649 9.7181 19.3069 9.54834 19.9604 9.54834C20.6139 9.54834 21.2559 9.7181 21.8219 10.0406C22.3878 10.363 22.8578 10.8268 23.1845 11.3854L24.3382 13.3576L25.8388 12.5028L24.9733 17.2802L20.3482 15.631L21.8487 14.7762L20.6946 12.804C20.6202 12.6768 20.5132 12.5711 20.3843 12.4977C20.2554 12.4242 20.1092 12.3856 19.9604 12.3856C19.8116 12.3856 19.6653 12.4242 19.5365 12.4977C19.4076 12.5711 19.3005 12.6768 19.2261 12.804L16.4134 17.6116L13.9238 16.193Z" />
         <path d="M27.2669 18.3637L30.0798 23.1711C30.4066 23.7296 30.5786 24.3631 30.5786 25.008C30.5786 25.653 30.4066 26.2865 30.0799 26.845C29.7531 27.4035 29.2831 27.8673 28.7172 28.1898C28.1512 28.5122 27.5092 28.682 26.8557 28.6819L24.548 28.6818L24.5479 30.3917L20.788 27.2633L24.548 24.1351L24.5478 25.8449L26.8557 25.8447C27.0045 25.8447 27.1507 25.8061 27.2796 25.7327C27.4085 25.6592 27.5156 25.5536 27.59 25.4264C27.6644 25.2992 27.7036 25.1549 27.7036 25.008C27.7035 24.8612 27.6644 24.7169 27.5899 24.5897L24.7772 19.782L27.2669 18.3637Z" />
         <path d="M18.6906 28.6816L13.0653 28.6818C12.4118 28.6819 11.7698 28.5121 11.2038 28.1897C10.6378 27.8672 10.1679 27.4034 9.8411 26.8449C9.51434 26.2864 9.34232 25.6529 9.34233 25.0079C9.34234 24.363 9.51437 23.7295 9.84115 23.171L10.9951 21.1989L9.49464 20.3438L14.12 18.6948L14.9852 23.4722L13.4848 22.6172L12.331 24.5896C12.2566 24.7168 12.2174 24.8611 12.2174 25.0079C12.2174 25.1548 12.2566 25.2991 12.331 25.4263C12.4054 25.5535 12.5124 25.6591 12.6413 25.7326C12.7702 25.806 12.9165 25.8446 13.0653 25.8446L18.6908 25.8447L18.6906 28.6816Z" />
       </g>
-      {/* "IC × 3", outlined. */}
       <path
         fill={ink}
         stroke="none"
@@ -43,15 +29,7 @@ export function RecycleIC3Glyph({
   );
 }
 
-/**
- * Recycle, IC × 3.
- *
- * The loop sits in the same 10-to-30 footprint as the seal and the no-trash
- * mark, so it carries their padding and reads at the same weight in a row. The
- * wordmark is the exception: it hangs below to 36, into padding the others
- * leave empty. That's the mark, not a centring bug — it's stamped copy under a
- * symbol, and lifting the loop to re-centre the pair would break the row.
- */
+// Wordmark hangs below the shared footprint. Not a centring bug.
 export function RecycleIC3({ ink, ...props }: IconProps & RecycleIC3Colors) {
   return (
     <Icon viewBox={RECYCLE_IC3_VIEW_BOX} {...props}>

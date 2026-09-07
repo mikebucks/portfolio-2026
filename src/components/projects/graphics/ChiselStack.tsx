@@ -11,20 +11,9 @@ import { cn } from "@/lib/utils";
 import { GRAPHIC_LABEL } from "./shared";
 
 /**
- * Animated replacement for the static chisel-stack.png. The three layers —
- * CONTEXT, SKILLS, DELIVERY — run as columns (≥ md), and every card fans a
- * curved line into the next column, converging on its centre the way
- * openlogi.org's receiver diagram fans into the HID++ node. Grey dots travel
- * the curves left→right, departing in a top→bottom stagger.
- *
- * Below md the columns stack as single-column sections joined by one plain
- * vertical line each, dot flowing downward — a fan adds nothing when every
- * card shares the same centre line.
- *
- * The curves depend on where each card actually lands after text wrapping, so
- * this is a client component: card centres are measured on mount and on every
- * resize, and the SVG paths are drawn from the measurements. Dots animate via
- * SMIL (animateMotion), so once drawn no further JS runs.
+ * Three columns (≥ md); each card fans a curve into the next column's centre,
+ * dots travelling left→right. Below md: stacked, one plain line per gap.
+ * Card centres are measured (ResizeObserver) to draw the paths; dots are SMIL.
  */
 
 type Item = { title: string; sub: string };
@@ -73,8 +62,7 @@ const COLUMNS: { label: string; items: Item[] }[] = [
 type Fan = { w: number; h: number; d: string[] };
 
 const DOT_DUR = 2;
-/** Seconds between neighbouring dots' departures — paths are built in card
- *  order, so the wave sweeps top → bottom through each fan. */
+/** Seconds between departures; paths are in card order so the wave sweeps down. */
 const DOT_STAGGER = 0.15;
 
 export function ChiselStack({ className }: { className?: string }) {
@@ -85,8 +73,7 @@ export function ChiselStack({ className }: { className?: string }) {
   const measure = useCallback(() => {
     const root = rootRef.current;
     if (!root) return;
-    // The fans run horizontally between columns (≥ md) or vertically between
-    // stacked sections; which one is live falls out of the svg's own shape.
+    // Orientation falls out of the svg's own shape.
     const next: Fan[] = [];
     for (let f = 0; f < COLUMNS.length - 1; f++) {
       const svg = fanRefs.current[f];
@@ -107,8 +94,7 @@ export function ChiselStack({ className }: { className?: string }) {
           d.push(`M 0 ${y} C ${w * 0.45} ${y}, ${w * 0.55} ${end}, ${w} ${end}`);
         }
       } else {
-        // Stacked sections connect with one plain line — a fan reads wrong
-        // when the single-column cards all share a centre.
+        // Stacked: one plain line; a fan reads wrong when cards share a centre.
         const x = Math.round(w / 2);
         d.push(`M ${x} 0 L ${x} ${h}`);
       }
@@ -123,8 +109,7 @@ export function ChiselStack({ className }: { className?: string }) {
     measure();
     const root = rootRef.current;
     if (!root) return;
-    // Any reflow that moves a card (viewport resize, font swap, breakpoint
-    // flip) changes the root's box, so observing it alone is enough.
+    // Any reflow that moves a card changes the root's box, so observing root suffices.
     const ro = new ResizeObserver(measure);
     ro.observe(root);
     return () => ro.disconnect();
@@ -192,9 +177,7 @@ export function ChiselStack({ className }: { className?: string }) {
             <div className={cn(GRAPHIC_LABEL, "text-center text-white")}>
               {col.label}
             </div>
-            {/* justify-center keeps a short column's cards vertically centred
-                against its taller neighbours, so the fans converge on the
-                middle of the pack rather than its top. */}
+            {/* content-center: short columns centre against taller neighbours so fans converge mid-pack. */}
             <div className="mt-3 grid flex-1 content-center grid-cols-1 gap-2 md:gap-2.5">
               {col.items.map((item) => (
                 <div

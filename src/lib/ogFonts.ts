@@ -1,19 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-/**
- * Inter for the generated OG cards.
- *
- * Satori (what next/og renders with) ships a single regular-weight fallback and
- * silently ignores `fontWeight`, so without these the wordmark and headlines
- * render flat. It also can't read the .woff2 files next/font already produces,
- * and applies variable-font axes unreliably — hence two static .ttf instances
- * vendored under src/assets/fonts.
- *
- * These are read at build time, not served, so they live outside public/.
- * next.config.ts traces them into the serverless bundle explicitly; without
- * that the read succeeds locally and fails on a deployed on-demand render.
- */
+// Satori needs static .ttf per weight (no woff2, no variable axes).
+// next.config.ts traces these into the serverless bundle; don't move them.
 const FONT_DIR = join(process.cwd(), "src/assets/fonts");
 
 export type OgFont = {
@@ -23,8 +12,6 @@ export type OgFont = {
   style: "normal";
 };
 
-// Module-scope cache: a build renders one card per project, and re-reading
-// 650KB from disk for each is pure waste.
 let cached: OgFont[] | null = null;
 
 export async function loadOgFonts(): Promise<OgFont[]> {

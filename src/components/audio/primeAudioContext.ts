@@ -1,27 +1,8 @@
 /**
- * iOS Safari audio unlock, kept apart from Tone so it can run synchronously.
- *
- * Two iOS-specific rules make the "just call Tone.start() when needed" approach
- * silently fail there while working everywhere else:
- *
- * 1. `AudioContext.resume()` only sticks when called during a user gesture.
- *    Our unlock path awaits `import("tone")` first, and by the time the module
- *    resolves the gesture's activation has expired — desktop browsers forgive
- *    this (they re-resume on the next gesture), iOS doesn't. So the raw
- *    context is created and resumed *here*, synchronously inside the gesture,
- *    and handed to Tone afterwards via `Tone.setContext`.
- *
- * 2. A page using only Web Audio runs in the "ambient" audio session, which
- *    the hardware ring/silent switch mutes — the address-bar speaker icon
- *    shows, but nothing comes out. Requesting the "playback" session exempts
- *    us from the switch: directly through `navigator.audioSession` where it
- *    exists, otherwise by looping a silent <audio> element, which iOS treats
- *    as media playback and promotes the session for.
- *
- * `primeAudioContext()` is idempotent and cheap, so callers invoke it on every
- * gesture that should produce sound — that also recovers the context from the
- * suspended/"interrupted" state iOS leaves it in after a phone call, Siri, or
- * backgrounding.
+ * iOS Safari unlock, kept apart from Tone so it runs synchronously in the gesture.
+ * resume() only sticks inside a gesture; awaiting import("tone") first expires it.
+ * The "playback" session exempts us from the ring/silent switch; the silent
+ * <audio> loop is the fallback where navigator.audioSession is missing.
  */
 
 let ctx: AudioContext | null = null;
@@ -29,11 +10,10 @@ let silentEl: HTMLAudioElement | null = null;
 
 const isIOS = () =>
   /iP(hone|ad|od)/.test(navigator.userAgent) ||
-  // iPadOS 13+ reports as macOS but is the only "Mac" with touch points.
+  // iPadOS 13+ reports as macOS.
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
-// ~0.1s of 16-bit mono silence at 8kHz as a data URI — built in code rather
-// than pasted as opaque base64 so it's auditable.
+// ~0.1s of silence as a WAV data URI.
 function silentWavUri(): string {
   const rate = 8000;
   const samples = 800;
@@ -55,7 +35,6 @@ function silentWavUri(): string {
   v.setUint16(34, 16, true); // bits per sample
   ascii(36, "data");
   v.setUint32(40, samples * 2, true);
-  // Sample data stays zeroed — that's the silence.
 
   const bytes = new Uint8Array(buf);
   let bin = "";
@@ -63,11 +42,7 @@ function silentWavUri(): string {
   return "data:audio/wav;base64," + btoa(bin);
 }
 
-/**
- * Create (once) and resume the shared AudioContext, and claim the "playback"
- * audio session. Must be called synchronously from inside a real user gesture
- * — no awaits between the event handler and this call.
- */
+/** Idempotent. Call synchronously inside a user gesture — no awaits before it. */
 export function primeAudioContext(): AudioContext {
   if (!ctx) ctx = new AudioContext({ latencyHint: "interactive" });
 
@@ -79,8 +54,7 @@ export function primeAudioContext(): AudioContext {
       session.type = "playback";
       sessionClaimed = session.type === "playback";
     } catch {
-      // Engine exposes the object but rejects the assignment — treat it as
-      // absent and let the element fallback carry the switch exemption.
+      // Assignment rejected; fall through to the element fallback.
     }
   }
   if (!sessionClaimed && isIOS()) {
@@ -89,8 +63,7 @@ export function primeAudioContext(): AudioContext {
       silentEl.src = silentWavUri();
       silentEl.loop = true;
     }
-    // iOS pauses media elements on backgrounding, dropping the session back
-    // to ambient — replay on each priming gesture, not just the first.
+    // iOS pauses it on backgrounding; replay each gesture.
     if (silentEl.paused) void silentEl.play().catch(() => {});
   }
 

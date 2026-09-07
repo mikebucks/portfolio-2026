@@ -3,15 +3,9 @@ import { cn } from "@/lib/utils";
 import { GRAPHIC_LABEL } from "./shared";
 
 /**
- * Animated replacement for the static chisel-process.png. Two panels — THEN, a
- * linear pipeline where Design is a dedicated stage, and NOW, the same pipeline
- * with Design dissolved into a Chisel bar that touches every stage. Connectors
- * carry a travelling accent dot (`.chisel-dot` in globals.css) instead of the
- * old arrows.
- *
- * ≥ md the pipeline runs left→right like the original image; below md the
- * cards stack vertically, and the NOW panel's Chisel bar becomes a vertical
- * rail alongside the stack — the whole diagram rotated, not squeezed.
+ * THEN: linear pipeline with Design as a stage. NOW: Design dissolves into a
+ * Chisel bar touching every stage. Connectors carry dots (.chisel-dot, globals.css).
+ * ≥ md runs left→right; below md stacks, and the NOW bar becomes a vertical rail.
  */
 
 type Stage = { title: string; roles: string; dark?: boolean };
@@ -37,11 +31,10 @@ const NOW: Stage[] = [
 
 const CHISEL_ROLES = "PD, PM, Eng, ELT";
 
-/** Seconds between neighbouring dots — negative delays keep them mid-cycle. */
+/** Seconds between neighbouring dots (negative delays start mid-cycle). */
 const STAGGER = 0.3;
 
-/** Seconds each hop owns in the THEN relay — the 7.2s cycle in globals.css
- *  is 6 connectors × this. */
+/** Seconds per THEN relay hop; globals.css's 7.2s cycle = 6 × this. */
 const RELAY_SLOT_SEC = 1.2;
 const RELAY_SLOTS = 6;
 
@@ -67,11 +60,11 @@ function Dot({
   axis: "x" | "y";
   index: number;
   reverse?: boolean;
-  /** Double tempo — the Chisel-connector treatment. */
+  /** Double tempo (Chisel connectors). */
   fast?: boolean;
-  /** Sequential baton-pass — the THEN pipeline treatment. */
+  /** Baton-pass (THEN pipeline). */
   relay?: boolean;
-  /** Extra seconds of (negative) delay, past the index stagger. */
+  /** Extra negative delay past the stagger. */
   offset?: number;
 }) {
   return (
@@ -88,14 +81,7 @@ function Dot({
   );
 }
 
-/**
- * Hairline connector with travelling dots, on either axis. Plain pipeline
- * connectors carry a single dot at strolling pace; `pair` marks a connector
- * that touches the Chisel bar, where the traffic doubles up — two dots at
- * double tempo, one each way, half a cycle apart so one arrives as the other
- * departs. That faster, denser exchange is the point of the diagram, so it
- * follows the Chisel connectors whatever axis the current layout gives them.
- */
+/** Hairline connector with dots. `pair` = Chisel connector: two fast dots, one each way, half a cycle apart. */
 function Line({
   axis,
   index,
@@ -107,7 +93,7 @@ function Line({
   axis: "x" | "y";
   index: number;
   pair?: boolean;
-  /** Sequential baton-pass dot (see Dot) — the THEN pipeline. */
+  /** Baton-pass dot (THEN pipeline). */
   relay?: boolean;
   className?: string;
   style?: CSSProperties;
@@ -144,11 +130,9 @@ function StageCard({
   style,
 }: {
   stage: Stage;
-  /** Wear the live-step stroke permanently (every NOW card). */
+  /** Permanent live-step stroke (NOW cards). */
   active?: boolean;
-  /** Pulse the live-step stroke as relay hop N's dot arrives (THEN cards).
-   *  The first card has no incoming hop — it passes 0.5, lighting half a
-   *  slot before the cycle wraps so it's fully lit as the baton spawns. */
+  /** Pulse as relay hop N's dot arrives (THEN). First card passes 0.5: lit half a slot before the cycle wraps. */
   pulseIndex?: number;
   className?: string;
   style?: CSSProperties;
@@ -222,7 +206,7 @@ function ChiselBadge({ className }: { className?: string }) {
   );
 }
 
-/** The full-width dark Chisel bar under the NOW pipeline (≥ md). */
+/** Dark Chisel bar under the NOW pipeline (≥ md). */
 function ChiselBar() {
   return (
     <div className="flex items-center gap-3 rounded-lg bg-ink px-4 py-3">
@@ -239,7 +223,7 @@ function ChiselBar() {
   );
 }
 
-/** The same bar rotated into a vertical rail for the stacked mobile layout. */
+/** The bar as a vertical rail for mobile. */
 function ChiselRail({ style }: { style?: CSSProperties }) {
   return (
     <div
@@ -262,12 +246,9 @@ function PanelLabel({ children }: { children: React.ReactNode }) {
 export function ChiselProcess({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-4", className)}>
-      {/* THEN — a strictly linear relay. */}
       <section className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
         <PanelLabel>THEN</PanelLabel>
 
-        {/* Desktop: left→right pipeline. `relay` runs the dots one hop at a
-            time — the strictly sequential waterfall is THEN's whole point. */}
         <div className="mt-4 hidden items-stretch md:flex">
           {THEN.map((stage, i) => (
             <Fragment key={stage.title}>
@@ -283,7 +264,6 @@ export function ChiselProcess({ className }: { className?: string }) {
           ))}
         </div>
 
-        {/* Mobile: the same pipeline top→bottom. */}
         <div className="mt-4 md:hidden">
           {THEN.map((stage, i) => (
             <Fragment key={stage.title}>
@@ -294,13 +274,9 @@ export function ChiselProcess({ className }: { className?: string }) {
         </div>
       </section>
 
-      {/* NOW — Design dissolves into Chisel, which touches every stage. */}
       <section className="rounded-xl border border-black/10 bg-white p-4 md:p-5">
         <PanelLabel>NOW</PanelLabel>
 
-        {/* Desktop: pipeline, drop lines, then the Chisel bar. Each drop line
-            carries a dot in both directions, like the ↕ arrows in the
-            original image. */}
         <div className="mt-4 hidden md:block">
           <div className="flex items-stretch">
             {NOW.map((stage, i) => (
@@ -312,8 +288,7 @@ export function ChiselProcess({ className }: { className?: string }) {
               </Fragment>
             ))}
           </div>
-          {/* Mirrors the flex math of the card row above (flex-1 cells with
-              w-6 spacers) so each drop line stays centred under its card. */}
+          {/* Mirrors the card row's flex math so drop lines stay centred under their cards. */}
           <div className="flex">
             {NOW.map((stage, i) => (
               <Fragment key={stage.title}>
@@ -327,11 +302,7 @@ export function ChiselProcess({ className }: { className?: string }) {
           <ChiselBar />
         </div>
 
-        {/* Mobile: cards stack in column 1, the Chisel rail runs alongside in
-            column 3, and every card gets its own connector across column 2 —
-            the desktop diagram rotated 90°. Cards sit on odd grid rows with
-            the between-card connectors on the even rows, and the rail spans
-            them all. */}
+        {/* Mobile: cards on odd rows, connectors on even rows, rail spans all — desktop rotated 90°. */}
         <div className="mt-4 grid grid-cols-[minmax(0,1fr)_1.75rem_auto] md:hidden">
           {NOW.map((stage, i) => (
             <Fragment key={stage.title}>

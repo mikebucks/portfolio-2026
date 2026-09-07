@@ -5,17 +5,12 @@ import { Check } from "lucide-react";
 import gsap from "gsap";
 import { prefersReducedMotion } from "@/lib/device";
 
-// Web3Forms access keys are public by design (safe to ship client-side). Create
-// a free key tied to the contact inbox at https://web3forms.com and set it as
-// NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY. Until then submissions will fail cleanly.
+// Web3Forms keys are public by design; safe client-side.
 const ACCESS_KEY = process.env.NEXT_PUBLIC_WEB3FORMS_ACCESS_KEY ?? "";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-// Each card is a rounded outline whose big grey prompt doubles as the label.
-// Focusing or filling the primary field shrinks the prompt to a small black
-// caption. Focus also lifts the card the way a hovered project card lifts:
-// solid white and the same 10px accent ring on the same ease.
+// Focus lifts the card like a hovered project card: white + 10px accent ring, same ease.
 const cardClass =
   "relative flex flex-col rounded-md bg-white/70 p-4 ring-0 ring-accent/0 transition-[box-shadow,background-color] duration-300 ease-[cubic-bezier(0.05,0,0,1)] has-[:focus]:z-10 has-[:focus]:bg-white has-[:focus]:ring-[10px] has-[:focus]:ring-accent md:p-6";
 const promptClass =
@@ -29,9 +24,7 @@ export function ContactSection() {
   const [senderName, setSenderName] = useState("");
   const successRef = useRef<HTMLDivElement>(null);
   const formWrapRef = useRef<HTMLDivElement>(null);
-  // Reserve the form's rendered height so swapping in the (shorter) success
-  // state doesn't let the section collapse and jump. Re-measured on resize
-  // while the form is up.
+  // Reserve form height so the shorter success state doesn't collapse the section.
   const [reservedHeight, setReservedHeight] = useState<number>();
 
   useEffect(() => {
@@ -46,8 +39,7 @@ export function ContactSection() {
     return () => window.removeEventListener("resize", measure);
   }, [status]);
 
-  // Reveal the success state in the site's intro language: the check badge
-  // pops in with a slight overshoot, then the message lines stagger up.
+  // Success reveal in the site intro's motion language.
   useEffect(() => {
     const el = successRef.current;
     if (status !== "success" || !el) return;
@@ -89,7 +81,7 @@ export function ContactSection() {
     const form = e.currentTarget;
     const data = Object.fromEntries(new FormData(form));
 
-    // Honeypot — bots fill hidden fields; humans don't.
+    // Honeypot
     if (data.botcheck) return;
 
     if (!ACCESS_KEY) {
@@ -136,8 +128,7 @@ export function ContactSection() {
       id="contact"
       className="relative z-10 gutter-x bg-white/40 backdrop-blur-md"
     >
-      {/* gutter-x on the section, cap + centering on the inner column — same
-          split as the other sections, so every left edge agrees past 1600px. */}
+      {/* Same gutter/cap split as the other sections so left edges align past 1600px. */}
       <div className="mx-auto max-w-[1600px] pt-10 pb-28">
         <h2 className="mb-10 font-mono text-xs uppercase tracking-widest text-black">
           Let's build something
@@ -172,7 +163,6 @@ export function ContactSection() {
           </div>
         ) : (
           <div ref={formWrapRef}>
-            {/* Form */}
             <form onSubmit={handleSubmit}>
             {/* Honeypot */}
             <input
@@ -184,8 +174,7 @@ export function ContactSection() {
               aria-hidden="true"
             />
 
-            {/* data-focus-quiet: the card's orange border is the focus ring,
-                so the global focus-visible outline on the field is silenced. */}
+            {/* data-focus-quiet: the card ring is the focus ring; silences the global outline. */}
             <div className="grid gap-4 md:grid-cols-2" data-focus-quiet>
               <div className="flex flex-col gap-4">
                 <div className={`${cardClass} group flex-1`}>
