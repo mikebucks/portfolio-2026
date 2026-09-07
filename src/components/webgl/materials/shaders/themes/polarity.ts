@@ -73,19 +73,24 @@ void splat(float ca, float sa, float w, float kk) {
   float fBase = -ca * gSu * gCosT;
   float fSide = sa * gSinT;
 
+  // Core is a disc with a short edge; halo is a Lorentzian.
   // Halo floor (0.006) gives it finite reach; otherwise the ring cull draws a rim.
   float zu = zb + zo;
   vec2 du = gQ - vec2(base.x, base.y + oy) * (1.0 + zu * PERSP);
-  float gu = 1.0 / (1.0 + dot(du, du) * kk);
+  float ru = dot(du, du) * kk;
+  float gu = 1.0 - smoothstep(0.25, 0.8, ru);
+  float hu = 1.0 / (1.0 + ru);
   float vu = clamp((fBase + fSide) * 1.9 + 0.68, 0.26, 1.0);
-  gUp += (gu * gu + max(gu - 0.006, 0.0) * gHalo)
+  gUp += (gu + max(hu - 0.006, 0.0) * gHalo)
        * w * vu * (0.72 + 0.28 * zu * gInvZ);
 
   float zd = zb - zo;
   vec2 dd = gQ - vec2(base.x, base.y - oy) * (1.0 + zd * PERSP);
-  float gd = 1.0 / (1.0 + dot(dd, dd) * kk);
+  float rd = dot(dd, dd) * kk;
+  float gd = 1.0 - smoothstep(0.25, 0.8, rd);
+  float hd = 1.0 / (1.0 + rd);
   float vd = clamp((fBase - fSide) * 1.9 + 0.68, 0.26, 1.0);
-  gDn += (gd * gd + max(gd - 0.006, 0.0) * gHalo)
+  gDn += (gd + max(hd - 0.006, 0.0) * gHalo)
        * w * vd * (0.72 + 0.28 * zd * gInvZ);
 }
 
