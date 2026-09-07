@@ -185,10 +185,14 @@ export function SynthPanel() {
       // two have already drifted apart once: the toggle moved off the rail and
       // onto the footer's content column, and a hard-coded 72px silently became
       // an 8px overlap. Anchored this way it tracks.
+      //
+      // Right: the frame rail, or the 1600px column's edge once wider (minus
+      // the card's 0.5rem margin). `100%` excludes the scrollbar; `100vw` doesn't.
       style={{
         top: "calc(env(safe-area-inset-top, 0px) + var(--header-h, 5rem))",
         bottom: "calc(env(safe-area-inset-bottom, 0px) + 2.5rem + 56px)",
-        right: "calc(env(safe-area-inset-right, 0px) + 10px)",
+        right:
+          "max(calc(env(safe-area-inset-right, 0px) + 10px), calc((100% - 1600px) / 2 - 0.5rem))",
       }}
       // z-[105]: above a hovered project card (z-101, which itself outranks
       // the cream frame bars at z-100) so the panel never gets painted over by

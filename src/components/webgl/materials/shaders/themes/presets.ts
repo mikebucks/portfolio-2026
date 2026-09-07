@@ -469,7 +469,7 @@ export const THEME_IDS: readonly ThemeId[] = [
   "gender",
 ] as const;
 
-export const DEFAULT_THEME: ThemeId = "mind";
+export const DEFAULT_THEME: ThemeId = "correspondence";
 
 /** The full SynthSettings for a theme — just the base voice, no macro layer. */
 export function resolveSettings(theme: ThemeId): SynthSettings {
