@@ -211,7 +211,7 @@ const polarityBase: SynthSettings = {
 const polarityPreset: ThemePreset = {
   id: "polarity",
   label: "Polarity",
-  blurb: "Everything is dual; everything has poles; everything hadd its pair of opposites; like and unlike are the same; opposites are identical in nature, but different in deggree; extremes meet; all truths are but half-truths; all pardoxxes may be reconciled.",
+  blurb: "Everything is dual; everything has poles; everything has its pair of opposites; like and unlike are the same; opposites are identical in nature, but different in degree; extremes meet; all truths are but half-truths; all paradoxes may be reconciled.",
   fragment: polarityFragment,
   baseSettings: polarityBase,
   // Scale / Flow / Spiral / Bloom. Spiral low: more stagger loses the torus form.
@@ -309,7 +309,7 @@ const causationBase: SynthSettings = {
 const causationPreset: ThemePreset = {
   id: "causation",
   label: "Cause & Effect",
-  blurb: "Every cause has its Effect; every Effect has its Cause; enerything happens according to Law; Chance is but a name for Law not recognixed; there are many planes of causation, but nothing escapes the Law",
+  blurb: "Every cause has its Effect; every Effect has its Cause; everything happens according to Law; Chance is but a name for Law not recognized; there are many planes of causation, but nothing escapes the Law.",
   fragment: causationFragment,
   baseSettings: causationBase,
   // x Glow · y Density · z Drift · w Echo
