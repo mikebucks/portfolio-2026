@@ -99,13 +99,10 @@ export function OgCard({
 
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div
-          style={{ width: 72, height: 6, backgroundColor: OG.accent }}
-        />
-        <div
           style={{
             display: "flex",
             fontSize: 24,
-            letterSpacing: "0.06em",
+            // letterSpacing: "0.06em",
             color: "#11111180",
             marginTop: 20,
           }}
