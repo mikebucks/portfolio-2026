@@ -37,9 +37,12 @@ export function useSynthControls() {
     toggleRef.current = toggleSynthPanel;
   });
 
-  // Opening the panel is synth intent: unlock then.
+  // Opening the panel is synth intent: unlock then. A `?synth` load has no
+  // gesture yet; Tone.start() would hang, so the first key press unlocks instead.
   useEffect(() => {
-    if (synthPanelOpen && !unlockedRef.current) void unlockRef.current();
+    if (!synthPanelOpen || unlockedRef.current) return;
+    if (navigator.userActivation?.hasBeenActive === false) return;
+    void unlockRef.current();
   }, [synthPanelOpen]);
 
   useEffect(() => {

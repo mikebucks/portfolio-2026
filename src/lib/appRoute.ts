@@ -46,11 +46,30 @@ const ROUTE_EVENT = "app:routechange";
 // `notify: false` when the URL only mirrors scroll position; otherwise the
 // URL -> scroll subscriber feeds back into a scroll loop.
 export function navigate(path: string, { replace = false, notify = true } = {}) {
-  const current = window.location.pathname + window.location.hash;
-  if (path === current) return;
-  if (replace) history.replaceState(null, "", path);
-  else history.pushState(null, "", path);
+  // Query carries over: it holds panel state, not location.
+  const url = path + window.location.search;
+  const current = window.location.pathname + window.location.search + window.location.hash;
+  if (url === current) return;
+  if (replace) history.replaceState(null, "", url);
+  else history.pushState(null, "", url);
   if (notify) window.dispatchEvent(new Event(ROUTE_EVENT));
+}
+
+// `?synth` present <=> synth panel open.
+const SYNTH_PARAM = "synth";
+
+export function synthParamOpen(): boolean {
+  return new URLSearchParams(window.location.search).has(SYNTH_PARAM);
+}
+
+export function setSynthParam(open: boolean) {
+  if (open === synthParamOpen()) return;
+  const params = new URLSearchParams(window.location.search);
+  if (open) params.set(SYNTH_PARAM, "");
+  else params.delete(SYNTH_PARAM);
+  const search = params.toString().replace(/=(&|$)/g, "$1");
+  const { pathname, hash } = window.location;
+  history.replaceState(null, "", pathname + (search ? `?${search}` : "") + hash);
 }
 
 export function sectionPath(section: SectionId | null): string {

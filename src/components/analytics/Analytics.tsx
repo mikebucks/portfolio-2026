@@ -96,6 +96,7 @@ export function Analytics() {
     const trackPageView = () =>
       track(EV.pageView, {
         path: window.location.pathname,
+        search: window.location.search || undefined,
         hash: window.location.hash || undefined,
         referrer: document.referrer || undefined,
         title: document.title,

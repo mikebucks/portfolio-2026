@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { smoothScrollTo } from "@/components/animation/lenisInstance";
 import { isHomeUrl, navigate, parseRoute } from "@/lib/appRoute";
 import { SynthToggleButton } from "../audio/SynthToggleButton";
+import { useSynthDeepLink } from "../audio/useSynthDeepLink";
 
 const NAV_LINKS = [
   { id: "projects", label: "Projects" },
@@ -31,6 +32,7 @@ export function Header() {
   const headerRef = useRef<HTMLElement>(null);
   const pathname = usePathname();
   const onHome = isHomeUrl(pathname);
+  useSynthDeepLink();
 
   // Active item comes from the URL (useRouteScroll keeps it in sync with scroll).
   const activeId = onHome
