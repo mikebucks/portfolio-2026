@@ -20,7 +20,7 @@ export function Hero() {
             <h1
               data-intro="headline"
               style={{ WebkitFontSmoothing: "auto" }}
-              className="-ml-[4px] whitespace-nowrap text-[length:calc(min(80vw,1600px)/10.52)] font-semibold leading-[1.15] tracking-tighter"
+              className="-ml-[4px] whitespace-nowrap text-[length:calc(min(80vw,1600px)/10.52)] font-semibold leading-[1.15] tracking-[-0.075em]"
             >
               Digital Product <CyclingWord />
             </h1>
